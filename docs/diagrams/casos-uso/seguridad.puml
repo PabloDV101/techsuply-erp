@@ -1,0 +1,53 @@
+
+@startuml CU_Seguridad
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Usuario del ERP" as Usuario
+actor "Administrador del sistema" as Admin
+actor "Auditor" as Auditor
+
+rectangle "ERP - Seguridad" {
+  usecase "Iniciar sesión" as Login
+  usecase "Cerrar sesión" as Logout
+  usecase "Validar credenciales" as Credenciales
+  usecase "Verificar permisos" as Permisos
+  usecase "Consultar perfil propio" as Perfil
+  usecase "Gestionar usuarios" as GestionUsuarios
+  usecase "Activar y desactivar cuentas" as EstadoCuenta
+  usecase "Gestionar roles" as Roles
+  usecase "Asignar permisos por módulo" as AsignarPermisos
+  usecase "Consultar registros de auditoría" as ConsultarAuditoria
+  usecase "Consultar historial de cambios" as Historial
+  usecase "Registrar eventos de seguridad" as Eventos
+}
+
+
+Usuario --> Login
+Usuario --> Logout
+Usuario --> Perfil
+
+Admin --> GestionUsuarios
+Admin --> EstadoCuenta
+Admin --> Roles
+Admin --> AsignarPermisos
+Admin --> ConsultarAuditoria
+
+Auditor --> ConsultarAuditoria
+Auditor --> Historial
+
+Login ..> Credenciales : <<include>>
+Login ..> Eventos : <<include>>
+Logout ..> Eventos : <<include>>
+GestionUsuarios ..> Eventos : <<include>>
+EstadoCuenta ..> Eventos : <<include>>
+Roles ..> AsignarPermisos : <<include>>
+ConsultarAuditoria ..> Historial : <<include>>
+
+note bottom of Permisos
+  Las operaciones de los módulos
+  requieren autorización según el rol.
+end note
+
+@enduml

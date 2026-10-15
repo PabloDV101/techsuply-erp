@@ -1,0 +1,55 @@
+@startuml TS00_Integracion_Procesos
+title TechSupply Solutions - Mapa de Integracion de Procesos
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam componentStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam ArrowColor #526780
+skinparam component {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+}
+
+component "Gestion Maestra\nProductos, proveedores, clientes,\nempleados y almacenes" as Master
+component "Compras\nRequisicion, orden y recepcion" as Purchase
+component "Inventario\nExistencias, movimientos,\nreservas y ajustes" as Inventory
+component "Ventas\nCotizacion, pedido y despacho" as Sales
+component "Contabilidad\nFacturas, cuentas auxiliares\ny asientos" as Accounting
+component "Nomina\nCalculo, aprobacion y pago" as Payroll
+component "Auditoria\nRegistro de acciones relevantes" as Audit
+component "Reporteria\nIndicadores y consultas" as Reports
+
+Master --> Purchase : catalogos
+Master --> Inventory : productos y almacenes
+Master --> Sales : productos y clientes
+Master --> Payroll : empleados
+Purchase --> Inventory : recepcion confirmada
+Sales --> Inventory : reserva y despacho
+Purchase --> Accounting : factura proveedor validada
+Sales --> Accounting : factura venta y cobro
+Payroll --> Accounting : nomina aprobada
+
+note right of Audit
+  Todos los modulos registran acciones
+  relevantes usando un servicio comun.
+end note
+
+note bottom of Reports
+  Consume datos de modulos autorizados;
+  nunca modifica directamente los procesos.
+end note
+
+note bottom of Inventory
+  Solo Inventario actualiza las existencias.
+  Las modificaciones se confirman junto
+  con su movimiento en una transaccion.
+end note
+
+note bottom of Accounting
+  Las operaciones conservan el documento
+  fuente y no deben contabilizarse dos veces.
+end note
+@enduml

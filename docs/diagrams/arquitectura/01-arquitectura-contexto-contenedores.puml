@@ -1,0 +1,73 @@
+@startuml TSS_Contexto_Contenedores
+' Vista lógica de contenedores. Nginx y redes físicas se detallan en la vista de despliegue.
+top to bottom direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam componentStyle uml2
+skinparam defaultFontName Arial
+skinparam wrapWidth 195
+skinparam nodesep 30
+skinparam ranksep 35
+
+actor "Usuario interno\n(Gerencia, Compras, Almacén,\nVentas, Contabilidad y RR. HH.)" as Interno
+actor "Cliente" as Cliente
+
+node "Navegador web" as Browser {
+  component "Aplicación web / portal\nReact + TypeScript" as Web
+}
+
+node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
+  component "API REST\nControladores y DTO" as API
+  component "Servicios de aplicación\nCasos de uso y transacciones" as App
+  package "Módulos de dominio" {
+    component "Gestión maestra y seguridad" as Maestros
+    component "Compras" as Compras
+    component "Inventario" as Inventario
+    component "Ventas y despachos" as Ventas
+    component "Contabilidad y finanzas" as Contabilidad
+    component "RR. HH. y nómina" as Nomina
+    component "Reportería y auditoría" as Transversal
+  }
+  component "Persistencia\nSpring Data JPA / Hibernate" as Persistence
+}
+
+database "PostgreSQL\nDatos relacionales normalizados" as DB
+cloud "SMTP opcional\nNotificaciones" as SMTP
+
+Interno --> Web : utiliza
+Cliente --> Web : utiliza portal
+Web --> API : HTTPS / JSON\n(vía proxy en despliegue)
+API --> App : invoca casos de uso
+App --> Maestros
+App --> Compras
+App --> Inventario
+App --> Ventas
+App --> Contabilidad
+App --> Nomina
+App --> Transversal
+Compras --> Inventario : recepción / devolución
+Ventas --> Inventario : reserva / despacho
+Compras --> Contabilidad : factura proveedor validada
+Ventas --> Contabilidad : factura comercial validada
+Nomina --> Contabilidad : nómina aprobada
+Maestros --> Persistence
+Compras --> Persistence
+Inventario --> Persistence
+Ventas --> Persistence
+Contabilidad --> Persistence
+Nomina --> Persistence
+Transversal --> Persistence
+Persistence --> DB : JDBC / SQL
+Transversal ..> SMTP : después del commit
+
+note bottom of Backend
+  Todos los módulos se ejecutan en una aplicación Spring Boot.
+  No son microservicios. Los módulos usan servicios públicos
+  de aplicación y no modifican repositorios privados ajenos.
+end note
+note bottom of DB
+  Acceso solo desde backend y procesos autorizados.
+  Las operaciones críticas se ejecutan transaccionalmente.
+end note
+@enduml

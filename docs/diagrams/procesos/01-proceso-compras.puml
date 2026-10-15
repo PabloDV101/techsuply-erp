@@ -1,0 +1,108 @@
+@startuml TS01_Proceso_Compras
+title ERP TechSupply Solutions - Compras y Recepcion
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Sistema ERP|
+start
+:Detectar stock bajo o solicitud interna;
+:Crear requisicion en BORRADOR;
+:Registrar productos y cantidades;
+
+|Responsable de compras|
+:Revisar requisicion;
+while (¿Requiere correccion?) is (Si)
+  :Solicitar o registrar correcciones;
+  |Sistema ERP|
+  :Actualizar requisicion;
+  |Responsable de compras|
+  :Revisar requisicion corregida;
+endwhile (No)
+:Enviar requisicion a aprobacion;
+
+|Aprobador autorizado|
+:Evaluar necesidad y presupuesto;
+if (¿Aprueba requisicion?) then (Si)
+  |Sistema ERP|
+  :Cambiar estado a APROBADA;
+  |Responsable de compras|
+  :Consultar proveedores y condiciones;
+  :Seleccionar proveedor;
+  |Sistema ERP|
+  :Crear orden en BORRADOR;
+  :Guardar precios y cantidades acordados;
+  :Marcar orden PENDIENTE_APROBACION;
+  |Aprobador autorizado|
+  :Revisar orden y monto;
+  if (¿Aprueba orden de compra?) then (Si)
+    |Sistema ERP|
+    :Marcar orden APROBADA;
+    |Responsable de compras|
+    :Enviar orden al proveedor;
+    |Sistema ERP|
+    :Marcar orden ENVIADA;
+  else (No)
+    |Sistema ERP|
+    :Registrar rechazo de la orden;
+    :Marcar orden CANCELADA;
+    stop
+  endif
+  |Proveedor|
+  :Preparar mercancia y factura;
+  :Entregar mercancia;
+  |Responsable de almacen|
+  :Comparar mercancia con la orden;
+  :Registrar cantidades recibidas;
+  :Separar cantidades aceptadas y rechazadas;
+  |Sistema ERP|
+  :Validar cantidades contra saldo pendiente;
+  if (¿Recepcion valida?) then (Si)
+    :Iniciar transaccion;
+    :Confirmar recepcion;
+    :Actualizar existencia por cantidad aceptada;
+    :Registrar movimiento de entrada;
+    :Calcular pendiente con unidades aceptadas;
+    :Registrar auditoria;
+    :Confirmar transaccion;
+    if (¿Orden totalmente recibida?) then (Si)
+      :Marcar orden como RECIBIDA;
+    else (No)
+      :Marcar orden como PARCIALMENTE_RECIBIDA;
+    endif
+    |Contabilidad|
+    :Registrar factura del proveedor;
+    |Sistema ERP|
+    :Conciliar factura con orden y recepciones;
+    if (¿Importes y cantidades conciliados?) then (Si)
+      :Marcar factura como validada;
+      :Enviar referencia al modulo contable;
+    else (No)
+      :Dejar factura pendiente de revision;
+      :Registrar discrepancia;
+    endif
+    :Registrar evento de auditoria;
+    stop
+  else (No)
+    :Mantener recepcion en BORRADOR;
+    :Registrar discrepancia para revision;
+    stop
+  endif
+else (No)
+  |Sistema ERP|
+  :Registrar rechazo y motivo;
+  :Mantener historial de la requisicion;
+  stop
+endif
+@enduml

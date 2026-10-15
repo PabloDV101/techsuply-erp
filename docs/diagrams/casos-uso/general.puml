@@ -1,0 +1,116 @@
+
+@startuml CU_General_ERP
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+actor "Gerente general" as Gerente
+actor "Responsable de compras" as Comprador
+actor "Responsable de almacén" as Almacen
+actor "Responsable de ventas" as Vendedor
+actor "Contador" as Contador
+actor "Responsable de RR. HH." as RRHH
+actor "Administrador del sistema" as Admin
+actor "Cliente" as Cliente
+
+rectangle "Sistema ERP - TechSupply Solutions" {
+
+  package "Gestión maestra" {
+    usecase "Gestionar productos" as UC_Productos
+    usecase "Gestionar proveedores" as UC_Proveedores
+    usecase "Gestionar clientes" as UC_Clientes
+    usecase "Gestionar empleados" as UC_Empleados
+    usecase "Gestionar almacenes" as UC_Almacenes
+  }
+
+  package "Compras" {
+    usecase "Gestionar requisiciones" as UC_Requisiciones
+    usecase "Gestionar órdenes de compra" as UC_OC
+    usecase "Registrar recepción" as UC_Recepcion
+  }
+
+  package "Inventario" {
+    usecase "Consultar existencias" as UC_Existencias
+    usecase "Registrar movimientos" as UC_Movimientos
+    usecase "Realizar ajustes y conteos" as UC_Ajustes
+    usecase "Consultar alertas de stock" as UC_Alertas
+  }
+
+  package "Ventas" {
+    usecase "Gestionar cotizaciones" as UC_Cotizaciones
+    usecase "Gestionar pedidos" as UC_Pedidos
+    usecase "Gestionar facturación" as UC_Facturacion
+    usecase "Consultar crédito de clientes" as UC_Credito
+  }
+
+  package "Contabilidad" {
+    usecase "Gestionar asientos contables" as UC_Asientos
+    usecase "Registrar pagos" as UC_Pagos
+    usecase "Generar estados financieros" as UC_Estados
+  }
+
+  package "Nómina y RR. HH." {
+    usecase "Gestionar nómina" as UC_Nomina
+    usecase "Gestionar asistencia y vacaciones" as UC_Asistencia
+  }
+
+  package "Reportería" {
+    usecase "Consultar dashboards" as UC_Dashboard
+    usecase "Generar reportes de gestión" as UC_Reportes
+  }
+
+  package "Seguridad" {
+    usecase "Autenticarse" as UC_Login
+    usecase "Gestionar usuarios y permisos" as UC_Usuarios
+    usecase "Consultar auditoría" as UC_Auditoria
+  }
+}
+
+Gerente --> UC_Dashboard
+Gerente --> UC_Reportes
+Gerente --> UC_Estados
+
+Comprador --> UC_Proveedores
+Comprador --> UC_Requisiciones
+Comprador --> UC_OC
+Comprador --> UC_Reportes
+
+Almacen --> UC_Productos
+Almacen --> UC_Almacenes
+Almacen --> UC_Recepcion
+Almacen --> UC_Existencias
+Almacen --> UC_Movimientos
+Almacen --> UC_Ajustes
+Almacen --> UC_Alertas
+
+Vendedor --> UC_Clientes
+Vendedor --> UC_Cotizaciones
+Vendedor --> UC_Pedidos
+Vendedor --> UC_Facturacion
+Vendedor --> UC_Credito
+Vendedor --> UC_Existencias
+
+Contador --> UC_Asientos
+Contador --> UC_Pagos
+Contador --> UC_Estados
+Contador --> UC_Reportes
+
+RRHH --> UC_Empleados
+RRHH --> UC_Nomina
+RRHH --> UC_Asistencia
+
+Admin --> UC_Usuarios
+Admin --> UC_Auditoria
+Admin --> UC_Empleados
+
+Cliente --> UC_Cotizaciones
+Cliente --> UC_Pedidos
+
+note bottom of UC_Login
+  El acceso requiere autenticación
+  y permisos según el rol.
+end note
+
+
+@enduml

@@ -1,0 +1,48 @@
+
+@startuml CU_Compras
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Responsable de compras" as Comprador
+actor "Responsable de almacén" as Almacen
+actor "Contador" as Contador
+actor "Proveedor" as Proveedor
+
+rectangle "ERP - Gestión de Compras" {
+  usecase "Identificar necesidad de compra" as Necesidad
+  usecase "Generar requisición" as Requisicion
+  usecase "Revisar y autorizar requisición" as Autorizar
+  usecase "Consultar proveedores" as ConsultarProveedores
+  usecase "Comparar condiciones comerciales" as Comparar
+  usecase "Generar orden de compra" as Orden
+  usecase "Consultar estado de orden" as EstadoOrden
+  usecase "Registrar recepción de mercancía" as Recepcion
+  usecase "Verificar mercancía recibida" as Verificar
+  usecase "Registrar discrepancias" as Discrepancias
+  usecase "Registrar devolución a proveedor" as Devolucion
+  usecase "Notificar recepción a contabilidad" as Notificar
+}
+
+Comprador --> Necesidad
+Comprador --> Requisicion
+Comprador --> Autorizar
+Comprador --> ConsultarProveedores
+Comprador --> Comparar
+Comprador --> Orden
+Comprador --> EstadoOrden
+
+Proveedor --> EstadoOrden
+Almacen --> Recepcion
+Almacen --> Devolucion
+Contador --> Notificar
+
+Requisicion ..> Necesidad : <<include>>
+Orden ..> ConsultarProveedores : <<include>>
+Orden ..> Comparar : <<include>>
+Recepcion ..> Verificar : <<include>>
+Discrepancias ..> Verificar : <<extend>>
+Devolucion ..> Recepcion : <<extend>>
+Notificar ..> Recepcion : <<extend>>
+
+@enduml

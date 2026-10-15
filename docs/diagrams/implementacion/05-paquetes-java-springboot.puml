@@ -1,0 +1,77 @@
+@startuml TechSupply_Java_Package_Overview
+ title TechSupply Solutions - Organización de paquetes Java
+ top to bottom direction
+ skinparam shadowing false
+ skinparam linetype ortho
+ skinparam packageStyle rectangle
+ skinparam nodesep 30
+ skinparam ranksep 35
+ skinparam defaultTextAlignment center
+
+ package "com.techsupply.erp" as Root {
+   package "config" as Config {
+     [Configuración web y CORS]
+     [Configuración OpenAPI]
+     [Configuración JPA]
+   }
+
+   package "security" as Security {
+     [SecurityConfig]
+     [JWT / autenticación]
+     [Autorización por roles y permisos]
+   }
+
+   package "shared" as Shared {
+     package "audit" as Audit {
+       [AuditService]
+       [AuditEvent]
+     }
+     package "notification" as Notification {
+       [NotificationService]
+       [Eventos posteriores al commit]
+     }
+     package "errors" as Errors {
+       [GlobalExceptionHandler]
+       [Errores de aplicación]
+     }
+     package "web" as Web {
+       [Paginación y filtros compartidos]
+     }
+   }
+
+   package "modules" as Modules {
+     package "maestros" as Masters
+     package "compras" as Purchasing
+     package "inventario" as Inventory
+     package "ventas" as Sales
+     package "contabilidad" as Accounting
+     package "rrhh" as Payroll
+     package "reporteria" as Reporting
+   }
+}
+
+package "src/main/resources" as Resources {
+  package "db/migration" as Migrations {
+    [V001__schema_base.sql]
+    [V002__catalogos.sql]
+  }
+  [application.yml]
+}
+
+package "src/test/java/com/techsupply/erp" as Tests {
+  [Pruebas unitarias]
+  [Pruebas de integración]
+}
+
+note right of Modules
+  Cada módulo de negocio aplica el patrón:
+  api / application / domain / infrastructure.
+  Ver el diagrama de plantilla de módulo.
+end note
+
+note bottom of Migrations
+  Las migraciones versionadas se ejecutan con Flyway
+  como parte controlada del release. Los nombres son
+  ilustrativos; los archivos reales se crean al implementar.
+end note
+@enduml

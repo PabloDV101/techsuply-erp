@@ -1,0 +1,79 @@
+@startuml TS04_Proceso_Ventas
+title ERP TechSupply Solutions - Cotizacion, Pedido y Despacho
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Cliente / Responsable de ventas|
+start
+:Seleccionar cliente y productos;
+:Crear cotizacion;
+|Sistema ERP|
+:Validar catalogo, precios y descuentos;
+:Calcular subtotal, impuestos y total;
+|Cliente / Responsable de ventas|
+:Enviar cotizacion al cliente;
+if (¿Cliente acepta?) then (Si)
+  |Sistema ERP|
+  :Convertir cotizacion en pedido;
+  |Responsable de ventas|
+  :Revisar pedido;
+  |Sistema ERP|
+  :Validar cliente activo y condiciones;
+  :Consultar disponibilidad y credito si aplica;
+  if (¿Pedido valido y stock suficiente?) then (Si)
+    :Iniciar transaccion;
+    :Reservar existencias por producto y almacen;
+    :Confirmar pedido;
+    :Registrar auditoria;
+    :Confirmar transaccion;
+    |Responsable de almacen|
+    :Preparar cantidades disponibles;
+    :Crear despacho con cantidades;
+    |Sistema ERP|
+    :Validar despacho contra pedido y reserva;
+    if (¿Despacho valido?) then (Si)
+      :Iniciar transaccion;
+      :Restar cantidades despachadas del stock fisico;
+      :Reducir reservas correspondientes;
+      :Registrar movimientos de salida;
+      :Confirmar despacho;
+      :Actualizar estado del pedido;
+      :Registrar auditoria;
+      :Confirmar transaccion;
+      if (¿Pedido totalmente despachado?) then (Si)
+        :Generar factura comercial unica del pedido;
+        :Enviar factura y referencia al modulo contable;
+        stop
+      else (No)
+        :Mantener pedido PARCIALMENTE_DESPACHADO;
+        :Permitir un despacho posterior del saldo;
+        stop
+      endif
+    else (No)
+      :Mantener despacho sin confirmar;
+      :Informar discrepancia de cantidades;
+      stop
+    endif
+  else (No)
+    :Rechazar confirmacion por stock o credito;
+    :Informar motivo al usuario;
+    stop
+  endif
+else (No)
+  |Sistema ERP|
+  :Registrar rechazo o vencimiento de cotizacion;
+  stop
+endif
+@enduml

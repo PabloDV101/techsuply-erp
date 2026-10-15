@@ -1,0 +1,65 @@
+@startuml TSS_Componentes_Backend
+ title TechSupply Solutions - Componentes internos del backend
+top to bottom direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam componentStyle uml2
+skinparam defaultFontName Arial
+skinparam wrapWidth 185
+skinparam nodesep 25
+skinparam ranksep 34
+
+package "Entrada HTTP" as Web {
+  component "REST Controllers / DTO" as Controllers
+  component "Spring Security\nAutenticación y autorización" as Security
+}
+package "Aplicación" as Application {
+  component "Casos de uso" as UseCases
+  component "Coordinación transaccional\n@Transactional" as Tx
+}
+package "Módulos de dominio (una aplicación Spring Boot)" as Domain {
+  component "Gestión maestra" as Masters
+  component "Compras" as Purchasing
+  component "Inventario" as Inventory
+  component "Ventas y despachos" as Sales
+  component "Contabilidad y finanzas" as Accounting
+  component "RR. HH. y nómina" as Payroll
+}
+package "Servicios compartidos" as Shared {
+  component "Validación de negocio" as Validation
+  component "Auditoría" as Audit
+  component "Reportería" as Reporting
+  component "Notificaciones post-commit" as Notifications
+}
+package "Persistencia e infraestructura" as Infra {
+  component "Repositorios JPA / Hibernate" as Repositories
+  component "Migraciones Flyway" as Flyway
+  database "PostgreSQL" as DB
+}
+
+Controllers --> UseCases
+Security ..> Controllers : protege endpoints
+UseCases --> Tx
+Tx --> Domain : invoca servicios de módulos
+Domain ..> Shared : utiliza capacidades comunes
+Domain --> Repositories : persistencia por contratos
+Shared --> Repositories : eventos / consultas autorizadas
+Repositories --> DB
+Flyway --> DB : esquema versionado
+UseCases ..> Notifications : después del commit
+
+note right of Domain
+  Dependencias de negocio relevantes:
+  - Compras solicita recepción / devolución a Inventario.
+  - Ventas solicita reserva / despacho a Inventario.
+  - Compras, Ventas y Nómina entregan documentos validados
+    a Contabilidad mediante contratos de aplicación.
+  Ver diagramas de secuencia para operaciones críticas.
+end note
+note bottom of Tx
+  Los cambios relacionados de documento, stock, movimiento,
+  auditoría y saldos se confirman o revierten como unidad
+  cuando la operación lo requiere.
+end note
+@enduml

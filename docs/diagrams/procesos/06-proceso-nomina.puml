@@ -1,0 +1,60 @@
+@startuml TS06_Proceso_Nomina
+title ERP TechSupply Solutions - Calculo, Aprobacion y Pago de Nomina
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Responsable de RR. HH.|
+start
+:Seleccionar periodo de nomina;
+:Consultar empleados activos e incidencias;
+:Capturar percepciones y deducciones;
+|Sistema ERP|
+:Validar periodo y evitar nomina duplicada;
+:Calcular percepciones, deducciones y neto;
+if (¿Datos completos y validos?) then (Si)
+  |Responsable de RR. HH.|
+  :Revisar detalle de nomina;
+  while (¿Requiere correcciones?) is (Si)
+    :Corregir incidencias o conceptos;
+    |Sistema ERP|
+    :Recalcular importes;
+    |Responsable de RR. HH.|
+    :Revisar de nuevo;
+  endwhile (No)
+  :Enviar a aprobacion;
+  |Aprobador autorizado|
+  :Revisar empleados e importes;
+  if (¿Aprueba nomina?) then (Si)
+    |Sistema ERP|
+    :Cambiar estado a APROBADA;
+    |Responsable de pagos|
+    :Registrar pago y referencia;
+    |Sistema ERP|
+    :Validar que la nomina este aprobada;
+    :Confirmar pago y actualizar estado;
+    :Preparar referencia para contabilidad;
+    :Registrar auditoria;
+    stop
+  else (No)
+    |Sistema ERP|
+    :Registrar rechazo y motivo;
+    :Mantener nomina sin pagar;
+    stop
+  endif
+else (No)
+  :Informar datos faltantes o duplicados;
+  stop
+endif
+@enduml

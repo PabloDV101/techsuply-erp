@@ -1,0 +1,47 @@
+@startuml TSS_Secuencia_Despacho
+ title Confirmacion transaccional de despacho de venta - modelo v1.1
+ hide footbox
+ skinparam shadowing false
+ skinparam responseMessageBelowArrow true
+ skinparam sequenceMessageAlign center
+ skinparam maxMessageSize 70
+
+ actor "Almacen" as User
+ boundary "DespachoController" as API
+ control "DespachoService" as Service
+ control "InventarioService" as Inventory
+ entity "PedidoVenta / DetalleDespacho" as Documents
+ entity "Existencia" as Stock
+ entity "MovimientoInventario" as Movement
+ entity "EventoAuditoria" as Audit
+ database "PostgreSQL" as DB
+
+ User -> API : confirmarDespacho(id, claveIdempotencia)
+ API -> Service : confirmar(id, usuario, clave)
+ Service -> Service : validar permiso, estado e idempotencia
+ alt validaciones y escrituras exitosas
+  Service -> DB : BEGIN (transaccion)
+  Service -> Documents : validar reserva y cantidad pendiente por linea
+  Documents --> Service : cantidades autorizadas a despachar
+  Service -> Inventory : despachar por DetalleDespacho
+  Inventory -> Stock : bloquear/leer existencia producto-almacen
+  Stock --> Inventory : cantidad fisica y reservada
+  Inventory -> Stock : reducir fisica y reservada en igual cantidad
+  Inventory -> Movement : insertar salida con detalle_despacho_id
+  Service -> Documents : actualizar cantidades y estado del pedido
+  Service -> Audit : registrar despacho confirmado
+  Service -> DB : COMMIT
+  DB --> Service : confirmacion
+  Service --> API : resultado confirmado
+  API --> User : HTTP 200 / despacho confirmado
+ else falla validacion o escritura
+  Service -> DB : ROLLBACK
+  Service --> API : error sin salida parcial
+  API --> User : HTTP 4xx/5xx segun la causa
+ end
+ note over Service,DB
+  La cantidad no supera la reserva ni el pendiente de la linea.
+  Stock fisico y reservado se reducen en una sola transaccion;
+  la clave idempotente impide registrar dos veces una misma salida.
+ end note
+@enduml

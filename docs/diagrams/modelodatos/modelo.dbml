@@ -1,0 +1,1044 @@
+// TechSupply Solutions ERP — Modelo lógico relacional
+// Versión 1.1 - reconciliada con SRS y vistas lógicas — alineado con SRS-TSS-ERP-001 y arquitectura React + TypeScript,
+// Java 21 / Spring Boot (monolito modular) y PostgreSQL.
+// Las reglas entre varias filas/transacciones se validan en servicios Spring y se documentan en el .md.
+
+Project techsupply_erp {
+  database_type: 'PostgreSQL'
+  Note: 'Modelo lógico v1.1 reconciliado con SRS y vistas lógicas. Reglas transaccionales y restricciones entre filas deben implementarse en Flyway y servicios Spring.'
+}
+
+// ==================== GESTIÓN MAESTRA ====================
+Table departamentos [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(20) [not null, unique]
+  nombre varchar(100) [not null]
+  activo boolean [not null, default: true]
+}
+
+Table puestos [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(20) [not null, unique]
+  nombre varchar(100) [not null]
+  descripcion varchar(250)
+  activo boolean [not null, default: true]
+}
+
+Table empleados [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  numero_empleado varchar(20) [not null, unique]
+  nombres varchar(100) [not null]
+  apellidos varchar(100) [not null]
+  correo varchar(150) [unique]
+  telefono varchar(30)
+  fecha_nacimiento date
+  fecha_ingreso date [not null]
+  departamento_id uuid [not null]
+  puesto_id uuid [not null]
+  jefe_id uuid
+  activo boolean [not null, default: true]
+  Note: 'Conserva asignación actual. Los cambios efectivos de puesto/departamento/salario también se registran en expedientes_laborales dentro de una transacción.'
+}
+
+Table clientes [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(20) [not null, unique]
+  nombre_razon_social varchar(160) [not null]
+  identificador_fiscal varchar(20) [unique]
+  correo varchar(150)
+  telefono varchar(30)
+  direccion text
+  limite_credito numeric(14,2) [not null, default: 0, note: 'No negativo; la autorización de cambios es regla de negocio.']
+  plazo_credito_dias smallint [not null, default: 30]
+  activo boolean [not null, default: true]
+}
+
+Table proveedores [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(20) [not null, unique]
+  nombre_razon_social varchar(160) [not null]
+  identificador_fiscal varchar(20) [unique]
+  contacto varchar(100)
+  correo varchar(150)
+  telefono varchar(30)
+  direccion text
+  plazo_credito_dias smallint [not null, default: 0]
+  activo boolean [not null, default: true]
+}
+
+Table categorias_producto [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(20) [not null, unique]
+  nombre varchar(100) [not null]
+  descripcion varchar(250)
+  categoria_padre_id uuid
+  activa boolean [not null, default: true]
+  Note: 'Jerarquía de categorías; evitar ciclos y limitar niveles desde el servicio de dominio.'
+}
+
+Table productos [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  sku varchar(30) [not null, unique, note: 'Código único asignado/validado por el sistema.']
+  nombre varchar(160) [not null]
+  descripcion text
+  unidad_medida varchar(20) [not null, default: 'PIEZA']
+  categoria_id uuid [not null]
+  proveedor_principal_id uuid
+  precio_lista numeric(14,2) [not null, default: 0]
+  costo_referencia numeric(14,2) [not null, default: 0]
+  tasa_impuesto numeric(5,2) [not null, default: 16]
+  punto_reorden numeric(14,3) [not null, default: 0]
+  cantidad_reorden numeric(14,3) [not null, default: 1]
+  activo boolean [not null, default: true]
+}
+
+Table almacenes [headercolor: #2E86C1] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(20) [not null, unique]
+  nombre varchar(100) [not null]
+  sede varchar(120)
+  ubicacion varchar(200)
+  activo boolean [not null, default: true]
+}
+
+// ==================== SEGURIDAD ====================
+Table usuarios [headercolor: #566573] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  username varchar(60) [not null, unique]
+  correo varchar(150) [not null, unique]
+  password_hash varchar(255) [not null, note: 'Hash BCrypt/Argon2; nunca almacenar contraseña en claro.']
+  empleado_id uuid [unique]
+  cliente_id uuid [unique]
+  activo boolean [not null, default: true]
+  intentos_fallidos smallint [not null, default: 0]
+  bloqueado_hasta timestamptz
+  ultimo_acceso timestamptz
+  creado_en timestamptz [not null, default: `now()`]
+  Note: 'Puede estar vinculada a un empleado o a un cliente, nunca a ambos. Ambos vínculos pueden ser nulos para cuentas técnicas/administrativas autorizadas. Aplicar CHECK (empleado_id IS NULL OR cliente_id IS NULL).'
+}
+
+Table roles [headercolor: #566573] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(30) [not null, unique]
+  nombre varchar(80) [not null]
+  descripcion varchar(250)
+  activo boolean [not null, default: true]
+}
+
+Table permisos [headercolor: #566573] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(60) [not null, unique]
+  modulo varchar(40) [not null]
+  accion varchar(30) [not null]
+  descripcion varchar(250)
+  indexes { (modulo, accion) [unique] }
+}
+
+Table usuarios_roles [headercolor: #566573] {
+  usuario_id uuid [not null]
+  rol_id uuid [not null]
+  asignado_por_usuario_id uuid
+  asignado_en timestamptz [not null, default: `now()`]
+  indexes { (usuario_id, rol_id) [pk] }
+}
+
+Table roles_permisos [headercolor: #566573] {
+  rol_id uuid [not null]
+  permiso_id uuid [not null]
+  indexes { (rol_id, permiso_id) [pk] }
+}
+
+Table tokens_sesion [headercolor: #566573] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  usuario_id uuid [not null]
+  token_hash varchar(255) [not null, unique]
+  emitido_en timestamptz [not null]
+  vence_en timestamptz [not null]
+  revocado_en timestamptz
+}
+
+Table solicitudes_autorizacion [headercolor: #566573] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  tipo varchar(50) [not null, note: 'APROBAR_REQUISICION, AJUSTE_INVENTARIO, EXCESO_CREDITO, CAMBIO_LIMITE_CREDITO, APROBAR_NOMINA, CAMBIO_SALARIO, CIERRE_PERIODO.']
+  entidad_tipo varchar(50) [not null]
+  entidad_id uuid [not null]
+  solicitado_por_usuario_id uuid [not null]
+  resuelto_por_usuario_id uuid
+  estado varchar(15) [not null, note: 'PENDIENTE, APROBADA, RECHAZADA']
+  motivo text
+  solicitada_en timestamptz [not null, default: `now()`]
+  resuelta_en timestamptz
+  Note: 'El solicitante y quien resuelve deben ser distintos. La entidad polimórfica se valida desde aplicación.'
+}
+
+Table eventos_auditoria [headercolor: #566573] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  usuario_id uuid
+  username_intentado varchar(60)
+  modulo varchar(40) [not null]
+  entidad varchar(80) [not null]
+  entidad_id uuid
+  accion varchar(30) [not null]
+  resultado varchar(20) [not null]
+  fecha timestamptz [not null, default: `now()`]
+  ip inet
+  valores_anteriores jsonb
+  valores_nuevos jsonb
+  detalle jsonb
+  Note: 'Solo inserción para el rol de aplicación; nunca almacenar contraseñas, tokens ni secretos.'
+}
+
+// ==================== COMPRAS ====================
+Table requisiciones_compra [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  solicitante_usuario_id uuid [not null]
+  departamento_id uuid [not null]
+  fecha timestamptz [not null, default: `now()`]
+  estado varchar(20) [not null, note: 'BORRADOR, PENDIENTE, APROBADA, RECHAZADA, CONVERTIDA, CANCELADA']
+  motivo_rechazo text
+  aprobada_por_usuario_id uuid
+  aprobada_en timestamptz
+}
+
+Table detalles_requisicion [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  requisicion_id uuid [not null]
+  producto_id uuid [not null]
+  cantidad_solicitada numeric(14,3) [not null]
+  cantidad_aprobada numeric(14,3)
+  justificacion varchar(250)
+  indexes { (requisicion_id, producto_id) [unique] }
+  Note: 'Cantidad aprobada es nula hasta la revisión; no puede superar la solicitada.'
+}
+
+Table ordenes_compra [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  proveedor_id uuid [not null]
+  requisicion_id uuid
+  departamento_id uuid [not null]
+  creada_por_usuario_id uuid [not null]
+  aprobada_por_usuario_id uuid
+  aprobada_en timestamptz
+  motivo_rechazo text
+  fecha timestamptz [not null, default: `now()`]
+  estado varchar(25) [not null, note: 'BORRADOR, PENDIENTE_APROBACION, APROBADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA, CANCELADA']
+  subtotal numeric(14,2) [not null, default: 0]
+  impuestos numeric(14,2) [not null, default: 0]
+  total numeric(14,2) [not null, default: 0]
+  observaciones text
+}
+
+Table detalles_orden_compra [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  orden_compra_id uuid [not null]
+  producto_id uuid [not null]
+  cantidad numeric(14,3) [not null]
+  precio_unitario numeric(14,2) [not null]
+  descuento_pct numeric(5,2) [not null, default: 0]
+  tasa_impuesto numeric(5,2) [not null]
+  indexes { (orden_compra_id, producto_id) [unique] }
+  Note: 'Conserva cantidad, precio, descuento e impuesto acordados aunque cambie el catálogo. Lo recibido se deriva de detalles_recepcion.'
+}
+
+Table recepciones_compra [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  orden_compra_id uuid [not null]
+  almacen_id uuid [not null]
+  registrada_por_usuario_id uuid [not null]
+  clave_idempotencia varchar(120) [not null, unique]
+  fecha timestamptz [not null, default: `now()`]
+  estado varchar(20) [not null, note: 'PENDIENTE, CONFIRMADA, CANCELADA']
+  referencia_externa varchar(80)
+  confirmada_en timestamptz
+}
+
+Table detalles_recepcion [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  recepcion_id uuid [not null]
+  detalle_orden_compra_id uuid [not null]
+  cantidad_recibida numeric(14,3) [not null]
+  cantidad_aceptada numeric(14,3) [not null, default: 0]
+  cantidad_rechazada numeric(14,3) [not null, default: 0]
+  precio_unitario_recibido numeric(14,2) [not null]
+  motivo_rechazo text
+  indexes { (recepcion_id, detalle_orden_compra_id) [unique] }
+  Note: 'Al confirmar: cantidad_aceptada + cantidad_rechazada = cantidad_recibida. Solo aceptadas incrementan existencias en la misma transacción.'
+}
+
+Table facturas_proveedor [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio_interno varchar(30) [not null, unique]
+  proveedor_id uuid [not null]
+  orden_compra_id uuid [not null, unique, note: 'MVP: máximo una factura de proveedor por orden.']
+  numero_factura_proveedor varchar(60) [not null]
+  fecha_emision date [not null]
+  fecha_vencimiento date [not null]
+  subtotal numeric(14,2) [not null]
+  impuestos numeric(14,2) [not null]
+  total numeric(14,2) [not null]
+  estado varchar(20) [not null, note: 'REGISTRADA, VALIDADA, PARCIALMENTE_PAGADA, PAGADA, VENCIDA, CANCELADA']
+  indexes { (proveedor_id, numero_factura_proveedor) [unique] }
+}
+
+Table detalles_factura_proveedor [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  factura_proveedor_id uuid [not null]
+  detalle_orden_compra_id uuid [not null]
+  cantidad_facturada numeric(14,3) [not null]
+  precio_unitario numeric(14,2) [not null]
+  descuento_pct numeric(5,2) [not null, default: 0]
+  tasa_impuesto numeric(5,2) [not null]
+  subtotal numeric(14,2) [not null]
+  impuestos numeric(14,2) [not null]
+  total numeric(14,2) [not null]
+  indexes { (factura_proveedor_id, detalle_orden_compra_id) [unique] }
+  Note: 'Detalle de conciliación de factura de proveedor contra orden y recepciones; conserva los importes pactados.'
+}
+
+Table devoluciones_proveedor [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  proveedor_id uuid [not null]
+  orden_compra_id uuid [not null]
+  registrada_por_usuario_id uuid [not null]
+  autorizada_por_usuario_id uuid
+  clave_idempotencia varchar(120) [not null, unique]
+  fecha timestamptz [not null, default: `now()`]
+  motivo text [not null]
+  estado varchar(15) [not null, note: 'BORRADOR, PENDIENTE, CONFIRMADA, CANCELADA']
+  confirmada_en timestamptz
+  Note: 'Encabezado de devolución; cada línea debe referenciar una recepción aceptada y no superar la cantidad aún no devuelta.'
+}
+
+// ==================== INVENTARIO ====================
+Table existencias [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  producto_id uuid [not null]
+  almacen_id uuid [not null]
+  cantidad_fisica numeric(14,3) [not null, default: 0]
+  cantidad_reservada numeric(14,3) [not null, default: 0]
+  costo_promedio numeric(14,4) [not null, default: 0]
+  version int [not null, default: 0, note: 'Control optimista; usar bloqueo/actualización condicional para operaciones críticas.']
+  indexes { (producto_id, almacen_id) [unique] }
+  Note: 'Disponible = cantidad_fisica - cantidad_reservada. CHECKs de no negatividad y reservada <= física deben estar en PostgreSQL.'
+}
+
+Table movimientos_inventario [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  producto_id uuid [not null]
+  almacen_id uuid [not null]
+  tipo varchar(12) [not null, note: 'ENTRADA, SALIDA, RESERVA, LIBERACION, REVERSA']
+  motivo varchar(35) [not null, note: 'RECEPCION_COMPRA, DESPACHO_VENTA, AJUSTE, DEVOLUCION_PROVEEDOR, DEVOLUCION_CLIENTE, RESERVA_PEDIDO, CANCELACION_PEDIDO, REVERSA']
+  cantidad numeric(14,3) [not null]
+  costo_unitario numeric(14,4) [not null, default: 0]
+  fecha timestamptz [not null, default: `now()`]
+  usuario_id uuid [not null]
+  detalle_recepcion_id uuid
+  detalle_despacho_id uuid
+  detalle_ajuste_id uuid
+  detalle_devolucion_proveedor_id uuid
+  detalle_devolucion_cliente_id uuid
+  detalle_pedido_id uuid
+  movimiento_reversado_de_id uuid [unique]
+  clave_operacion varchar(120) [not null, unique, note: 'Clave idempotente de cada movimiento; evita duplicados por reintentos.']
+  referencia text
+  Note: 'Kardex inmutable. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
+}
+
+Table conteos_inventario [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  almacen_id uuid [not null]
+  creado_por_usuario_id uuid [not null]
+  fecha_programada date [not null]
+  estado varchar(15) [not null, note: 'PROGRAMADO, EN_CAPTURA, CERRADO, CANCELADO']
+  clase varchar(10) [note: 'CICLICO, GENERAL']
+}
+
+Table detalles_conteo [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  conteo_id uuid [not null]
+  producto_id uuid [not null]
+  cantidad_sistema numeric(14,3) [not null]
+  cantidad_contada numeric(14,3)
+  diferencia numeric(14,3)
+  indexes { (conteo_id, producto_id) [unique] }
+  Note: 'El conteo no cambia existencias por sí solo. La diferencia se calcula como contada menos sistema.'
+}
+
+Table ajustes_inventario [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  almacen_id uuid [not null]
+  motivo text [not null]
+  solicitado_por_usuario_id uuid [not null]
+  autorizado_por_usuario_id uuid
+  clave_idempotencia varchar(120) [not null, unique]
+  estado varchar(15) [not null, note: 'BORRADOR, PENDIENTE, APROBADO, APLICADO, RECHAZADO, CANCELADO']
+  fecha timestamptz [not null, default: `now()`]
+  aplicado_en timestamptz
+  Note: 'Encabezado de ajuste. Solo se aplica tras aprobación; el solicitante no puede ser quien autoriza.'
+}
+
+Table alertas_inventario [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  producto_id uuid [not null]
+  almacen_id uuid
+  tipo varchar(20) [not null, note: 'STOCK_BAJO, SIN_EXISTENCIA, OBSOLESCENCIA']
+  estado varchar(12) [not null, note: 'ACTIVA, RESUELTA']
+  generada_en timestamptz [not null, default: `now()`]
+  resuelta_en timestamptz
+  detalle text
+  Note: 'Índice único parcial recomendado por (producto_id, almacen_id, tipo) cuando estado = ACTIVA.'
+}
+
+// ==================== VENTAS ====================
+Table cotizaciones [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  cliente_id uuid [not null]
+  vendedor_usuario_id uuid [not null]
+  fecha timestamptz [not null, default: `now()`]
+  vigencia_hasta date [not null]
+  estado varchar(15) [not null, note: 'BORRADOR, VIGENTE, ACEPTADA, VENCIDA, CANCELADA']
+  subtotal numeric(14,2) [not null, default: 0]
+  impuestos numeric(14,2) [not null, default: 0]
+  total numeric(14,2) [not null, default: 0]
+}
+
+Table detalles_cotizacion [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  cotizacion_id uuid [not null]
+  producto_id uuid [not null]
+  cantidad numeric(14,3) [not null]
+  precio_unitario numeric(14,2) [not null]
+  descuento_pct numeric(5,2) [not null, default: 0]
+  tasa_impuesto numeric(5,2) [not null]
+  indexes { (cotizacion_id, producto_id) [unique] }
+}
+
+Table pedidos_venta [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  cliente_id uuid [not null]
+  vendedor_usuario_id uuid
+  cotizacion_id uuid
+  almacen_id uuid
+  creado_por_usuario_id uuid [not null]
+  canal varchar(15) [not null, note: 'INTERNO, PORTAL']
+  fecha timestamptz [not null, default: `now()`]
+  estado varchar(20) [not null, note: 'BORRADOR, CONFIRMADO, PARCIALMENTE_DESPACHADO, DESPACHADO, FACTURADO, CANCELADO']
+  subtotal numeric(14,2) [not null, default: 0]
+  impuestos numeric(14,2) [not null, default: 0]
+  total numeric(14,2) [not null, default: 0]
+  clave_idempotencia varchar(100) [unique]
+  observaciones text
+  Note: 'La confirmación valida crédito y reserva stock mediante el módulo Inventario.'
+}
+
+Table detalles_pedido [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  pedido_id uuid [not null]
+  producto_id uuid [not null]
+  cantidad numeric(14,3) [not null]
+  cantidad_reservada numeric(14,3) [not null, default: 0]
+  cantidad_despachada numeric(14,3) [not null, default: 0]
+  precio_unitario numeric(14,2) [not null]
+  descuento_pct numeric(5,2) [not null, default: 0]
+  tasa_impuesto numeric(5,2) [not null]
+  indexes { (pedido_id, producto_id) [unique] }
+  Note: 'Los contadores de reserva y despacho por línea se actualizan en la misma transacción que existencias y movimientos. No pueden exceder lo pedido.'
+}
+
+Table despachos [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  pedido_id uuid [not null]
+  almacen_id uuid [not null]
+  registrado_por_usuario_id uuid [not null]
+  fecha timestamptz [not null, default: `now()`]
+  estado varchar(15) [not null, note: 'BORRADOR, CONFIRMADO, CANCELADO']
+  clave_idempotencia varchar(100) [not null, unique]
+}
+
+Table detalles_despacho [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  despacho_id uuid [not null]
+  detalle_pedido_id uuid [not null]
+  cantidad numeric(14,3) [not null]
+  costo_unitario numeric(14,4) [not null]
+  indexes { (despacho_id, detalle_pedido_id) [unique] }
+}
+
+Table facturas_venta [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  pedido_id uuid [not null, unique, note: 'MVP: una factura comercial por pedido al despacharlo completamente.']
+  cliente_id uuid [not null]
+  fecha_emision date [not null]
+  fecha_vencimiento date [not null]
+  subtotal numeric(14,2) [not null]
+  impuestos numeric(14,2) [not null]
+  total numeric(14,2) [not null]
+  estado varchar(20) [not null, note: 'EMITIDA, PARCIALMENTE_PAGADA, PAGADA, VENCIDA, CANCELADA']
+  Note: 'Documento comercial interno; no equivale a CFDI ni tiene timbrado SAT en el MVP.'
+}
+
+// ==================== CONTABILIDAD ====================
+
+Table cobros_clientes [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  cliente_id uuid [not null]
+  fecha timestamptz [not null]
+  monto numeric(14,2) [not null]
+  medio varchar(20) [not null, note: 'EFECTIVO, TRANSFERENCIA, CHEQUE, TARJETA, OTRO']
+  referencia varchar(100)
+  registrado_por_usuario_id uuid [not null]
+  clave_idempotencia varchar(100) [not null, unique]
+  estado varchar(15) [not null, note: 'REGISTRADO, CONFIRMADO, RECHAZADO, REVERSADO']
+  Note: 'Movimiento de dinero independiente de una factura; puede aplicarse parcial o totalmente a una o varias cuentas por cobrar.'
+}
+
+
+Table pagos_proveedor [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  proveedor_id uuid [not null]
+  fecha timestamptz [not null]
+  monto numeric(14,2) [not null]
+  medio varchar(20) [not null]
+  referencia varchar(100)
+  registrado_por_usuario_id uuid [not null]
+  clave_idempotencia varchar(100) [not null, unique]
+  estado varchar(15) [not null, note: 'REGISTRADO, CONFIRMADO, RECHAZADO, REVERSADO']
+  Note: 'Pago independiente de una factura; puede aplicarse parcial o totalmente a una o varias cuentas por pagar del mismo proveedor.'
+}
+
+
+Table cuentas_contables [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(30) [not null, unique]
+  nombre varchar(150) [not null]
+  tipo varchar(15) [not null, note: 'ACTIVO, PASIVO, CAPITAL, INGRESO, COSTO, GASTO']
+  naturaleza varchar(12) [not null, note: 'DEUDORA, ACREEDORA']
+  nivel smallint [not null, default: 1]
+  cuenta_padre_id uuid
+  acepta_movimientos boolean [not null, default: true]
+  activa boolean [not null, default: true]
+}
+
+Table periodos_contables [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  estado varchar(10) [not null, note: 'ABIERTO, CERRADO']
+  cerrado_por_usuario_id uuid
+  cerrado_en timestamptz
+  indexes { (fecha_inicio, fecha_fin) [unique] }
+  Note: 'La fecha del asiento debe quedar dentro del periodo; no se contabiliza en periodos cerrados.'
+}
+
+Table asientos_contables [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  periodo_id uuid [not null]
+  fecha_contable date [not null]
+  descripcion varchar(300) [not null]
+  origen_modulo varchar(30) [not null, note: 'COMPRAS, VENTAS, INVENTARIO, NOMINA, MANUAL']
+  origen_tipo varchar(40) [not null]
+  origen_id uuid
+  clave_idempotencia varchar(120) [not null, unique]
+  contraasiento_de_id uuid [unique]
+  creado_por_usuario_id uuid [not null]
+  contabilizado_por_usuario_id uuid
+  estado varchar(12) [not null, note: 'BORRADOR, CONTABILIZADO, REVERSADO']
+  contabilizado_en timestamptz
+  Note: 'Un asiento contabilizado es inmutable; se corrige con contraasiento. Para contabilizar: periodo abierto, al menos dos partidas y suma debe = suma haber.'
+}
+
+Table partidas_asiento [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  asiento_id uuid [not null]
+  numero_linea smallint [not null]
+  cuenta_contable_id uuid [not null]
+  debe numeric(14,2) [not null, default: 0]
+  haber numeric(14,2) [not null, default: 0]
+  descripcion varchar(200)
+  indexes { (asiento_id, numero_linea) [unique] }
+  Note: 'Al contabilizar: al menos dos partidas, debe total = haber total, y exactamente uno de debe/haber es mayor que cero.'
+}
+
+Table cuentas_por_cobrar [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  factura_venta_id uuid [not null, unique]
+  monto_original numeric(14,2) [not null]
+  fecha_emision date [not null]
+  fecha_vencimiento date [not null]
+  estado varchar(15) [not null, note: 'ABIERTA, PARCIAL, PAGADA, VENCIDA, CANCELADA']
+  Note: 'saldo_pendiente se deriva de monto_original menos aplicaciones de cobro confirmadas; no duplicar el saldo sin estrategia de sincronización.'
+}
+
+Table aplicaciones_cobro [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  cobro_id uuid [not null]
+  cuenta_por_cobrar_id uuid [not null]
+  monto_aplicado numeric(14,2) [not null]
+  fecha_aplicacion timestamptz [not null, default: `now()`]
+  indexes { (cobro_id, cuenta_por_cobrar_id) [unique] }
+}
+
+Table cuentas_por_pagar [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  factura_proveedor_id uuid [not null, unique]
+  monto_original numeric(14,2) [not null]
+  fecha_emision date [not null]
+  fecha_vencimiento date [not null]
+  estado varchar(15) [not null, note: 'ABIERTA, PARCIAL, PAGADA, VENCIDA, CANCELADA']
+  Note: 'saldo_pendiente se deriva de monto_original menos aplicaciones de pago confirmadas.'
+}
+
+Table aplicaciones_pago_proveedor [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  pago_proveedor_id uuid [not null]
+  cuenta_por_pagar_id uuid [not null]
+  monto_aplicado numeric(14,2) [not null]
+  fecha_aplicacion timestamptz [not null, default: `now()`]
+  indexes { (pago_proveedor_id, cuenta_por_pagar_id) [unique] }
+}
+
+Table presupuestos [headercolor: #C0392B] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  departamento_id uuid [not null]
+  cuenta_contable_id uuid [not null]
+  anio smallint [not null]
+  mes smallint [not null]
+  monto numeric(14,2) [not null]
+  indexes { (departamento_id, cuenta_contable_id, anio, mes) [unique] }
+}
+
+// ==================== RR. HH. Y NÓMINA ====================
+Table expedientes_laborales [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  empleado_id uuid [not null]
+  numero_contrato varchar(40) [not null, unique]
+  fecha_inicio date [not null]
+  fecha_fin date
+  departamento_id uuid [not null]
+  puesto_id uuid [not null]
+  salario_base numeric(14,2) [not null]
+  tipo_contrato varchar(30) [not null]
+  estado varchar(15) [not null, note: 'VIGENTE, FINALIZADO, SUSPENDIDO']
+  indexes { (empleado_id, fecha_inicio) [unique] }
+  Note: 'Conserva el historial contractual/salarial. Las vigencias de un empleado no pueden traslaparse; restringir el acceso a salario.'
+}
+
+Table registros_asistencia [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  empleado_id uuid [not null]
+  fecha date [not null]
+  tipo varchar(25) [not null, note: 'ASISTENCIA, FALTA_JUSTIFICADA, FALTA_INJUSTIFICADA, RETARDO']
+  observaciones varchar(250)
+  registrado_por_usuario_id uuid [not null]
+  indexes { (empleado_id, fecha) [unique] }
+}
+
+Table solicitudes_vacaciones [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  empleado_id uuid [not null]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  dias_solicitados smallint [not null]
+  estado varchar(15) [not null, note: 'SOLICITADA, APROBADA, RECHAZADA, CANCELADA']
+  motivo varchar(250)
+  solicitada_en timestamptz [not null, default: `now()`]
+  resuelta_por_usuario_id uuid
+  resuelta_en timestamptz
+}
+
+Table conceptos_nomina [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(30) [not null, unique]
+  nombre varchar(100) [not null]
+  tipo varchar(15) [not null, note: 'PERCEPCION, DEDUCCION']
+  activo boolean [not null, default: true]
+}
+
+Table periodos_nomina [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  fecha_pago date
+  frecuencia varchar(15) [not null, note: 'SEMANAL, QUINCENAL, MENSUAL']
+  estado varchar(15) [not null, note: 'ABIERTO, CERRADO']
+  indexes { (fecha_inicio, fecha_fin, frecuencia) [unique] }
+}
+
+Table nominas [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  periodo_nomina_id uuid [not null, unique]
+  fecha_calculo timestamptz [not null, default: `now()`]
+  total_percepciones numeric(14,2) [not null, default: 0]
+  total_deducciones numeric(14,2) [not null, default: 0]
+  neto_pagar numeric(14,2) [not null, default: 0]
+  estado varchar(20) [not null, note: 'BORRADOR, CALCULADA, PENDIENTE_APROBACION, APROBADA, PAGADA, CANCELADA']
+  calculado_por_usuario_id uuid [not null]
+  aprobado_por_usuario_id uuid
+  aprobado_en timestamptz
+  cerrada_en timestamptz
+  Note: 'Una nómina por periodo en el MVP. Aprobador distinto de quien calcula; no es un motor de nómina fiscal completa.'
+}
+
+Table detalles_nomina [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  nomina_id uuid [not null]
+  empleado_id uuid [not null]
+  departamento_id uuid [not null]
+  expediente_laboral_id uuid
+  salario_base numeric(14,2) [not null]
+  total_percepciones numeric(14,2) [not null]
+  total_deducciones numeric(14,2) [not null]
+  neto_pagar numeric(14,2) [not null]
+  indexes { (nomina_id, empleado_id) [unique] }
+  Note: 'Una línea por empleado y nómina. Neto = percepciones - deducciones; importes históricos congelados para esa corrida.'
+}
+
+Table movimientos_nomina [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  detalle_nomina_id uuid [not null]
+  concepto_nomina_id uuid [not null]
+  cantidad numeric(12,4) [not null, default: 1]
+  importe_unitario numeric(14,2) [not null, default: 0]
+  importe_total numeric(14,2) [not null]
+  observaciones varchar(250)
+}
+
+Table pagos_nomina [headercolor: #E74C3C] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  detalle_nomina_id uuid [not null, unique]
+  fecha_pago date [not null]
+  monto numeric(14,2) [not null]
+  referencia varchar(100)
+  registrado_por_usuario_id uuid [not null]
+  clave_idempotencia varchar(100) [not null, unique]
+  estado varchar(15) [not null, note: 'PENDIENTE, CONFIRMADO, RECHAZADO, REVERSADO']
+  Note: 'En el alcance inicial se acepta un pago por detalle de nómina; solo se paga cuando la nómina está aprobada.'
+}
+
+// ==================== REPORTERÍA Y SERVICIOS TRANSVERSALES ====================
+Table definiciones_reporte [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(40) [not null, unique]
+  nombre varchar(120) [not null]
+  descripcion text
+  modulo_origen varchar(40) [not null]
+  consulta_clave varchar(100) [not null, note: 'Identificador de consulta permitida; no guardar SQL arbitrario ejecutable.']
+  formato_salida varchar(20) [not null, note: 'PANTALLA, CSV, XLSX, PDF']
+  permiso_codigo varchar(60) [not null]
+  activo boolean [not null, default: true]
+}
+
+Table ejecuciones_reporte [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  definicion_reporte_id uuid [not null]
+  usuario_id uuid [not null]
+  solicitada_en timestamptz [not null, default: `now()`]
+  finalizada_en timestamptz
+  estado varchar(15) [not null, note: 'SOLICITADO, EJECUTANDO, COMPLETADO, FALLIDO']
+  formato varchar(20) [not null, note: 'PANTALLA, CSV, XLSX, PDF']
+  parametros jsonb
+  filas_generadas bigint
+  duracion_ms bigint
+  mensaje_error text
+}
+
+Table notificaciones [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  usuario_id uuid
+  destinatario_externo varchar(150)
+  canal varchar(15) [not null, note: 'APP, EMAIL']
+  asunto varchar(200) [not null]
+  cuerpo text [not null]
+  estado varchar(15) [not null, note: 'PENDIENTE, ENVIADA, FALLIDA, LEIDA']
+  creada_en timestamptz [not null, default: `now()`]
+  enviada_en timestamptz
+  intentos smallint [not null, default: 0]
+}
+
+Table parametros_sistema [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  modulo varchar(40) [not null]
+  clave varchar(100) [not null]
+  valor varchar(250) [not null]
+  descripcion varchar(250)
+  actualizado_por_usuario_id uuid
+  actualizado_en timestamptz [not null, default: `now()`]
+  indexes { (modulo, clave) [unique] }
+}
+
+
+// Tablas adicionales para completar relaciones visibles en SRS y diagramas de clases.
+Table detalles_factura_venta [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  factura_venta_id uuid [not null]
+  detalle_pedido_id uuid [not null]
+  producto_id uuid [not null]
+  cantidad numeric(14,3) [not null]
+  precio_unitario numeric(14,2) [not null]
+  descuento_pct numeric(5,2) [not null, default: 0]
+  tasa_impuesto numeric(5,2) [not null]
+  subtotal numeric(14,2) [not null]
+  impuestos numeric(14,2) [not null]
+  total numeric(14,2) [not null]
+  indexes { (factura_venta_id, detalle_pedido_id) [unique] }
+  Note: 'Copia de la línea comercial acordada; preserva cantidades, precios, descuentos e impuestos aunque cambie el catálogo.'
+}
+
+Table detalles_devolucion_proveedor [headercolor: #28B463] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  devolucion_proveedor_id uuid [not null]
+  detalle_recepcion_id uuid [not null]
+  cantidad numeric(14,3) [not null]
+  costo_unitario numeric(14,2) [not null]
+  motivo varchar(250)
+  indexes { (devolucion_proveedor_id, detalle_recepcion_id) [unique] }
+  Note: 'La suma de unidades devueltas no puede superar las aceptadas menos devoluciones ya confirmadas.'
+}
+
+Table detalles_ajuste_inventario [headercolor: #D68910] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  ajuste_inventario_id uuid [not null]
+  producto_id uuid [not null]
+  tipo varchar(12) [not null, note: 'POSITIVO, NEGATIVO']
+  cantidad numeric(14,3) [not null]
+  costo_unitario numeric(14,4) [not null, default: 0]
+  motivo_linea varchar(250)
+  detalle_conteo_id uuid
+  indexes { (ajuste_inventario_id, producto_id) [unique] }
+}
+
+Table devoluciones_cliente [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  folio varchar(30) [not null, unique]
+  pedido_id uuid [not null]
+  cliente_id uuid [not null]
+  almacen_id uuid [not null]
+  registrada_por_usuario_id uuid [not null]
+  autorizada_por_usuario_id uuid
+  clave_idempotencia varchar(120) [not null, unique]
+  fecha timestamptz [not null, default: `now()`]
+  motivo text [not null]
+  estado varchar(15) [not null, note: 'BORRADOR, PENDIENTE_INSPECCION, CONFIRMADA, RECHAZADA, CANCELADA']
+  confirmada_en timestamptz
+  Note: 'Solo las unidades inspeccionadas y aceptadas vuelven a incrementar las existencias.'
+}
+
+Table detalles_devolucion_cliente [headercolor: #8E44AD] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  devolucion_cliente_id uuid [not null]
+  detalle_pedido_id uuid [not null]
+  cantidad_recibida numeric(14,3) [not null]
+  cantidad_aceptada numeric(14,3) [not null, default: 0]
+  cantidad_rechazada numeric(14,3) [not null, default: 0]
+  motivo_rechazo varchar(250)
+  indexes { (devolucion_cliente_id, detalle_pedido_id) [unique] }
+  Note: 'cantidad_aceptada + cantidad_rechazada = cantidad_recibida; solo las aceptadas generan movimiento de entrada.'
+}
+
+Table indicadores [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  codigo varchar(40) [not null, unique]
+  nombre varchar(120) [not null]
+  descripcion text
+  unidad varchar(40)
+  formula text [not null]
+  fuente_datos varchar(250) [not null]
+  frecuencia_actualizacion varchar(40)
+  activo boolean [not null, default: true]
+  Note: 'Cada KPI documenta fórmula, fuente, unidad y periodo; los permisos se validan al consultarlo.'
+}
+
+Table valores_indicador [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  indicador_id uuid [not null]
+  fecha_calculo timestamptz [not null, default: `now()`]
+  periodo_inicio date [not null]
+  periodo_fin date [not null]
+  valor numeric(18,4) [not null]
+  indexes { (indicador_id, periodo_inicio, periodo_fin) [unique] }
+}
+
+Table eventos_integracion [headercolor: #7F8C8D] {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  tipo_evento varchar(80) [not null]
+  entidad_origen varchar(80) [not null]
+  entidad_origen_id uuid
+  clave_idempotencia varchar(120) [not null, unique]
+  fecha_creacion timestamptz [not null, default: `now()`]
+  fecha_procesamiento timestamptz
+  estado varchar(15) [not null, note: 'PENDIENTE, PROCESADO, ERROR']
+  intentos smallint [not null, default: 0]
+  mensaje_error text
+  Note: 'Opcional para el MVP; puede implementarse como Outbox si se requieren notificaciones/integraciones confiables sin dividir el monolito.'
+}
+
+// ==================== RELACIONES ====================
+// Gestión maestra
+Ref: empleados.departamento_id > departamentos.id
+Ref: empleados.puesto_id > puestos.id
+Ref: empleados.jefe_id > empleados.id
+Ref: usuarios.cliente_id - clientes.id
+Ref: usuarios.empleado_id - empleados.id
+Ref: categorias_producto.categoria_padre_id > categorias_producto.id
+Ref: productos.categoria_id > categorias_producto.id
+Ref: productos.proveedor_principal_id > proveedores.id
+
+// Seguridad
+Ref: usuarios_roles.usuario_id > usuarios.id
+Ref: usuarios_roles.rol_id > roles.id
+Ref: usuarios_roles.asignado_por_usuario_id > usuarios.id
+Ref: roles_permisos.rol_id > roles.id
+Ref: roles_permisos.permiso_id > permisos.id
+Ref: tokens_sesion.usuario_id > usuarios.id
+Ref: solicitudes_autorizacion.solicitado_por_usuario_id > usuarios.id
+Ref: solicitudes_autorizacion.resuelto_por_usuario_id > usuarios.id
+Ref: eventos_auditoria.usuario_id > usuarios.id
+Ref: definiciones_reporte.permiso_codigo > permisos.codigo
+
+// Compras
+Ref: requisiciones_compra.solicitante_usuario_id > usuarios.id
+Ref: requisiciones_compra.departamento_id > departamentos.id
+Ref: requisiciones_compra.aprobada_por_usuario_id > usuarios.id
+Ref: detalles_requisicion.requisicion_id > requisiciones_compra.id
+Ref: detalles_requisicion.producto_id > productos.id
+Ref: ordenes_compra.proveedor_id > proveedores.id
+Ref: ordenes_compra.requisicion_id > requisiciones_compra.id
+Ref: ordenes_compra.departamento_id > departamentos.id
+Ref: ordenes_compra.creada_por_usuario_id > usuarios.id
+Ref: ordenes_compra.aprobada_por_usuario_id > usuarios.id
+Ref: detalles_orden_compra.orden_compra_id > ordenes_compra.id
+Ref: detalles_orden_compra.producto_id > productos.id
+Ref: recepciones_compra.orden_compra_id > ordenes_compra.id
+Ref: recepciones_compra.almacen_id > almacenes.id
+Ref: recepciones_compra.registrada_por_usuario_id > usuarios.id
+Ref: detalles_recepcion.recepcion_id > recepciones_compra.id
+Ref: detalles_recepcion.detalle_orden_compra_id > detalles_orden_compra.id
+Ref: facturas_proveedor.proveedor_id > proveedores.id
+Ref: facturas_proveedor.orden_compra_id > ordenes_compra.id
+Ref: detalles_factura_proveedor.factura_proveedor_id > facturas_proveedor.id
+Ref: detalles_factura_proveedor.detalle_orden_compra_id > detalles_orden_compra.id
+Ref: devoluciones_proveedor.proveedor_id > proveedores.id
+Ref: devoluciones_proveedor.orden_compra_id > ordenes_compra.id
+Ref: devoluciones_proveedor.registrada_por_usuario_id > usuarios.id
+Ref: devoluciones_proveedor.autorizada_por_usuario_id > usuarios.id
+Ref: detalles_devolucion_proveedor.devolucion_proveedor_id > devoluciones_proveedor.id
+Ref: detalles_devolucion_proveedor.detalle_recepcion_id > detalles_recepcion.id
+
+// Inventario
+Ref: existencias.producto_id > productos.id
+Ref: existencias.almacen_id > almacenes.id
+Ref: movimientos_inventario.producto_id > productos.id
+Ref: movimientos_inventario.almacen_id > almacenes.id
+Ref: movimientos_inventario.usuario_id > usuarios.id
+Ref: movimientos_inventario.detalle_recepcion_id > detalles_recepcion.id
+Ref: movimientos_inventario.detalle_despacho_id > detalles_despacho.id
+Ref: movimientos_inventario.detalle_ajuste_id > detalles_ajuste_inventario.id
+Ref: movimientos_inventario.detalle_devolucion_proveedor_id > detalles_devolucion_proveedor.id
+Ref: movimientos_inventario.detalle_devolucion_cliente_id > detalles_devolucion_cliente.id
+Ref: movimientos_inventario.detalle_pedido_id > detalles_pedido.id
+Ref: movimientos_inventario.movimiento_reversado_de_id > movimientos_inventario.id
+Ref: conteos_inventario.almacen_id > almacenes.id
+Ref: conteos_inventario.creado_por_usuario_id > usuarios.id
+Ref: detalles_conteo.conteo_id > conteos_inventario.id
+Ref: detalles_conteo.producto_id > productos.id
+Ref: ajustes_inventario.almacen_id > almacenes.id
+Ref: detalles_ajuste_inventario.detalle_conteo_id > detalles_conteo.id
+Ref: ajustes_inventario.solicitado_por_usuario_id > usuarios.id
+Ref: ajustes_inventario.autorizado_por_usuario_id > usuarios.id
+Ref: detalles_ajuste_inventario.ajuste_inventario_id > ajustes_inventario.id
+Ref: detalles_ajuste_inventario.producto_id > productos.id
+Ref: alertas_inventario.producto_id > productos.id
+Ref: alertas_inventario.almacen_id > almacenes.id
+
+// Ventas
+Ref: cotizaciones.cliente_id > clientes.id
+Ref: cotizaciones.vendedor_usuario_id > usuarios.id
+Ref: detalles_cotizacion.cotizacion_id > cotizaciones.id
+Ref: detalles_cotizacion.producto_id > productos.id
+Ref: pedidos_venta.cliente_id > clientes.id
+Ref: pedidos_venta.vendedor_usuario_id > usuarios.id
+Ref: pedidos_venta.cotizacion_id > cotizaciones.id
+Ref: pedidos_venta.almacen_id > almacenes.id
+Ref: pedidos_venta.creado_por_usuario_id > usuarios.id
+Ref: detalles_pedido.pedido_id > pedidos_venta.id
+Ref: detalles_pedido.producto_id > productos.id
+Ref: despachos.pedido_id > pedidos_venta.id
+Ref: despachos.almacen_id > almacenes.id
+Ref: despachos.registrado_por_usuario_id > usuarios.id
+Ref: detalles_despacho.despacho_id > despachos.id
+Ref: detalles_despacho.detalle_pedido_id > detalles_pedido.id
+Ref: facturas_venta.pedido_id > pedidos_venta.id
+Ref: facturas_venta.cliente_id > clientes.id
+Ref: detalles_factura_venta.factura_venta_id > facturas_venta.id
+Ref: detalles_factura_venta.detalle_pedido_id > detalles_pedido.id
+Ref: detalles_factura_venta.producto_id > productos.id
+Ref: cobros_clientes.cliente_id > clientes.id
+Ref: cobros_clientes.registrado_por_usuario_id > usuarios.id
+Ref: pagos_proveedor.proveedor_id > proveedores.id
+Ref: pagos_proveedor.registrado_por_usuario_id > usuarios.id
+Ref: devoluciones_cliente.pedido_id > pedidos_venta.id
+Ref: devoluciones_cliente.cliente_id > clientes.id
+Ref: devoluciones_cliente.almacen_id > almacenes.id
+Ref: devoluciones_cliente.registrada_por_usuario_id > usuarios.id
+Ref: devoluciones_cliente.autorizada_por_usuario_id > usuarios.id
+Ref: detalles_devolucion_cliente.devolucion_cliente_id > devoluciones_cliente.id
+Ref: detalles_devolucion_cliente.detalle_pedido_id > detalles_pedido.id
+
+// Contabilidad
+Ref: cuentas_contables.cuenta_padre_id > cuentas_contables.id
+Ref: periodos_contables.cerrado_por_usuario_id > usuarios.id
+Ref: asientos_contables.periodo_id > periodos_contables.id
+Ref: asientos_contables.contraasiento_de_id > asientos_contables.id
+Ref: asientos_contables.creado_por_usuario_id > usuarios.id
+Ref: asientos_contables.contabilizado_por_usuario_id > usuarios.id
+Ref: partidas_asiento.asiento_id > asientos_contables.id
+Ref: partidas_asiento.cuenta_contable_id > cuentas_contables.id
+Ref: cuentas_por_cobrar.factura_venta_id > facturas_venta.id
+Ref: aplicaciones_cobro.cobro_id > cobros_clientes.id
+Ref: aplicaciones_cobro.cuenta_por_cobrar_id > cuentas_por_cobrar.id
+Ref: cuentas_por_pagar.factura_proveedor_id > facturas_proveedor.id
+Ref: aplicaciones_pago_proveedor.pago_proveedor_id > pagos_proveedor.id
+Ref: aplicaciones_pago_proveedor.cuenta_por_pagar_id > cuentas_por_pagar.id
+Ref: presupuestos.departamento_id > departamentos.id
+Ref: presupuestos.cuenta_contable_id > cuentas_contables.id
+
+// Recursos humanos y nómina
+Ref: expedientes_laborales.empleado_id > empleados.id
+Ref: expedientes_laborales.departamento_id > departamentos.id
+Ref: expedientes_laborales.puesto_id > puestos.id
+Ref: registros_asistencia.empleado_id > empleados.id
+Ref: registros_asistencia.registrado_por_usuario_id > usuarios.id
+Ref: solicitudes_vacaciones.empleado_id > empleados.id
+Ref: solicitudes_vacaciones.resuelta_por_usuario_id > usuarios.id
+Ref: nominas.periodo_nomina_id > periodos_nomina.id
+Ref: nominas.calculado_por_usuario_id > usuarios.id
+Ref: nominas.aprobado_por_usuario_id > usuarios.id
+Ref: detalles_nomina.nomina_id > nominas.id
+Ref: detalles_nomina.empleado_id > empleados.id
+Ref: detalles_nomina.departamento_id > departamentos.id
+Ref: detalles_nomina.expediente_laboral_id > expedientes_laborales.id
+Ref: movimientos_nomina.detalle_nomina_id > detalles_nomina.id
+Ref: movimientos_nomina.concepto_nomina_id > conceptos_nomina.id
+Ref: pagos_nomina.detalle_nomina_id > detalles_nomina.id
+Ref: pagos_nomina.registrado_por_usuario_id > usuarios.id
+
+// Reportería y servicios transversales
+Ref: ejecuciones_reporte.definicion_reporte_id > definiciones_reporte.id
+Ref: ejecuciones_reporte.usuario_id > usuarios.id
+Ref: notificaciones.usuario_id > usuarios.id
+Ref: parametros_sistema.actualizado_por_usuario_id > usuarios.id
+Ref: valores_indicador.indicador_id > indicadores.id

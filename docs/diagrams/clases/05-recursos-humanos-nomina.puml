@@ -1,0 +1,169 @@
+@startuml ERP_05_Recursos_Humanos
+ title TechSupply Solutions - Vista logica: Recursos humanos y nomina (v1.1)
+ hide circle
+ skinparam classAttributeIconSize 0
+ skinparam linetype ortho
+ skinparam shadowing false
+ skinparam packageStyle rectangle
+
+ package "Administracion laboral" {
+  class ExpedienteLaboral {
+  +id: UUID
+  +numeroContrato: String
+  +fechaInicio: Date
+  +fechaFin: Date
+  +tipoContrato: String
+  +salarioBase: Decimal
+  +estado: EstadoContrato
+}
+  class RegistroAsistencia {
+  +id: UUID
+  +fecha: Date
+  +tipo: TipoAsistencia
+  +observaciones: String
+}
+  class SolicitudVacaciones {
+  +id: UUID
+  +fechaSolicitud: DateTime
+  +fechaInicio: Date
+  +fechaFin: Date
+  +diasSolicitados: Decimal
+  +estado: EstadoSolicitud
+  +aprobar()
+  +rechazar()
+}
+ }
+ package "Nomina simplificada" {
+  class PeriodoNomina {
+  +id: UUID
+  +fechaInicio: Date
+  +fechaFin: Date
+  +fechaPago: Date
+  +frecuencia: FrecuenciaNomina
+  +estado: EstadoPeriodoNomina
+}
+  class Nomina {
+  +id: UUID
+  +folio: String
+  +fechaCalculo: DateTime
+  +totalPercepciones: Decimal
+  +totalDeducciones: Decimal
+  +netoPagar: Decimal
+  +estado: EstadoNomina
+  +calcularTotales()
+  +aprobar()
+}
+  class DetalleNomina {
+  +id: UUID
+  +salarioBase: Decimal
+  +totalPercepciones: Decimal
+  +totalDeducciones: Decimal
+  +netoPagar: Decimal
+}
+  class ConceptoNomina {
+  +id: UUID
+  +codigo: String
+  +nombre: String
+  +tipo: TipoConceptoNomina
+  +activo: Boolean
+}
+  class MovimientoNomina {
+  +id: UUID
+  +cantidad: Decimal
+  +importeUnitario: Decimal
+  +importeTotal: Decimal
+}
+  class PagoNomina {
+  +id: UUID
+  +fechaPago: Date
+  +monto: Decimal
+  +referencia: String
+  +estado: EstadoPagoNomina
+}
+ }
+ package "Referencias de otros modulos" {
+  class Empleado <<GestionMaestra>>
+  class Departamento <<GestionMaestra>>
+  class Puesto <<GestionMaestra>>
+  class Usuario <<Seguridad>>
+ }
+ enum EstadoContrato {
+  VIGENTE
+  FINALIZADO
+  SUSPENDIDO
+}
+ enum TipoAsistencia {
+  ASISTENCIA
+  FALTA_JUSTIFICADA
+  FALTA_INJUSTIFICADA
+  RETARDO
+}
+ enum EstadoSolicitud {
+  SOLICITADA
+  APROBADA
+  RECHAZADA
+  CANCELADA
+}
+ enum FrecuenciaNomina {
+  SEMANAL
+  QUINCENAL
+  MENSUAL
+}
+ enum EstadoPeriodoNomina {
+  ABIERTO
+  CERRADO
+}
+ enum EstadoNomina {
+  BORRADOR
+  CALCULADA
+  PENDIENTE_APROBACION
+  APROBADA
+  PAGADA
+  CANCELADA
+}
+ enum TipoConceptoNomina {
+  PERCEPCION
+  DEDUCCION
+}
+ enum EstadoPagoNomina {
+  PENDIENTE
+  CONFIRMADO
+  RECHAZADO
+  REVERSADO
+}
+
+ Empleado "1" -- "0..*" ExpedienteLaboral
+ ExpedienteLaboral "0..*" --> "1" Departamento
+ ExpedienteLaboral "0..*" --> "1" Puesto
+ Empleado "1" -- "0..*" RegistroAsistencia
+ RegistroAsistencia "0..*" --> "1" Usuario : registrado por
+ Empleado "1" -- "0..*" SolicitudVacaciones
+ SolicitudVacaciones "0..*" --> "0..1" Usuario : autorizada por
+ PeriodoNomina "1" -- "0..1" Nomina : una nomina por periodo en MVP
+ Nomina "1" *-- "1..*" DetalleNomina
+ DetalleNomina "0..*" --> "1" Empleado
+ DetalleNomina "0..*" --> "0..1" ExpedienteLaboral : contrato base
+ DetalleNomina "1" *-- "0..*" MovimientoNomina
+ MovimientoNomina "0..*" --> "1" ConceptoNomina
+ DetalleNomina "1" -- "0..1" PagoNomina
+ PagoNomina "0..*" --> "1" Usuario : registrado por
+ Nomina "0..*" --> "1" Usuario : calculada por
+ Nomina "0..*" --> "0..1" Usuario : aprobada por
+
+ note bottom of ExpedienteLaboral
+  Conserva el historial contractual/salarial. Las vigencias de un
+  empleado no pueden traslaparse y el acceso al salario es restringido.
+ end note
+ note bottom of Nomina
+  Una nómina incluye un detalle por empleado y periodo. El aprobador
+  debe ser distinto de quien calcula. No es nómina fiscal completa.
+ end note
+ note right of DetalleNomina
+  Totales por empleado congelados para la corrida.
+  Neto = percepciones - deducciones.
+ end note
+ note bottom of PagoNomina
+  Solo se paga una nómina aprobada. MVP: un pago por detalle;
+  reintentos idempotentes y acciones auditadas.
+ end note
+@enduml

@@ -1,0 +1,59 @@
+@startuml TS09_Proceso_Devoluciones
+ title ERP TechSupply Solutions - Devoluciones a proveedor y de cliente
+ skinparam shadowing false
+ skinparam defaultFontName Arial
+ skinparam defaultFontSize 13
+ skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+ }
+ skinparam ArrowColor #526780
+ start
+ if (¿Tipo de devolución?) then (A proveedor)
+  |Responsable de almacén|
+  :Seleccionar línea de recepción original;
+  :Registrar cantidad y motivo de devolución;
+  |Sistema ERP|
+  :Verificar unidades aceptadas menos devoluciones previas;
+  if (¿Cantidad válida y autorización concedida?) then (Sí)
+   :Iniciar transacción;
+   :Confirmar DetalleDevolucionProveedor;
+   :Reducir existencia por unidades devueltas;
+   :Registrar MovimientoInventario de salida;
+   :Registrar auditoría;
+   :Confirmar transacción;
+  else (No)
+   :Rechazar confirmación y conservar borrador;
+  endif
+ else (De cliente)
+  |Responsable de ventas / almacén|
+  :Seleccionar pedido y línea original;
+  :Registrar cantidad devuelta y motivo;
+  :Inspeccionar unidades recibidas;
+  :Separar aceptadas y rechazadas;
+  |Sistema ERP|
+  :Validar aceptadas + rechazadas = recibidas;
+  if (¿Inspección autorizada?) then (Sí)
+   :Iniciar transacción;
+   :Confirmar detalle de devolución;
+   :Incrementar existencia solo por unidades aceptadas;
+   :Registrar MovimientoInventario de entrada;
+   :Registrar auditoría;
+   :Confirmar transacción;
+  else (No)
+   :Mantener devolución pendiente o rechazada;
+  endif
+ endif
+ stop
+ note bottom
+  Las devoluciones deben referenciar el documento fuente original.
+  No se devuelven más unidades de las recibidas/aceptadas previamente.
+  El movimiento de inventario y el estado de devolución son atomicos.
+ end note
+@enduml

@@ -1,0 +1,147 @@
+@startuml ERP_06_Reporteria_Auditoria_Integracion
+ title TechSupply Solutions - Vista logica: Reporteria, auditoria e integracion (v1.1)
+ hide circle
+ skinparam classAttributeIconSize 0
+ skinparam linetype ortho
+ skinparam shadowing false
+ skinparam packageStyle rectangle
+
+ package "Auditoria e integracion" {
+  class EventoAuditoria {
+  +id: UUID
+  +fechaHora: DateTime
+  +accion: String
+  +entidad: String
+  +entidadId: UUID
+  +resultado: String
+  +valoresAnteriores: JSON
+  +valoresNuevos: JSON
+  +direccionOrigen: String
+}
+  class EventoIntegracion <<OpcionalMVP>> {
+  +id: UUID
+  +tipoEvento: String
+  +entidadOrigen: String
+  +entidadOrigenId: UUID
+  +claveIdempotencia: String
+  +fechaCreacion: DateTime
+  +fechaProcesamiento: DateTime
+  +estado: EstadoEvento
+  +intentos: Integer
+  +mensajeError: String
+}
+ }
+ package "Reporteria" {
+  class DefinicionReporte {
+  +id: UUID
+  +codigo: String
+  +nombre: String
+  +descripcion: String
+  +modulo: String
+  +consultaClave: String
+  +permisoRequerido: String
+  +activo: Boolean
+}
+  class EjecucionReporte {
+  +id: UUID
+  +fechaHora: DateTime
+  +parametros: JSON
+  +formato: FormatoReporte
+  +estado: EstadoReporte
+  +filasGeneradas: Long
+  +duracionMs: Long
+}
+  class Indicador {
+  +id: UUID
+  +codigo: String
+  +nombre: String
+  +descripcion: String
+  +unidad: String
+  +formula: String
+  +fuenteDatos: String
+  +frecuenciaActualizacion: String
+  +activo: Boolean
+}
+  class Notificacion {
+    +id: UUID
+    +canal: CanalNotificacion
+    +destinatarioExterno: String
+    +asunto: String
+    +cuerpo: String
+    +estado: EstadoNotificacion
+    +creadaEn: DateTime
+    +enviadaEn: DateTime
+    +intentos: Integer
+  }
+  class ParametroSistema {
+    +id: UUID
+    +modulo: String
+    +clave: String
+    +valor: String
+    +actualizadoEn: DateTime
+  }
+  class ValorIndicador {
+  +id: UUID
+  +fechaCalculo: DateTime
+  +periodoInicio: Date
+  +periodoFin: Date
+  +valor: Decimal
+}
+ }
+ package "Referencia transversal" {
+  class Usuario <<Seguridad>>
+  class Permiso <<Seguridad>>
+ }
+ enum EstadoEvento {
+  PENDIENTE
+  PROCESADO
+  ERROR
+}
+ enum FormatoReporte {
+  PANTALLA
+  PDF
+  CSV
+  XLSX
+}
+ enum CanalNotificacion {
+  APP
+  EMAIL
+ }
+ enum EstadoNotificacion {
+  PENDIENTE
+  ENVIADA
+  FALLIDA
+  LEIDA
+ }
+ enum EstadoReporte {
+  SOLICITADO
+  EJECUTANDO
+  COMPLETADO
+  FALLIDO
+}
+
+ Usuario "0..1" <-- "0..*" EventoAuditoria : actor opcional
+ Usuario "1" <-- "0..*" EjecucionReporte : solicitante
+ DefinicionReporte "1" -- "0..*" EjecucionReporte
+ Permiso "1" <-- "0..*" DefinicionReporte : permiso requerido
+ Indicador "1" -- "0..*" ValorIndicador
+ Usuario "0..1" <-- "0..*" Notificacion : destinatario interno opcional
+ Usuario "0..1" <-- "0..*" ParametroSistema : actualizado por
+
+ note bottom of EventoAuditoria
+  Solo adicion para altas, cambios, aprobaciones, cancelaciones,
+  accesos denegados y operaciones financieras. No registra secretos.
+ end note
+ note bottom of EventoIntegracion
+  Componente opcional del monolito. Puede materializar el patron
+  Outbox para procesar eventos/reintentos tras confirmar la transaccion.
+ end note
+ note right of EjecucionReporte
+  Los filtros, resultados y exportaciones aplican permisos de datos;
+  no exponer salarios, datos personales o finanzas sin autorizacion.
+ end note
+ note bottom of Indicador
+  Fórmula, fuente, unidad y periodo deben estar definidos antes de
+  presentar un KPI como cifra oficial.
+ end note
+@enduml

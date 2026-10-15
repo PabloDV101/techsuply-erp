@@ -1,0 +1,67 @@
+@startuml CU_Reporteria
+ title TechSupply Solutions - Casos de uso de reporteria (v1.1)
+ left to right direction
+ skinparam packageStyle rectangle
+ skinparam shadowing false
+
+ actor "Gerente general" as Gerente
+ actor "Responsable de compras" as Compras
+ actor "Responsable de almacén" as Almacen
+ actor "Responsable de ventas" as Ventas
+ actor "Contador" as Contador
+ actor "Responsable de RR. HH." as RRHH
+
+ rectangle "ERP - Reporteria y Business Intelligence" {
+  usecase "Consultar dashboard gerencial" as Dashboard
+  usecase "Generar reporte de compras" as ReporteCompras
+  usecase "Generar reporte de inventario" as ReporteInventario
+  usecase "Generar reporte de ventas" as ReporteVentas
+  usecase "Generar reporte financiero" as ReporteFinanciero
+  usecase "Generar reporte de recursos humanos" as ReporteRRHH
+  usecase "Consultar rotación de inventario" as Rotacion
+  usecase "Consultar rentabilidad por cliente" as Rentabilidad
+  usecase "Consultar indicadores operativos" as Indicadores
+  usecase "Filtrar y ordenar resultados" as Filtros
+  usecase "Exportar reporte" as Exportar
+  usecase "Aplicar permisos de datos" as PermisosDatos
+ }
+ Gerente --> Dashboard
+ Gerente --> ReporteCompras
+ Gerente --> ReporteInventario
+ Gerente --> ReporteVentas
+ Gerente --> ReporteFinanciero
+ Gerente --> Rentabilidad
+ Gerente --> Indicadores
+ Compras --> ReporteCompras
+ Almacen --> ReporteInventario
+ Almacen --> Rotacion
+ Ventas --> ReporteVentas
+ Contador --> ReporteFinanciero
+ RRHH --> ReporteRRHH
+ Dashboard ..> Indicadores : <<include>>
+ ReporteCompras ..> Filtros : <<include>>
+ ReporteInventario ..> Filtros : <<include>>
+ ReporteVentas ..> Filtros : <<include>>
+ ReporteFinanciero ..> Filtros : <<include>>
+ ReporteRRHH ..> Filtros : <<include>>
+ Dashboard ..> PermisosDatos : <<include>>
+ Rotacion ..> PermisosDatos : <<include>>
+ Rentabilidad ..> PermisosDatos : <<include>>
+ Indicadores ..> PermisosDatos : <<include>>
+ Exportar ..> PermisosDatos : <<include>>
+ ReporteCompras ..> PermisosDatos : <<include>>
+ ReporteInventario ..> PermisosDatos : <<include>>
+ ReporteVentas ..> PermisosDatos : <<include>>
+ ReporteFinanciero ..> PermisosDatos : <<include>>
+ ReporteRRHH ..> PermisosDatos : <<include>>
+ Exportar ..> ReporteCompras : <<extend>>
+ Exportar ..> ReporteInventario : <<extend>>
+ Exportar ..> ReporteVentas : <<extend>>
+ Exportar ..> ReporteFinanciero : <<extend>>
+ Exportar ..> ReporteRRHH : <<extend>>
+ Exportar ..> Dashboard : <<extend>>
+ note bottom of PermisosDatos
+  La API valida permisos y alcance de datos. Ocultar botones en React
+  no es control de seguridad suficiente.
+ end note
+@enduml
