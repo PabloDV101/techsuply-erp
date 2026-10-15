@@ -1,0 +1,26 @@
+
+spring:
+  application:
+    name: erp-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/techsupply_dev}
+    username: ${DB_USERNAME:techsupply}
+    password: ${DB_PASSWORD:123456}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
