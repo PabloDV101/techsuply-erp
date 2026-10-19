@@ -8,12 +8,12 @@ spring:
     username: ${DB_USERNAME:techsupply}
     password: ${DB_PASSWORD:123456}
 
-  jpa:
+jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
 
-  flyway:
+flyway:
     enabled: true
 
 server:
