@@ -1,0 +1,87 @@
+@startuml TSS_Secuencia_Auth
+!include ../_estilo.iuml
+title TechSupply Solutions — Contrato de autenticación implementado
+caption IMPLEMENTADO · Correspondencia con security, sus migraciones y el contrato HTTP actual.
+autonumber
+actor "Cliente HTTP" as Client
+control "OpaqueBearerAuthenticationFilter" as Filter
+boundary "AuthController / AdminUsuariosController" as API
+control "AuthService" as Auth
+control "Spring Security\n@PreAuthorize" as Access
+control "UserManagementService" as Users
+control "AuthExceptionHandler / AuthErrorWriter" as Errors
+database "PostgreSQL" as DB
+== Login ==
+Client -> API : POST /api/v1/auth/login\nidentificador, password
+API -> Auth : login(request)
+Auth -> DB : SELECT usuario FOR UPDATE
+DB --> Auth : cuenta o ausencia
+alt inexistente, inactiva o bloqueada
+  Auth -> Auth : BCrypt ficticio
+  Auth --> Errors : 401 genérico
+  Errors --> Client : JSON AuthError + WWW-Authenticate
+else cuenta disponible
+  Auth -> Auth : reiniciar ventana si venció bloqueo\ncomparar BCrypt
+  alt contraseña incorrecta
+    Auth -> DB : incrementar contador; bloquear al quinto fallo
+    note over Auth,DB
+      @Transactional(noRollbackFor = ResponseStatusException.class)
+      confirma el intento fallido antes de devolver 401.
+    end note
+    Auth --> Errors : 401 genérico
+    Errors --> Client : JSON AuthError
+  else correcta
+    Auth -> DB : reiniciar intentos; actualizar acceso\nINSERT tokens_sesion(hash SHA-256, vencimiento)
+    DB --> Auth : commit
+    Auth --> API : LoginResponse
+    API --> Client : 200 · accessToken, tokenType, expiresAt, usuario
+  end
+end
+== Solicitud protegida ==
+Client -> Filter : Authorization: Bearer token
+Filter -> DB : buscar hash, vence_en > ahora y revocado_en IS NULL\nusuario, roles activos y permisos
+DB --> Filter : sesión y autoridades
+alt sin token, inválido, vencido, revocado o cuenta no disponible
+  Filter -> Errors : falta autenticación
+  Errors --> Client : 401 AuthError
+else válido
+  Filter -> Filter : establecer SecurityContext
+  alt GET /api/v1/auth/me
+    Filter -> API : continuar cadena
+    API -> Auth : me()
+    Auth -> DB : consultar usuario, roles y permisos
+    DB --> Auth : identidad actual
+    Auth --> Client : 200 UsuarioResponse
+  else endpoint administrativo
+    Filter -> Access : continuar cadena
+    Access -> Access : comprobar autoridad requerida
+    alt falta permiso
+      Access -> Errors : acceso denegado
+      Errors --> Client : 403 AuthError
+    else autorizado
+      Access -> Users : caso de uso
+      Users -> DB : transacción / restricciones / bloqueo de administración
+      DB --> Users : resultado
+      Users --> Client : 200 DTO (o error funcional)
+    end
+  end
+  Filter -> Filter : limpiar contexto al salir de la cadena
+end
+== Logout ==
+Client -> Filter : POST /api/v1/auth/logout + Bearer válido
+Filter -> DB : revalidar sesión
+Filter -> API : continuar autenticado
+API -> Auth : logout(token)
+Auth -> DB : UPDATE tokens_sesion SET revocado_en\ncommit
+Auth --> Client : 204 sin cuerpo
+Client -> Filter : GET /me con el token anterior
+Filter -> DB : sesión vigente no revocada
+DB --> Filter : ninguna
+Filter -> Errors : autenticación requerida
+Errors --> Client : 401 AuthError
+note over Filter,DB
+  Cada petición valida estado compartido en BD; no se usa JWT ni caché de sesión.
+  Un fallo de acceso a datos se traduce a 503. Los tokens nunca se registran en logs.
+  La limpieza del contexto ocurre en finally, también en solicitudes rechazadas.
+end note
+@enduml

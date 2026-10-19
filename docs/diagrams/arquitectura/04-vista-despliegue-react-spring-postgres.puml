@@ -1,14 +1,8 @@
 @startuml TSS_Despliegue
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
  title TechSupply Solutions - Vista de despliegue
 top to bottom direction
-skinparam shadowing false
-skinparam linetype ortho
-skinparam packageStyle rectangle
-skinparam componentStyle uml2
-skinparam defaultFontName Arial
-skinparam wrapWidth 190
-skinparam nodesep 28
-skinparam ranksep 34
 
 actor "Usuarios internos y clientes" as Users
 cloud "Internet / red corporativa" as Network
@@ -55,5 +49,11 @@ end note
 note bottom of Backup
   Definir retención y probar restauraciones.
   El backup no sustituye alta disponibilidad.
+end note
+note as ImplementacionActual
+  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
+  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
+  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
+  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
 end note
 @enduml

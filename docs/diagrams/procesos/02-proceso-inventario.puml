@@ -1,19 +1,7 @@
 @startuml TS02_Proceso_Inventario
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title ERP TechSupply Solutions - Movimientos de Inventario
-skinparam shadowing false
-skinparam defaultFontName Arial
-skinparam defaultFontSize 13
-skinparam activity {
-  BackgroundColor #F8FAFC
-  BorderColor #526780
-  FontColor #172B4D
-  DiamondBackgroundColor #FFF2CC
-  DiamondBorderColor #B7950B
-  StartColor #2F855A
-  EndColor #526780
-  BarColor #526780
-}
-skinparam ArrowColor #526780
 
 |Usuario autorizado|
 start

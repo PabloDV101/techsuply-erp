@@ -1,69 +1,83 @@
 @startuml TS07_Proceso_Seguridad
-title ERP TechSupply Solutions - Autenticacion y Autorizacion
-skinparam shadowing false
-skinparam defaultFontName Arial
-skinparam defaultFontSize 13
-skinparam activity {
-  BackgroundColor #F8FAFC
-  BorderColor #526780
-  FontColor #172B4D
-  DiamondBackgroundColor #FFF2CC
-  DiamondBorderColor #B7950B
-  StartColor #2F855A
-  EndColor #526780
-  BarColor #526780
-}
-skinparam ArrowColor #526780
-
-|Usuario|
+!include ../_estilo.iuml
+title TechSupply Solutions — Login, autorización y revocación
+caption IMPLEMENTADO · Correspondencia con security, sus migraciones y el contrato HTTP actual.
+|Cliente HTTP|
 start
-:Ingresar correo y contrasena;
-|Frontend React|
-:Enviar credenciales por HTTPS;
-|Spring Security / API|
-:Validar formato y consultar cuenta;
-if (¿Cuenta existente y activa?) then (Si)
-  :Verificar contrasena contra hash seguro;
-else (No)
-  :Rechazar acceso con mensaje generico;
-  :Registrar evento de seguridad;
+:Enviar username o correo y contraseña;
+|API / AuthService|
+:Validar DTO y límite de 72 bytes UTF-8;
+if (¿Entrada válida?) then (sí)
+else (no)
+  :Responder 400 BAD_REQUEST;
   stop
 endif
-if (¿Credenciales correctas?) then (Si)
-  :Emitir token de acceso con expiracion;
-  :Registrar inicio de sesion;
-else (No)
-  :Rechazar acceso con mensaje generico;
-  :Registrar intento fallido;
-  stop
-endif
-|Usuario|
-:Solicitar operacion protegida;
-|Frontend React|
-:Enviar token con solicitud API;
-|Spring Security / API|
-:Validar token y su expiracion;
-:Obtener identidad y permisos;
-if (¿Token valido?) then (Si)
-  :Comprobar permiso requerido;
-else (No)
-  :Responder no autenticado;
-  stop
-endif
-if (¿Usuario autorizado?) then (Si)
-  :Ejecutar validaciones de negocio;
-  if (¿Reglas de negocio satisfechas?) then (Si)
-    :Ejecutar caso de uso;
-    :Registrar auditoria si corresponde;
-    :Responder resultado;
-  else (No)
-    :Responder error de validacion;
+:Normalizar identificador;
+:Iniciar transacción y bloquear fila de usuario;
+if (¿Existe, está activo y sin bloqueo vigente?) then (sí)
+  if (¿Bloqueo anterior vencido?) then (sí)
+    :Reiniciar ventana de intentos;
   endif
-else (No)
-  :Responder acceso denegado;
-  :Registrar evento de seguridad;
+  :Comparar BCrypt coste 12;
+else (no)
+  :Comparación BCrypt ficticia;
+  :Responder 401 genérico sin emitir token;
+  stop
 endif
-|Usuario|
-:Recibir respuesta;
+if (¿Contraseña correcta?) then (sí)
+  :Reiniciar intentos y bloqueo;
+  :Actualizar último acceso;
+  :Generar 32 bytes aleatorios;
+  :Persistir SHA-256 en tokens_sesion;
+  :Establecer vencimiento a dos horas;
+  :Confirmar transacción y devolver 200 con Bearer;
+else (no)
+  :Incrementar intentos sin perder actualizaciones concurrentes;
+  if (¿Cinco fallos?) then (sí)
+    :Bloquear durante 15 minutos;
+  endif
+  :Confirmar contador aunque se responda 401;
+  stop
+endif
+|Cliente HTTP|
+:Enviar solicitud protegida con Authorization Bearer;
+|Filtro / Spring Security|
+:Validar formato y consultar hash vigente, no revocado;
+if (¿Sesión válida y cuenta activa/no bloqueada?) then (sí)
+  :Cargar autoridades actuales y establecer contexto;
+else (no)
+  :Responder 401 UNAUTHORIZED;
+  stop
+endif
+if (¿Operación administrativa?) then (sí)
+  :Verificar @PreAuthorize y límites de delegación;
+  if (¿Permisos suficientes?) then (sí)
+  else (no)
+    :Responder 403 FORBIDDEN;
+    stop
+  endif
+endif
+|API / servicios|
+if (¿POST logout?) then (sí)
+  :Guardar revocado_en y confirmar;
+  :Responder 204 sin cuerpo;
+  note right
+    Otra petición con el mismo token recibe 401.
+    Una petición ya autenticada puede terminar.
+  end note
+else (no)
+  :Consultar /me o ejecutar administración autorizada;
+  :Responder DTO o error funcional uniforme;
+endif
+|Filtro / Spring Security|
+:Limpiar contexto al finalizar solicitud;
+note right
+  Cliente actual: HTTP directo / pruebas; React y HTTPS son integración objetivo.
+  Auditoría y eventos de seguridad: pendientes, no se confunden con el contador.
+  Errores: JSON {status, code, message}; falla de datos 503 sin SQL en respuesta.
+  Spring Security limpia el contexto en finally también en las ramas de rechazo.
+end note
+
 stop
+
 @enduml

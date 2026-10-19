@@ -1,13 +1,8 @@
 @startuml TechSupply_Module_Package_Template
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
  title TechSupply Solutions - Plantilla interna de un módulo
  left to right direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam packageStyle rectangle
- skinparam componentStyle uml2
- skinparam nodesep 35
- skinparam ranksep 40
- skinparam defaultTextAlignment center
 
  package "modules.compras" as Module {
    package "api" as API {

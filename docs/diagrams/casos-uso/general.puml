@@ -1,9 +1,8 @@
-
 @startuml CU_General_ERP
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+title TechSupply Solutions — General
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
-skinparam linetype ortho
 
 actor "Gerente general" as Gerente
 actor "Responsable de compras" as Comprador
@@ -61,55 +60,59 @@ rectangle "Sistema ERP - TechSupply Solutions" {
   }
 
   package "Seguridad" {
-    usecase "Autenticarse" as UC_Login
-    usecase "Gestionar usuarios y permisos" as UC_Usuarios
+    usecase "Autenticarse" as UC_Login <<implementado>>
+    usecase "Gestionar usuarios y permisos" as UC_Usuarios <<implementado>>
     usecase "Consultar auditoría" as UC_Auditoria
   }
 }
 
-Gerente --> UC_Dashboard
-Gerente --> UC_Reportes
-Gerente --> UC_Estados
+actor "Usuario del ERP" as Usuario
+Usuario -- UC_Login
 
-Comprador --> UC_Proveedores
-Comprador --> UC_Requisiciones
-Comprador --> UC_OC
-Comprador --> UC_Reportes
+Gerente -- UC_Dashboard
+Gerente -- UC_Reportes
+Gerente -- UC_Estados
 
-Almacen --> UC_Productos
-Almacen --> UC_Almacenes
-Almacen --> UC_Recepcion
-Almacen --> UC_Existencias
-Almacen --> UC_Movimientos
-Almacen --> UC_Ajustes
-Almacen --> UC_Alertas
+Comprador -- UC_Proveedores
+Comprador -- UC_Requisiciones
+Comprador -- UC_OC
+Comprador -- UC_Reportes
 
-Vendedor --> UC_Clientes
-Vendedor --> UC_Cotizaciones
-Vendedor --> UC_Pedidos
-Vendedor --> UC_Facturacion
-Vendedor --> UC_Credito
-Vendedor --> UC_Existencias
+Almacen -- UC_Productos
+Almacen -- UC_Almacenes
+Almacen -- UC_Recepcion
+Almacen -- UC_Existencias
+Almacen -- UC_Movimientos
+Almacen -- UC_Ajustes
+Almacen -- UC_Alertas
 
-Contador --> UC_Asientos
-Contador --> UC_Pagos
-Contador --> UC_Estados
-Contador --> UC_Reportes
+Vendedor -- UC_Clientes
+Vendedor -- UC_Cotizaciones
+Vendedor -- UC_Pedidos
+Vendedor -- UC_Facturacion
+Vendedor -- UC_Credito
+Vendedor -- UC_Existencias
 
-RRHH --> UC_Empleados
-RRHH --> UC_Nomina
-RRHH --> UC_Asistencia
+Contador -- UC_Asientos
+Contador -- UC_Pagos
+Contador -- UC_Estados
+Contador -- UC_Reportes
 
-Admin --> UC_Usuarios
-Admin --> UC_Auditoria
-Admin --> UC_Empleados
+RRHH -- UC_Empleados
+RRHH -- UC_Nomina
+RRHH -- UC_Asistencia
 
-Cliente --> UC_Cotizaciones
-Cliente --> UC_Pedidos
+Admin -- UC_Usuarios
+Admin -- UC_Auditoria
+Admin -- UC_Empleados
+
+Cliente -- UC_Cotizaciones
+Cliente -- UC_Pedidos
 
 note bottom of UC_Login
   El acceso requiere autenticación
-  y permisos según el rol.
+  y permisos según la acción.
+  Seguridad funciona por HTTP; las pantallas y módulos del ERP son objetivo.
 end note
 
 

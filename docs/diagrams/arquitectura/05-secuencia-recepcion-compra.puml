@@ -1,10 +1,8 @@
 @startuml TSS_Secuencia_Recepcion
- title Confirmacion transaccional de recepcion - modelo v1.1
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title Confirmacion transaccional de recepcion - modelo objetivo
  hide footbox
- skinparam shadowing false
- skinparam responseMessageBelowArrow true
- skinparam sequenceMessageAlign center
- skinparam maxMessageSize 70
 
  actor "Almacen" as User
  boundary "RecepcionController" as API

@@ -1,36 +1,34 @@
 @startuml TechSupply_Reusable_Components
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
  title TechSupply Solutions - Componentes reutilizables y contratos
  left to right direction
- skinparam componentStyle uml2
- skinparam shadowing false
- skinparam linetype ortho
- skinparam packageStyle rectangle
- skinparam nodesep 32
- skinparam ranksep 38
- skinparam defaultTextAlignment center
 
  package "Implementaciones compartidas" as Providers {
-   component "Spring Security\nFilter Chain + @PreAuthorize" as Security
-   component "Jakarta Validation\nDTOs de entrada" as InputValidation
-   component "AuditService" as Audit
-   component "Búsqueda común\nPageable / Specification" as Search
-   component "NotificationService\nAFTER_COMMIT" as Notify
-   component "Reporting query services" as Reports
-   component "GlobalExceptionHandler" as Errors
+   component "Spring Security\nFilter Chain + @PreAuthorize" as Security <<implementado>>
+   component "Jakarta Validation\nDTOs de entrada" as InputValidation <<implementado>>
+   component "AuditService" as Audit <<objetivo>>
+   component "Búsqueda común\nPageable / Specification" as Search <<objetivo>>
+   component "NotificationService\nAFTER_COMMIT" as Notify <<objetivo>>
+   component "Reporting query services" as Reports <<objetivo>>
+   component "AuthExceptionHandler / AuthErrorWriter\n(alcance actual: seguridad)" as Errors <<implementado>>
  }
 
- interface "AuditPort" as IAudit
- interface "SearchPort" as ISearch
- interface "NotificationPort" as INotify
- interface "ReportQueryPort" as IReports
+ interface "AuthenticatedUserProvider" as Identity
+ component "SecurityContextAuthenticatedUserProvider" as IdentityAdapter <<implementado>>
+ IdentityAdapter ..|> Identity
+ interface "AuditPort" as IAudit <<objetivo>>
+ interface "SearchPort" as ISearch <<objetivo>>
+ interface "NotificationPort" as INotify <<objetivo>>
+ interface "ReportQueryPort" as IReports <<objetivo>>
 
  package "Módulos consumidores" as Consumers {
-   component "Gestión maestra" as Masters
-   component "Compras" as Purchases
-   component "Inventario" as Inventory
-   component "Ventas" as Sales
-   component "Contabilidad" as Accounting
-   component "RR. HH. / nómina" as Payroll
+   component "Gestión maestra" as Masters <<objetivo>>
+   component "Compras" as Purchases <<objetivo>>
+   component "Inventario" as Inventory <<objetivo>>
+   component "Ventas" as Sales <<objetivo>>
+   component "Contabilidad" as Accounting <<objetivo>>
+   component "RR. HH. / nómina" as Payroll <<objetivo>>
  }
 
  Audit - IAudit
@@ -38,6 +36,10 @@
  Notify - INotify
  Reports - IReports
 
+ Masters ..> Identity : identidad (integración objetivo)
+ Purchases ..> Identity
+ Inventory ..> Identity
+ Sales ..> Identity
  Masters ..> IAudit
  Purchases ..> IAudit
  Inventory ..> IAudit
@@ -58,6 +60,7 @@
  Reports ..> IReports
 
  note bottom of Security
+   Implementado en seguridad; reutilización en otros módulos aún no demostrada.
    Los permisos se aplican en la API y en casos de uso sensibles.
    Ocultar botones en React no es un control de seguridad.
  end note
@@ -78,4 +81,9 @@
    avisos sobre operaciones que finalmente se revierten.
    Para garantías más fuertes, añadir patrón outbox en el futuro.
  end note
+note as EstadoActual
+  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
+  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+end note
 @enduml

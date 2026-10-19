@@ -1,10 +1,8 @@
 @startuml TSS_Secuencia_Contabilizacion
- title Validacion y contabilizacion idempotente - modelo v1.1
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title Validacion y contabilizacion idempotente - modelo objetivo
  hide footbox
- skinparam shadowing false
- skinparam responseMessageBelowArrow true
- skinparam sequenceMessageAlign center
- skinparam maxMessageSize 70
 
  actor "Contador" as User
  boundary "ContabilidadController" as API

@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: TechSupply ERP - Authentication API
-  version: 1.0.0
-  description: Contrato inicial del componente de autenticación y administración de usuarios.
+  version: 1.1.1
+  description: Autenticación con tokens opacos y administración de usuarios. Errores JSON uniformes.
 servers:
   - url: /api/v1
 paths:
@@ -19,55 +19,109 @@ paths:
               required: [identificador, password]
               properties:
                 identificador: { type: string, maxLength: 150, example: admin@techsupply.test }
-                password: { type: string, format: password, maxLength: 72 }
+                password: { type: string, format: password, minLength: 1, maxLength: 72, description: Máximo 72 bytes UTF-8 }
       responses:
         '200':
           description: Token y datos básicos de identidad
           content:
             application/json:
               schema:
-                type: object
-                required: [accessToken, tokenType, expiresAt, usuario]
-                properties:
-                  accessToken: { type: string, description: Mostrar/guardar por cliente; no se persiste en claro en servidor }
-                  tokenType: { type: string, example: Bearer }
-                  expiresAt: { type: string, format: date-time }
-                  usuario:
-                    type: object
-                    properties:
-                      id: { type: integer, format: int64 }
-                      username: { type: string }
-                      correo: { type: string, format: email }
-                      roles: { type: array, items: { type: string } }
-                      permisos: { type: array, items: { type: string } }
-        '401': { description: Credenciales inválidas o cuenta no disponible }
-        '400': { description: Cuerpo no válido }
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciales inválidas o cuenta no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '400':
+          description: Cuerpo no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /auth/logout:
     post:
       summary: Cerrar la sesión actual
       security: [{ bearerAuth: [] }]
       responses:
         '204': { description: Sesión revocada }
-        '401': { description: Token ausente o no válido }
+        '401':
+          description: Token ausente o no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /auth/me:
     get:
       summary: Consultar identidad del usuario autenticado
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Usuario, estado, roles y permisos }
-        '401': { description: Token ausente o no válido }
+        '200':
+          description: Usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '401':
+          description: Token ausente o no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /admin/users:
     get:
       summary: Listar usuarios
       security: [{ bearerAuth: [] }]
       description: Requiere SEGURIDAD_USUARIOS_ADMIN.
       responses:
-        '200': { description: Lista de usuarios }
-        '403': { description: Falta permiso administrativo }
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsuarioResponse'
+        '403':
+          description: Falta permiso administrativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
     post:
       summary: Crear usuario y asignarle roles
       security: [{ bearerAuth: [] }]
-      description: Requiere SEGURIDAD_USUARIOS_ADMIN. No hay registro público.
+      description: Requiere SEGURIDAD_USUARIOS_ADMIN y SEGURIDAD_ROLES_ADMIN. Solo permite delegar permisos que posee el actor. No hay registro público.
       requestBody:
         required: true
         content:
@@ -78,16 +132,47 @@ paths:
               properties:
                 username: { type: string, maxLength: 60 }
                 correo: { type: string, format: email, maxLength: 150 }
-                password: { type: string, format: password, minLength: 12, maxLength: 72 }
+                password: { type: string, format: password, minLength: 12, maxLength: 72, description: Máximo 72 bytes UTF-8 }
                 roles: { type: array, minItems: 1, items: { type: string } }
                 empleadoId: { type: integer, format: int64, nullable: true }
                 clienteId: { type: integer, format: int64, nullable: true }
       responses:
-        '200': { description: Usuario creado }
-        '400': { description: Datos inválidos o rol no válido }
-        '401': { description: Falta autenticación }
-        '403': { description: Falta permiso administrativo }
-        '409': { description: Username o correo duplicado }
+        '200':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Datos inválidos o rol no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Falta autenticación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '403':
+          description: Falta permiso administrativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '409':
+          description: Identificador duplicado o conflicto de integridad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /admin/users/{id}/status:
     patch:
       summary: Activar/desactivar una cuenta
@@ -107,12 +192,52 @@ paths:
               properties:
                 activo: { type: boolean }
       responses:
-        '200': { description: Estado de usuario actualizado y sesiones revocadas si se desactiva }
-        '403': { description: Falta permiso administrativo }
-        '404': { description: Usuario no encontrado }
+        '400':
+          description: JSON, parámetros o validación inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '200':
+          description: Estado de usuario actualizado y sesiones revocadas si se desactiva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '403':
+          description: Falta permiso administrativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '409':
+          description: La operación dejaría al sistema sin administrador activo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /admin/users/{id}/roles:
     put:
       summary: Reemplazar roles de una cuenta
+      description: Requiere SEGURIDAD_ROLES_ADMIN y poseer todos los permisos de los roles asignados.
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -129,19 +254,82 @@ paths:
               properties:
                 roles: { type: array, minItems: 1, items: { type: string } }
       responses:
-        '200': { description: Roles actualizados y sesiones activas revocadas }
-        '400': { description: Roles inexistentes o inactivos }
-        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
-        '404': { description: Usuario no encontrado }
+        '200':
+          description: Roles actualizados y sesiones activas revocadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Roles inexistentes o inactivos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '403':
+          description: Falta SEGURIDAD_ROLES_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '409':
+          description: La operación dejaría al sistema sin administrador activo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /admin/roles:
     get:
       summary: Consultar roles activos
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Catálogo de roles }
-        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
+        '200':
+          description: Catálogo de roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RolResponse'
+        '403':
+          description: Falta SEGURIDAD_ROLES_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
     post:
       summary: Crear rol y asignarle permisos existentes
+      description: Solo permite asignar permisos que posee el actor.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -156,12 +344,46 @@ paths:
                 descripcion: { type: string, nullable: true, maxLength: 250 }
                 permisos: { type: array, items: { type: string } }
       responses:
-        '200': { description: Rol creado }
-        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
-        '409': { description: El código de rol ya existe }
+        '400':
+          description: JSON, parámetros o validación inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '200':
+          description: Rol creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolResponse'
+        '403':
+          description: Falta SEGURIDAD_ROLES_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '409':
+          description: El código de rol ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /admin/roles/{id}/permissions:
     put:
       summary: Reemplazar permisos de un rol
+      description: Solo permite asignar permisos que posee el actor.
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -178,17 +400,73 @@ paths:
               properties:
                 permisos: { type: array, items: { type: string } }
       responses:
-        '200': { description: Permisos actualizados }
-        '400': { description: Permisos desconocidos o permisos esenciales eliminados }
-        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
-        '404': { description: Rol no encontrado }
+        '200':
+          description: Permisos actualizados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolResponse'
+        '400':
+          description: Permisos desconocidos o permisos esenciales eliminados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '403':
+          description: Falta SEGURIDAD_ROLES_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '404':
+          description: Rol no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /admin/permissions:
     get:
       summary: Consultar catálogo de permisos
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Catálogo de permisos }
-        '403': { description: Falta SEGURIDAD_PERMISOS_ADMIN }
+        '200':
+          description: Catálogo de permisos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermisoResponse'
+        '403':
+          description: Falta SEGURIDAD_PERMISOS_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
     post:
       summary: Crear permiso
       security: [{ bearerAuth: [] }]
@@ -205,10 +483,204 @@ paths:
                 accion: { type: string, maxLength: 30 }
                 descripcion: { type: string, nullable: true, maxLength: 250 }
       responses:
-        '200': { description: Permiso creado }
-        '403': { description: Falta SEGURIDAD_PERMISOS_ADMIN }
-        '409': { description: Código o módulo/acción duplicados }
+        '400':
+          description: JSON, parámetros o validación inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '200':
+          description: Permiso creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermisoResponse'
+        '403':
+          description: Falta SEGURIDAD_PERMISOS_ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '409':
+          description: Código o módulo/acción duplicados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Autenticación requerida o token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
 components:
+  schemas:
+    AuthError:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      - code
+      - message
+      properties:
+        status:
+          type: integer
+          example: 401
+        code:
+          type: string
+          example: UNAUTHORIZED
+        message:
+          type: string
+          example: Autenticación requerida
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - accessToken
+      - tokenType
+      - expiresAt
+      - usuario
+      properties:
+        accessToken:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+          description: Token opaco; no se persiste en claro en el servidor.
+        tokenType:
+          type: string
+          enum:
+          - Bearer
+        expiresAt:
+          type: string
+          format: date-time
+        usuario:
+          $ref: '#/components/schemas/UsuarioResumen'
+    UsuarioResumen:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - username
+      - correo
+      - roles
+      - permisos
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        correo:
+          type: string
+          format: email
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        permisos:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    UsuarioResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - username
+      - correo
+      - activo
+      - empleadoId
+      - clienteId
+      - ultimoAcceso
+      - roles
+      - permisos
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        correo:
+          type: string
+          format: email
+        activo:
+          type: boolean
+        empleadoId:
+          type: integer
+          format: int64
+          nullable: true
+        clienteId:
+          type: integer
+          format: int64
+          nullable: true
+        ultimoAcceso:
+          type: string
+          format: date-time
+          nullable: true
+        roles:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        permisos:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    RolResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - codigo
+      - nombre
+      - descripcion
+      - permisos
+      properties:
+        id:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+        nombre:
+          type: string
+        descripcion:
+          type: string
+          nullable: true
+        permisos:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    PermisoResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - codigo
+      - modulo
+      - accion
+      - descripcion
+      properties:
+        id:
+          type: integer
+          format: int64
+        codigo:
+          type: string
+        modulo:
+          type: string
+        accion:
+          type: string
+        descripcion:
+          type: string
+          nullable: true
   securitySchemes:
     bearerAuth:
       type: http

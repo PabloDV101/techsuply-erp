@@ -1,14 +1,12 @@
 @startuml ERP_04_Contabilidad
- title TechSupply Solutions - Vista logica: Contabilidad y finanzas (v1.1)
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Vista logica: Contabilidad y finanzas (modelo objetivo)
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Catalogos contables" {
   class CuentaContable {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +tipo: TipoCuenta
@@ -18,7 +16,7 @@
   +activa: Boolean
 }
   class PeriodoContable {
-  +id: UUID
+  +id: Long
   +fechaInicio: Date
   +fechaFin: Date
   +estado: EstadoPeriodo
@@ -27,20 +25,20 @@
  }
  package "Libro diario y mayor" {
   class AsientoContable {
-  +id: UUID
+  +id: Long
   +folio: String
   +fechaContable: Date
   +descripcion: String
   +estado: EstadoAsiento
   +origenTipo: String
-  +origenId: UUID
+  +origenId: Long
   +claveIdempotencia: String
   +validarBalance(): Boolean
   +contabilizar()
   +revertir()
 }
   class DetalleAsiento {
-  +id: UUID
+  +id: Long
   +numeroLinea: Integer
   +debe: Decimal
   +haber: Decimal
@@ -49,7 +47,7 @@
  }
  package "Control presupuestario (futuro)" {
   class Presupuesto <<Futura>> {
-    +id: UUID
+    +id: Long
     +anio: Integer
     +mes: Integer
     +monto: Decimal
@@ -57,7 +55,7 @@
  }
  package "Cuentas auxiliares" {
   class CuentaPorCobrar {
-  +id: UUID
+  +id: Long
   +montoOriginal: Decimal
   +/saldoPendiente: Decimal
   +fechaEmision: Date
@@ -65,12 +63,12 @@
   +estado: EstadoCuentaAuxiliar
 }
   class AplicacionCobro {
-  +id: UUID
+  +id: Long
   +montoAplicado: Decimal
   +fechaAplicacion: DateTime
 }
   class CobroCliente {
-  +id: UUID
+  +id: Long
   +folio: String
   +fecha: DateTime
   +monto: Decimal
@@ -79,7 +77,7 @@
   +claveIdempotencia: String
 }
   class CuentaPorPagar {
-  +id: UUID
+  +id: Long
   +montoOriginal: Decimal
   +/saldoPendiente: Decimal
   +fechaEmision: Date
@@ -87,12 +85,12 @@
   +estado: EstadoCuentaAuxiliar
 }
   class AplicacionPagoProveedor {
-  +id: UUID
+  +id: Long
   +montoAplicado: Decimal
   +fechaAplicacion: DateTime
 }
   class PagoProveedor {
-  +id: UUID
+  +id: Long
   +folio: String
   +fecha: DateTime
   +monto: Decimal

@@ -1,8 +1,8 @@
-
 @startuml CU_Contabilidad
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Contabilidad
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
 
 actor "Contador" as Contador
 actor "Gerente general" as Gerente
@@ -28,31 +28,33 @@ rectangle "ERP - Contabilidad y Finanzas" {
 }
 
 
-Contador --> PlanCuentas
-Contador --> Asiento
-Contador --> Mayor
-Contador --> Balance
-Contador --> CuentasPagar
-Contador --> CuentasCobrar
-Contador --> Pagos
-Contador --> Conciliar
-Contador --> Resultados
-Contador --> BalanceGeneral
-Contador --> FlujoEfectivo
+Contador -- PlanCuentas
+Contador -- Asiento
+Contador -- Mayor
+Contador -- Balance
+Contador -- CuentasPagar
+Contador -- CuentasCobrar
+Contador -- Pagos
+Contador -- Conciliar
+Contador -- Resultados
+Contador -- BalanceGeneral
+Contador -- FlujoEfectivo
 
-Compras --> CuentasPagar
-Ventas --> CuentasCobrar
+Compras -- CuentasPagar
+Ventas -- CuentasCobrar
 
-Gerente --> Resultados
-Gerente --> BalanceGeneral
-Gerente --> FlujoEfectivo
-Auditor --> Trazabilidad
+Gerente -- Resultados
+Gerente -- BalanceGeneral
+Gerente -- FlujoEfectivo
+Auditor -- Trazabilidad
 
 Asiento ..> Documentos : <<include>>
 Asiento ..> Validar : <<include>>
-Mayor ..> Asiento : <<include>>
-Balance ..> Mayor : <<include>>
 Conciliar ..> Documentos : <<include>>
 Trazabilidad ..> Documentos : <<include>>
 
+note bottom of Mayor
+  Mayor y balance consultan partidas contabilizadas.
+  Consultar nunca incluye registrar un asiento nuevo.
+end note
 @enduml

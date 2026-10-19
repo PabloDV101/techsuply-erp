@@ -1,62 +1,72 @@
 @startuml ERP_01_Gestion_Maestra_Seguridad
- title TechSupply Solutions - Vista logica: Gestion maestra y seguridad (v1.1)
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+ title TechSupply Solutions - Vista logica: Gestion maestra y seguridad (modelo objetivo)
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
- package "Seguridad" {
-  class Usuario {
-    +id: UUID
-    +nombreUsuario: String
-    +correo: String
-    +hashContrasena: String
-    +activo: Boolean
-    +fechaCreacion: DateTime
-    +ultimoAcceso: DateTime
+ package "Seguridad · entidades actuales y capacidades objetivo" {
+  class Usuario <<implementado>> {
+    -id: Long
+    -username: String
+    -correo: String
+    -passwordHash: String
+    -empleadoId: Long [0..1]
+    -clienteId: Long [0..1]
+    -activo: boolean
+    -intentosFallidos: short
+    -bloqueadoHasta: Instant [0..1]
+    -ultimoAcceso: Instant [0..1]
+    -creadoEn: Instant
+    +incrementarIntentosFallidos()
+    +reiniciarIntentosFallidos()
   }
-  class AsignacionRol {
-    +usuarioId: UUID
-    +rolId: UUID
-    +asignadoPorUsuarioId: UUID
-    +asignadoEn: DateTime
+  class IdentificadorUsuario <<SQL>> {
+    +identificador: String {PK, unique}
+    +usuarioId: Long {FK}
   }
-  class Rol {
-  +id: UUID
-  +codigo: String
-  +nombre: String
-  +activo: Boolean
-}
-  class Permiso {
-  +id: UUID
-  +codigo: String
-  +modulo: String
-  +accion: String
-}
-  class SolicitudAutorizacion {
-    +id: UUID
+  class AsignacionRol <<SQL>> {
+    +usuarioId: Long
+    +rolId: Long
+    +asignadoPorUsuarioId: Long [0..1]
+    +asignadoEn: Instant
+  }
+  class Rol <<implementado>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -descripcion: String [0..1]
+    -activo: boolean
+  }
+  class Permiso <<implementado>> {
+    -id: Long
+    -codigo: String
+    -modulo: String
+    -accion: String
+    -descripcion: String [0..1]
+  }
+  class SolicitudAutorizacion <<objetivo>> {
+    +id: Long
     +tipo: String
     +entidadTipo: String
-    +entidadId: UUID
+    +entidadId: Long
     +estado: EstadoAutorizacion
     +motivo: String
     +solicitadaEn: DateTime
     +resueltaEn: DateTime
   }
-  class TokenSesion {
-  +id: UUID
-  +tokenHash: String
-  +emitidoEn: DateTime
-  +venceEn: DateTime
-  +revocadoEn: DateTime
-}
-  class EventoAuditoria {
-  +id: UUID
+  class TokenSesion <<implementado>> {
+    -id: Long
+    -tokenHash: String
+    -emitidoEn: Instant
+    -venceEn: Instant
+    -revocadoEn: Instant [0..1]
+  }
+  class EventoAuditoria <<objetivo>> {
+  +id: Long
   +fechaHora: DateTime
   +accion: String
   +entidad: String
-  +entidadId: UUID
+  +entidadId: Long
   +resultado: String
   +valoresAnteriores: JSON
   +valoresNuevos: JSON
@@ -64,7 +74,7 @@
  }
  package "Estructura organizacional" {
   class Empleado {
-  +id: UUID
+  +id: Long
   +numeroEmpleado: String
   +nombres: String
   +apellidos: String
@@ -72,13 +82,13 @@
   +activo: Boolean
 }
   class Departamento {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +activo: Boolean
 }
   class Puesto {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +activo: Boolean
@@ -86,7 +96,7 @@
  }
  package "Catalogos comerciales" {
   class Cliente {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombreRazonSocial: String
   +identificadorFiscal: String
@@ -95,7 +105,7 @@
   +activo: Boolean
 }
   class Proveedor {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombreRazonSocial: String
   +identificadorFiscal: String
@@ -103,13 +113,13 @@
   +activo: Boolean
 }
   class CategoriaProducto {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +activa: Boolean
 }
   class Producto {
-  +id: UUID
+  +id: Long
   +sku: String
   +nombre: String
   +unidadMedida: String
@@ -119,7 +129,7 @@
   +activo: Boolean
 }
   class Almacen {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +sede: String
@@ -132,8 +142,8 @@
   RECHAZADA
 }
 
- Usuario "0..1" -- "0..1" Empleado : cuenta interna
- Usuario "0..1" -- "0..1" Cliente : cuenta del portal
+ Usuario "0..1" -- "0..1" Empleado : vínculo objetivo / sin FK actual
+ Usuario "0..1" -- "0..1" Cliente : vínculo objetivo / sin FK actual
  Usuario "1" -- "0..*" AsignacionRol
  Rol "1" -- "0..*" AsignacionRol
  AsignacionRol "0..*" --> "0..1" Usuario : asignado por
@@ -144,23 +154,40 @@
  CategoriaProducto "0..1" <-- "0..*" CategoriaProducto : categoria padre
  CategoriaProducto "1" -- "0..*" Producto : clasifica
  Proveedor "0..1" <-- "0..*" Producto : proveedor principal
- Usuario "0..*" -- "0..1" EventoAuditoria : actor opcional
+ Usuario "0..1" -- "0..*" EventoAuditoria : actor opcional
+ Usuario "1" -- "1..2" IdentificadorUsuario : identificadores_usuario
  Usuario "1" -- "0..*" TokenSesion
  Usuario "1" -- "0..*" SolicitudAutorizacion : solicitante
  Usuario "0..1" <-- "0..*" SolicitudAutorizacion : resuelve
 
  note right of Usuario
-  IDs UUID en el modelo y en las vistas UML.
+  IDs Long en Java / bigint en PostgreSQL.
+  Gestión maestra, auditoría y sus FK aún son objetivo.
   La cuenta puede vincularse a un empleado o a un cliente,
-  nunca a ambos. La cuenta de cliente solo ve sus datos.
+  nunca a ambos. El portal y su alcance de datos son objetivo.
   Las cuentas tecnicas/admin pueden no tener vinculo persona.
   El backend valida permisos; React solo presenta opciones.
+ end note
+ note right of IdentificadorUsuario
+  Tabla SQL, sin entidad JPA; el trigger sincroniza username/correo.
+  PK compartida evita ambigüedad y colisiones concurrentes.
+  Si username = correo, solo hay una fila; en otro caso hay dos.
+ end note
+ note bottom of AsignacionRol
+  Tabla usuarios_roles con PK(usuario_id, rol_id).
+  No es clase Java: @ManyToMany + UPDATE nativo guarda asignador/fecha.
+  Roles y permisos se unen mediante roles_permisos con PK compuesta.
+ end note
+ note bottom of TokenSesion
+  Bearer opaco: 32 bytes aleatorios, SHA-256 persistido.
+  Vigencia de dos horas; revocado_en invalida solicitudes posteriores.
  end note
  note bottom of Producto
   SKU unico. El stock real no se guarda en Producto:
   existencias se controla por producto y almacen.
  end note
  note bottom of EventoAuditoria
+  OBJETIVO: no existe integración de auditoría en el backend actual.
   Registro de solo adicion para cambios/operaciones criticas.
   No almacenar contrasenas, tokens ni secretos.
  end note

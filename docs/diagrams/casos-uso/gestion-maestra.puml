@@ -1,8 +1,8 @@
-
 @startuml CU_Gestion_Maestra
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Gestion maestra
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
 
 actor "Responsable de compras" as Compras
 actor "Responsable de ventas" as Ventas
@@ -24,30 +24,32 @@ rectangle "ERP - Gestión Maestra" {
   usecase "Consultar catálogos" as Catalogos
 }
 
-Compras --> Proveedores
-Compras --> HistorialProveedores
-Compras --> Productos
+Compras -- Proveedores
+Compras -- HistorialProveedores
+Compras -- Productos
 
-Ventas --> Clientes
-Ventas --> HistorialClientes
-Ventas --> ConsultarProductos
+Ventas -- Clientes
+Ventas -- HistorialClientes
+Ventas -- ConsultarProductos
 
-Almacen --> Productos
-Almacen --> Almacenes
-Almacen --> ClasificarProductos
+Almacen -- Productos
+Almacen -- Almacenes
+Almacen -- ClasificarProductos
 
-RRHH --> Empleados
-RRHH --> Departamentos
+RRHH -- Empleados
+RRHH -- Departamentos
 
-Admin --> Productos
-Admin --> Proveedores
-Admin --> Clientes
-Admin --> Empleados
-Admin --> Almacenes
+Admin -- Productos
+Admin -- Proveedores
+Admin -- Clientes
+Admin -- Empleados
+Admin -- Almacenes
 
 ConsultarProductos ..> Catalogos : <<include>>
 ClasificarProductos ..> Productos : <<extend>>
-HistorialProveedores ..> Proveedores : <<extend>>
-HistorialClientes ..> Clientes : <<extend>>
 
+note bottom of HistorialProveedores
+  Los historiales consultan registros existentes.
+  No requieren ejecutar el mantenimiento del catálogo.
+end note
 @enduml

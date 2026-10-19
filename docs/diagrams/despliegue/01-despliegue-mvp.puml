@@ -1,13 +1,8 @@
 @startuml TechSupply_Deployment_MVP
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
  title TechSupply Solutions - Despliegue MVP
  top to bottom direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam componentStyle rectangle
- skinparam packageStyle rectangle
- skinparam nodesep 35
- skinparam ranksep 42
- skinparam defaultTextAlignment center
 
  actor "Usuario interno o cliente" as User
 
@@ -19,7 +14,7 @@
  }
 
  node "Servidor privado de aplicaciones" as AppHost {
-   artifact "techsupply-erp.jar\nJava 21 + Spring Boot" as API
+   artifact "erp-backend-0.0.1-SNAPSHOT.jar\nJava 21 + Spring Boot" as API
  }
 
  node "Red privada de datos" as DataNetwork {
@@ -64,4 +59,10 @@
    La migración se ejecuta como paso de release,
    no como tarea duplicada de cada instancia.
  end note
+note as ImplementacionActual
+  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
+  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
+  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
+  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
+end note
 @enduml

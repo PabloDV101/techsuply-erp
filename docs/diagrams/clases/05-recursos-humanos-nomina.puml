@@ -1,14 +1,12 @@
 @startuml ERP_05_Recursos_Humanos
- title TechSupply Solutions - Vista logica: Recursos humanos y nomina (v1.1)
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Vista logica: Recursos humanos y nomina (modelo objetivo)
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Administracion laboral" {
   class ExpedienteLaboral {
-  +id: UUID
+  +id: Long
   +numeroContrato: String
   +fechaInicio: Date
   +fechaFin: Date
@@ -17,13 +15,13 @@
   +estado: EstadoContrato
 }
   class RegistroAsistencia {
-  +id: UUID
+  +id: Long
   +fecha: Date
   +tipo: TipoAsistencia
   +observaciones: String
 }
   class SolicitudVacaciones {
-  +id: UUID
+  +id: Long
   +fechaSolicitud: DateTime
   +fechaInicio: Date
   +fechaFin: Date
@@ -35,7 +33,7 @@
  }
  package "Nomina simplificada" {
   class PeriodoNomina {
-  +id: UUID
+  +id: Long
   +fechaInicio: Date
   +fechaFin: Date
   +fechaPago: Date
@@ -43,7 +41,7 @@
   +estado: EstadoPeriodoNomina
 }
   class Nomina {
-  +id: UUID
+  +id: Long
   +folio: String
   +fechaCalculo: DateTime
   +totalPercepciones: Decimal
@@ -54,27 +52,27 @@
   +aprobar()
 }
   class DetalleNomina {
-  +id: UUID
+  +id: Long
   +salarioBase: Decimal
   +totalPercepciones: Decimal
   +totalDeducciones: Decimal
   +netoPagar: Decimal
 }
   class ConceptoNomina {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +tipo: TipoConceptoNomina
   +activo: Boolean
 }
   class MovimientoNomina {
-  +id: UUID
+  +id: Long
   +cantidad: Decimal
   +importeUnitario: Decimal
   +importeTotal: Decimal
 }
   class PagoNomina {
-  +id: UUID
+  +id: Long
   +fechaPago: Date
   +monto: Decimal
   +referencia: String

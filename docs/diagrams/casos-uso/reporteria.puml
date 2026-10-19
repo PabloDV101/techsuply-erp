@@ -1,8 +1,8 @@
 @startuml CU_Reporteria
- title TechSupply Solutions - Casos de uso de reporteria (v1.1)
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Casos de uso de reporteria (modelo objetivo)
  left to right direction
- skinparam packageStyle rectangle
- skinparam shadowing false
 
  actor "Gerente general" as Gerente
  actor "Responsable de compras" as Compras
@@ -25,19 +25,19 @@
   usecase "Exportar reporte" as Exportar
   usecase "Aplicar permisos de datos" as PermisosDatos
  }
- Gerente --> Dashboard
- Gerente --> ReporteCompras
- Gerente --> ReporteInventario
- Gerente --> ReporteVentas
- Gerente --> ReporteFinanciero
- Gerente --> Rentabilidad
- Gerente --> Indicadores
- Compras --> ReporteCompras
- Almacen --> ReporteInventario
- Almacen --> Rotacion
- Ventas --> ReporteVentas
- Contador --> ReporteFinanciero
- RRHH --> ReporteRRHH
+ Gerente -- Dashboard
+ Gerente -- ReporteCompras
+ Gerente -- ReporteInventario
+ Gerente -- ReporteVentas
+ Gerente -- ReporteFinanciero
+ Gerente -- Rentabilidad
+ Gerente -- Indicadores
+ Compras -- ReporteCompras
+ Almacen -- ReporteInventario
+ Almacen -- Rotacion
+ Ventas -- ReporteVentas
+ Contador -- ReporteFinanciero
+ RRHH -- ReporteRRHH
  Dashboard ..> Indicadores : <<include>>
  ReporteCompras ..> Filtros : <<include>>
  ReporteInventario ..> Filtros : <<include>>

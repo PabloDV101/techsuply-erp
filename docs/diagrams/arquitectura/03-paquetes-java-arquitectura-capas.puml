@@ -1,110 +1,64 @@
 @startuml TSS_Paquetes_Java
- title TechSupply Solutions - Organización de paquetes Java
-top to bottom direction
-skinparam shadowing false
-skinparam linetype ortho
-skinparam packageStyle rectangle
-skinparam defaultFontName Arial
-skinparam wrapWidth 180
-skinparam nodesep 25
-skinparam ranksep 32
-
-package "com.techsupply.erp" as Root {
-  package "api" as ApiPkg {
-    component "Controllers / rutas" as ApiControllers
-    component "DTO / mappers" as ApiDto
-    component "Manejo de errores" as ApiErrors
+!include ../_estilo.iuml
+title TechSupply Solutions — Dependencias de paquetes actuales y objetivo
+caption VISTA MIXTA · Azul: implementado; gris: diseño objetivo; las notas delimitan las integraciones pendientes.
+left to right direction
+package "com.techsupply.erp_backend" {
+  package "security.api" as API {
+    component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
+    component "AuthExceptionHandler / AuthErrorWriter" as Errors <<implementado>>
   }
-  package "application" as AppPkg {
-    component "Casos de uso" as AppUseCases
-    component "Puertos / interfaces" as AppPorts
-    component "Coordinación transaccional" as AppTx
+  package "security.application" as App {
+    component "AuthService / UserManagementService" as Services <<implementado>>
+    interface "AuthenticatedUserProvider" as Identity
+    component "DTO y validación UTF-8" as DTO <<implementado>>
   }
-  package "modules" as ModulesPkg {
-    package "maestros" as MstPkg {
-      component "Dominio maestros" as MstDomain
-      component "Servicio maestros" as MstApp
-      component "Adaptador JPA maestros" as MstInfra
-    }
-    package "compras" as BuyPkg {
-      component "Dominio compras" as BuyDomain
-      component "Servicio compras" as BuyApp
-      component "Adaptador JPA compras" as BuyInfra
-    }
-    package "inventario" as InvPkg {
-      component "Dominio inventario" as InvDomain
-      component "Servicio inventario" as InvApp
-      component "Adaptador JPA inventario" as InvInfra
-    }
-    package "ventas" as SalesPkg {
-      component "Dominio ventas" as SalesDomain
-      component "Servicio ventas" as SalesApp
-      component "Adaptador JPA ventas" as SalesInfra
-    }
-    package "contabilidad" as AccPkg {
-      component "Dominio contable" as AccDomain
-      component "Servicio contable" as AccApp
-      component "Adaptador JPA contable" as AccInfra
-    }
-    package "nomina" as PayPkg {
-      component "Dominio laboral" as PayDomain
-      component "Servicio nómina" as PayApp
-      component "Adaptador JPA nómina" as PayInfra
-    }
+  package "security.domain.model" as Domain {
+    component "Usuario / Rol / Permiso / TokenSesion\nEntidades JPA" as Entities <<implementado>>
   }
-  package "shared" as SharedPkg {
-    component "Seguridad" as SharedSecurity
-    component "Auditoría" as SharedAudit
-    component "Validación" as SharedValidation
-    component "Reportería" as SharedReporting
-    component "Notificaciones" as SharedNotifications
-    component "Errores comunes" as SharedErrors
+  package "security.infrastructure" as Infra {
+    component "persistence\nRepositorios Spring Data JPA" as Repo <<implementado>>
+    component "security\nFiltro Bearer, token y adaptador de identidad" as Adapter <<implementado>>
   }
-  package "infrastructure" as InfraPkg {
-    component "Configuración" as InfraConfig
-    component "Spring Data JPA" as InfraJpa
-    component "Flyway" as InfraFlyway
-    database "PostgreSQL" as InfraDb
+  package "security.config" as Config {
+    component "SecurityConfig / SecurityClockConfig\nAdminBootstrapRunner (opcional)" as Configuration <<implementado>>
+  }
+  package "Módulos pendientes · nombres propuestos" as Modules {
+    component "maestros" as Masters <<objetivo>>
+    component "compras" as Buy <<objetivo>>
+    component "inventario" as Inv <<objetivo>>
+    component "ventas" as Sales <<objetivo>>
+    component "contabilidad" as Acc <<objetivo>>
+    component "rrhh / nómina" as Pay <<objetivo>>
+    component "reportería / auditoría / notificaciones" as Shared <<objetivo>>
   }
 }
-
-ApiControllers --> AppUseCases : llama casos de uso
-ApiControllers ..> SharedSecurity : protegido por
-AppUseCases --> AppTx
-AppUseCases --> MstApp
-AppUseCases --> BuyApp
-AppUseCases --> InvApp
-AppUseCases --> SalesApp
-AppUseCases --> AccApp
-AppUseCases --> PayApp
-BuyApp --> InvApp : API interna pública
-SalesApp --> InvApp : reserva / despacho
-BuyApp --> AccApp : origen validado
-SalesApp --> AccApp : factura validada
-PayApp --> AccApp : nómina aprobada
-MstApp ..> SharedAudit
-BuyApp ..> SharedAudit
-InvApp ..> SharedAudit
-SalesApp ..> SharedAudit
-AccApp ..> SharedAudit
-PayApp ..> SharedAudit
-MstInfra ..> InfraJpa
-BuyInfra ..> InfraJpa
-InvInfra ..> InfraJpa
-SalesInfra ..> InfraJpa
-AccInfra ..> InfraJpa
-PayInfra ..> InfraJpa
-InfraJpa ..> AppPorts : implementa contratos
-InfraJpa --> InfraDb
-InfraFlyway --> InfraDb
-
-note right of AppPkg
-  Regla de dependencias:
-  API -> Aplicación -> Dominio.
-  Dominio no depende de HTTP ni SQL.
-end note
-note bottom of InfraPkg
-  Adaptadores concretos implementan contratos.
-  No importar persistencia privada de otro módulo.
+database "PostgreSQL" as DB
+Controllers ..> DTO : valida / devuelve
+Controllers ..> Services : invoca
+Controllers ..> Errors : traduce errores
+Services ..> Entities
+Services ..> Repo : dependencia directa actual
+Services ..> Identity
+Adapter ..|> Identity : implementa
+Adapter ..> Repo : consulta sesión y permisos
+Configuration ..> Adapter : configura cadena
+Repo --> DB : JPA / SQL
+Buy ..> Inv : recepción / devolución (objetivo)
+Sales ..> Inv : reserva / despacho (objetivo)
+Buy ..> Acc : origen validado (objetivo)
+Sales ..> Acc : factura validada (objetivo)
+Pay ..> Acc : nómina aprobada (objetivo)
+Masters ..> Shared
+Buy ..> Shared
+Inv ..> Shared
+Sales ..> Shared
+Acc ..> Shared
+Pay ..> Shared
+note bottom of Domain
+  Estado actual: dominio contiene anotaciones JPA;
+  aplicación usa repositorios Spring Data directamente.
+  El aislamiento por puertos de los futuros módulos es una propuesta,
+  no una propiedad ya implementada en security.
 end note
 @enduml

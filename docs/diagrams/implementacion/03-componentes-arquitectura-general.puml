@@ -1,66 +1,60 @@
 @startuml TechSupply_Component_Overview
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
  title TechSupply Solutions - Componentes principales
  left to right direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam componentStyle uml2
- skinparam packageStyle rectangle
- skinparam nodesep 34
- skinparam ranksep 38
- skinparam defaultTextAlignment center
 
  actor "Usuario interno" as Employee
  actor "Cliente" as Customer
 
  package "Frontend" as Frontend {
    component "Aplicación web\nReact + TypeScript" as React
-   component "Cliente HTTP\nREST / JSON" as HttpClient
+   component "Cliente HTTP\nREST / JSON" as HttpClient <<objetivo>>
  }
 
  package "Backend monolítico modular\nSpring Boot / Java 21" as Backend {
-   component "Cadena de filtros\nSpring Security" as Security
-   component "Controladores REST\nDTOs y validación de entrada" as Controllers
-   component "Servicios de aplicación\ncasos de uso" as AppServices
-
+   component "Cadena de filtros\nSpring Security" as Security <<implementado>>
+   component "Controladores REST\nDTOs y validación de entrada" as Controllers <<implementado>>
+   component "AuthService / UserManagementService" as AppServices <<implementado>>
    package "Módulos de negocio" as Modules {
-     component "Gestión maestra" as Masters
-     component "Compras" as Purchasing
-     component "Inventario" as Inventory
-     component "Ventas" as Sales
-     component "Contabilidad" as Accounting
-     component "RR. HH. y nómina" as Payroll
+     component "Gestión maestra" as Masters <<objetivo>>
+     component "Compras" as Purchasing <<objetivo>>
+     component "Inventario" as Inventory <<objetivo>>
+     component "Ventas" as Sales <<objetivo>>
+     component "Contabilidad" as Accounting <<objetivo>>
+     component "RR. HH. y nómina" as Payroll <<objetivo>>
    }
 
    package "Servicios compartidos" as Shared {
-     component "Auditoría" as Audit
-     component "Reportería\nsolo lectura" as Reporting
-     component "Notificaciones" as Notifications
-     component "Manejo global de errores" as ErrorHandler
+     component "Auditoría" as Audit <<objetivo>>
+     component "Reportería\nsolo lectura" as Reporting <<objetivo>>
+     component "Notificaciones" as Notifications <<objetivo>>
+     component "Manejo global de errores" as ErrorHandler <<implementado>>
    }
-   component "Adaptadores de persistencia\nSpring Data JPA / Hibernate" as Persistence
+   component "Adaptadores de persistencia\nSpring Data JPA / Hibernate" as Persistence <<implementado>>
  }
 
  database "PostgreSQL\nuna base de datos, módulos con propiedad de sus tablas" as DB
 
  Employee --> React
  Customer --> React
- React --> HttpClient
+ React ..> HttpClient
  HttpClient --> Security : HTTPS /api
  Security --> Controllers : solicitud autenticada
  Controllers --> AppServices : ejecutar caso de uso
- AppServices --> Masters
- AppServices --> Purchasing
- AppServices --> Inventory
- AppServices --> Sales
- AppServices --> Accounting
- AppServices --> Payroll
- Purchasing --> Inventory : API interna del módulo\nrecepción confirmada
- Sales --> Inventory : API interna del módulo\nreserva y despacho
- Purchasing --> Accounting : servicio de aplicación\ncuenta por pagar validada
- Sales --> Accounting : servicio de aplicación\ncuenta por cobrar validada
- Payroll --> Accounting : datos de nómina aprobada
- AppServices --> Audit : registrar cambios relevantes
- AppServices --> Notifications : evento posterior al commit
+ AppServices ..> Masters
+ AppServices ..> Purchasing
+ AppServices ..> Inventory
+ AppServices ..> Sales
+ AppServices ..> Accounting
+ AppServices ..> Payroll
+ Purchasing ..> Inventory : API interna del módulo\nrecepción confirmada
+ Sales ..> Inventory : API interna del módulo\nreserva y despacho
+ Purchasing ..> Accounting : servicio de aplicación\ncuenta por pagar validada
+ Sales ..> Accounting : servicio de aplicación\ncuenta por cobrar validada
+ Payroll ..> Accounting : datos de nómina aprobada
+ AppServices ..> Audit : registrar cambios relevantes
+ AppServices ..> Notifications : evento posterior al commit
  Masters --> Persistence
  Purchasing --> Persistence
  Inventory --> Persistence
@@ -76,4 +70,9 @@
    pero mantienen sus reglas y servicios propios.
    No deben acceder a repositorios internos de otros módulos.
  end note
+note as EstadoActual
+  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
+  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+end note
 @enduml

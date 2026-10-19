@@ -2,8 +2,9 @@
 
 **Proyecto:** Sistema ERP para Distribuidora TechSupply Solutions  
 **Identificador:** SRS-TSS-ERP-001  
-**Versión:** 1.0 — propuesta consolidada para validación académica  
+**Versión:** 1.1 — propuesta consolidada para validación académica (sincronización documental)
 **Fecha:** 11 de octubre de 2026  
+**Revisión documental:** 19 de octubre de 2026
 **Estado:** Borrador de trabajo  
 **Tecnologías objetivo:** React + TypeScript, Java 21 + Spring Boot, PostgreSQL  
 
@@ -468,6 +469,8 @@ Esta decisión limita la complejidad de despliegue y permite operaciones transac
 4. **Persistencia e infraestructura:** implementaciones de repositorios, JPA/Hibernate, migraciones y conexiones externas. Implementa contratos definidos por capas superiores.
 5. **Servicios compartidos:** auditoría, autorización común, validación, reportería, errores y notificaciones. No se deben convertir en un conjunto de dependencias globales que permita saltarse los límites de los módulos.
 
+**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración, validación y errores de seguridad. Sus entidades de dominio contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Auditoría, portal React, CORS, Nginx/TLS, notificaciones y jobs de despliegue/backup siguen pendientes.
+
 ### 8.4 Módulos del dominio
 
 | Módulo | Responsabilidad y límite principal |
@@ -511,7 +514,7 @@ En Spring, estas operaciones se pueden delimitar con `@Transactional`. La concur
 - Las contraseñas se almacenan con hash robusto, nunca en texto plano.
 - HTTPS protege el tráfico externo. Los secretos y credenciales se mantienen fuera del repositorio.
 - Spring Security valida la autenticación y el backend aplica permisos por acción/módulo.
-- Si se adopta JWT, deberá definirse expiración y almacenamiento seguro; no incluir secretos en el token ni escribirlo en logs. Si se usan cookies, se protegerán solicitudes mutables contra CSRF.
+- La implementación actual usa Bearer opaco: 32 bytes aleatorios, hash SHA-256 en `tokens_sesion`, vigencia de dos horas y revocación persistida. La sesión HTTP es stateless; el token mantiene estado en PostgreSQL. JWT sería una alternativa futura que requiere decisión explícita. No escribir tokens en logs. Si se usan cookies, se protegerán solicitudes mutables contra CSRF.
 - Auditoría no debe guardar contraseñas, tokens ni secretos.
 - Los respaldos y datos persistentes deben tener controles de acceso y cifrado compatibles con la infraestructura.
 
@@ -528,14 +531,16 @@ El MVP puede ejecutarse con una instancia de Spring Boot y una de PostgreSQL. In
 
 ### 8.9 Diagramas de arquitectura entregados
 
-Los códigos fuente acompañan este SRS en la carpeta `plantuml/`:
+Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo local y distinguen el diseño objetivo de la implementación; `docs/diagrams/README.md` define el alcance y los comandos de validación:
 - `01-arquitectura-contexto-contenedores.puml`: actores, interfaz, backend, módulos y base de datos.
 - `02-componentes-backend-springboot.puml`: componentes internos y dependencias.
 - `03-paquetes-java-arquitectura-capas.puml`: organización del código Java por capas/módulo.
 - `04-vista-despliegue-react-spring-postgres.puml`: nodos, artefactos y comunicaciones.
 - `05-secuencia-recepcion-compra.puml`: atomicidad de recepción e inventario.
 - `06-secuencia-venta-despacho.puml`: reserva, despacho parcial y salida.
-- `07-secuencia-contabilizacion.puml`: validación de origen, periodo, equilibrio e idempotencia.
+- `07-secuencia-contabilizacion.puml`: validación de origen, periodo, equilibrio e idempotencia (objetivo).
+- `08-secuencia-autenticacion.puml`: login, validación Bearer, autorización y logout implementados.
+- `../despliegue/00-despliegue-actual.puml`: ejecución local y pruebas aisladas reales; las demás vistas de despliegue describen objetivos.
 
 ### 8.10 Correspondencia con el modelo 4 + 1
 
@@ -561,7 +566,7 @@ Los códigos fuente acompañan este SRS en la carpeta `plantuml/`:
 
 ### 9.2 Restricciones de almacenamiento
 
-- Identificadores internos consistentes, UUID recomendado; folios legibles únicos por tipo documental.
+- Identificadores internos `Long` en Java y `bigint` autogenerado en PostgreSQL, como en seguridad y el contrato HTTP vigente. El modelo documental propaga esta convención a los módulos pendientes para mantener compatibilidad de FK; ello no implementa tablas ni autoriza cambiar datos existentes. Folios legibles únicos por tipo documental.
 - SKU, correo de usuario y códigos de catálogo únicos donde aplique.
 - Cantidades, importes y tasas con escala definida y validaciones de valores no negativos donde corresponda.
 - Claves foráneas para relaciones persistentes.
@@ -636,4 +641,4 @@ La matriz completa de trazabilidad debe ampliarse cuando se creen los identifica
 
 ---
 
-**Fin del documento SRS-TSS-ERP-001, versión 1.0 — propuesta para validación académica.**
+**Fin del documento SRS-TSS-ERP-001, versión 1.1 — propuesta para validación académica.**

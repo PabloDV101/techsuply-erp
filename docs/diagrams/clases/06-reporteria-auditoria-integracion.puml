@@ -1,28 +1,26 @@
 @startuml ERP_06_Reporteria_Auditoria_Integracion
- title TechSupply Solutions - Vista logica: Reporteria, auditoria e integracion (v1.1)
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Vista logica: Reporteria, auditoria e integracion (modelo objetivo)
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Auditoria e integracion" {
   class EventoAuditoria {
-  +id: UUID
+  +id: Long
   +fechaHora: DateTime
   +accion: String
   +entidad: String
-  +entidadId: UUID
+  +entidadId: Long
   +resultado: String
   +valoresAnteriores: JSON
   +valoresNuevos: JSON
   +direccionOrigen: String
 }
   class EventoIntegracion <<OpcionalMVP>> {
-  +id: UUID
+  +id: Long
   +tipoEvento: String
   +entidadOrigen: String
-  +entidadOrigenId: UUID
+  +entidadOrigenId: Long
   +claveIdempotencia: String
   +fechaCreacion: DateTime
   +fechaProcesamiento: DateTime
@@ -33,7 +31,7 @@
  }
  package "Reporteria" {
   class DefinicionReporte {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +descripcion: String
@@ -43,7 +41,7 @@
   +activo: Boolean
 }
   class EjecucionReporte {
-  +id: UUID
+  +id: Long
   +fechaHora: DateTime
   +parametros: JSON
   +formato: FormatoReporte
@@ -52,7 +50,7 @@
   +duracionMs: Long
 }
   class Indicador {
-  +id: UUID
+  +id: Long
   +codigo: String
   +nombre: String
   +descripcion: String
@@ -63,7 +61,7 @@
   +activo: Boolean
 }
   class Notificacion {
-    +id: UUID
+    +id: Long
     +canal: CanalNotificacion
     +destinatarioExterno: String
     +asunto: String
@@ -74,14 +72,14 @@
     +intentos: Integer
   }
   class ParametroSistema {
-    +id: UUID
+    +id: Long
     +modulo: String
     +clave: String
     +valor: String
     +actualizadoEn: DateTime
   }
   class ValorIndicador {
-  +id: UUID
+  +id: Long
   +fechaCalculo: DateTime
   +periodoInicio: Date
   +periodoFin: Date

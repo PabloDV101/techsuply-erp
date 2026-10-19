@@ -1,10 +1,8 @@
 @startuml TSS_Secuencia_Despacho
- title Confirmacion transaccional de despacho de venta - modelo v1.1
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title Confirmacion transaccional de despacho de venta - modelo objetivo
  hide footbox
- skinparam shadowing false
- skinparam responseMessageBelowArrow true
- skinparam sequenceMessageAlign center
- skinparam maxMessageSize 70
 
  actor "Almacen" as User
  boundary "DespachoController" as API

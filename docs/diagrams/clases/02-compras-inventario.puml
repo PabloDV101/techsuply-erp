@@ -1,14 +1,12 @@
 @startuml ERP_02_Compras_Inventario
- title TechSupply Solutions - Vista logica: Compras e inventario (v1.1)
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Vista logica: Compras e inventario (modelo objetivo)
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Compras" {
   class RequisicionCompra {
-  +id: UUID
+  +id: Long
   +folio: String
   +fecha: DateTime
   +estado: EstadoRequisicion
@@ -17,12 +15,12 @@
   +rechazar()
 }
   class DetalleRequisicion {
-  +id: UUID
+  +id: Long
   +cantidadSolicitada: Decimal
   +cantidadAprobada: Decimal
 }
   class OrdenCompra {
-  +id: UUID
+  +id: Long
   +folio: String
   +fechaEmision: DateTime
   +estado: EstadoOrdenCompra
@@ -33,7 +31,7 @@
   +total: Decimal
 }
   class DetalleOrdenCompra {
-  +id: UUID
+  +id: Long
   +cantidad: Decimal
   +precioUnitario: Decimal
   +descuentoPct: Decimal
@@ -41,7 +39,7 @@
   +calcularPendiente(): Decimal
 }
   class RecepcionCompra {
-  +id: UUID
+  +id: Long
   +folio: String
   +fechaRecepcion: DateTime
   +claveIdempotencia: String
@@ -49,14 +47,14 @@
   +confirmar()
 }
   class DetalleRecepcion {
-  +id: UUID
+  +id: Long
   +cantidadRecibida: Decimal
   +cantidadAceptada: Decimal
   +cantidadRechazada: Decimal
   +precioUnitarioRecibido: Decimal
 }
   class FacturaProveedor {
-  +id: UUID
+  +id: Long
   +folioInterno: String
   +numeroFacturaProveedor: String
   +fechaEmision: Date
@@ -68,7 +66,7 @@
   +validarContraCompra()
 }
   class DetalleFacturaProveedor {
-  +id: UUID
+  +id: Long
   +cantidadFacturada: Decimal
   +precioUnitario: Decimal
   +descuentoPct: Decimal
@@ -78,7 +76,7 @@
   +total: Decimal
 }
   class DevolucionProveedor {
-  +id: UUID
+  +id: Long
   +folio: String
   +fecha: DateTime
   +motivo: String
@@ -87,14 +85,14 @@
   +confirmar()
 }
   class DetalleDevolucionProveedor {
-  +id: UUID
+  +id: Long
   +cantidad: Decimal
   +costoUnitario: Decimal
 }
  }
  package "Inventario" {
   class Existencia {
-  +id: UUID
+  +id: Long
   +cantidadFisica: Decimal
   +cantidadReservada: Decimal
   +costoPromedio: Decimal
@@ -102,7 +100,7 @@
   +consultarDisponible(): Decimal
 }
   class MovimientoInventario {
-  +id: UUID
+  +id: Long
   +fechaHora: DateTime
   +tipo: TipoMovimiento
   +motivo: String
@@ -112,27 +110,27 @@
   +revertir()
 }
   class ConteoInventario {
-  +id: UUID
+  +id: Long
   +folio: String
   +fechaProgramada: Date
   +estado: EstadoConteo
 }
   class DetalleConteo {
-  +id: UUID
+  +id: Long
   +cantidadSistema: Decimal
   +cantidadContada: Decimal
   +diferencia: Decimal
   +calcularDiferencia(): Decimal
 }
   class AlertaInventario {
-    +id: UUID
+    +id: Long
     +tipo: TipoAlerta
     +estado: EstadoAlerta
     +generadaEn: DateTime
     +resueltaEn: DateTime
   }
   class AjusteInventario {
-  +id: UUID
+  +id: Long
   +folio: String
   +motivo: String
   +claveIdempotencia: String
@@ -141,7 +139,7 @@
   +aplicar()
 }
   class DetalleAjusteInventario {
-  +id: UUID
+  +id: Long
   +tipo: TipoAjuste
   +cantidad: Decimal
   +costoUnitario: Decimal

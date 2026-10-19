@@ -1,13 +1,8 @@
 @startuml TechSupply_Deployment_Target
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
  title TechSupply Solutions - Despliegue objetivo escalable
  top to bottom direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam componentStyle rectangle
- skinparam packageStyle rectangle
- skinparam nodesep 35
- skinparam ranksep 42
- skinparam defaultTextAlignment center
 
  actor "Usuario interno o cliente" as User
  cloud "Internet / red corporativa" as Network
@@ -56,8 +51,9 @@
  note bottom of AppNet
    Ambas instancias ejecutan el mismo monolito modular.
    No se separan los módulos en microservicios.
-   API stateless con autenticación JWT validada
-   en cada instancia; no depender de memoria local.
+   Sesión HTTP stateless; Bearer opaco validado en PostgreSQL.
+   tokens_sesion es estado compartido y permite revocación.
+   Medir carga antes de añadir instancias; no usar JWT como supuesto.
  end note
 
  note right of DB
@@ -71,4 +67,10 @@
    Verificar compatibilidad antes de desplegar versiones
    nuevas en todas las instancias.
  end note
+note as ImplementacionActual
+  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
+  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
+  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
+  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
+end note
 @enduml

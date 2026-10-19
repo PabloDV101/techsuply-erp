@@ -1,12 +1,11 @@
 @startuml ERP_00_Vista_Logica_Modulos
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
 title TechSupply Solutions - Vista logica general por modulos
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
-skinparam linetype ortho
 
-package "Gestion maestra y seguridad" as Maestros {
-  [Usuarios / Roles / Permisos]
+package "Gestion maestra (objetivo) y seguridad actual" as Maestros {
+  component "Usuarios / Roles / Permisos / TokenSesion" as Auth <<implementado>>
   [Productos / Proveedores / Clientes]
   [Empleados / Almacenes]
 }
@@ -64,5 +63,10 @@ end note
 note bottom of Contabilidad
   Los documentos origen se validan antes de generar
   CxC/CxP y asientos; no contabilizar duplicados.
+end note
+note bottom of Maestros
+  Solo el componente Auth tiene implementación actual.
+  Las demás entidades, reglas y conexiones son el mapa de dominio objetivo.
+  Los identificadores se modelan Long/bigint, compatibles con seguridad.
 end note
 @enduml

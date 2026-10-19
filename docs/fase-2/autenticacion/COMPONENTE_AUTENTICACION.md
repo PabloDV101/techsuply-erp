@@ -1,347 +1,232 @@
 # Componente de autenticación y autorización — TechSupply Solutions
 
-**Documento:** `COMPONENTE_AUTENTICACION.md`  
-**Estado:** diseño y contrato inicial; requiere verificar la implementación Java real.  
-**Stack objetivo:** Java 21, Spring Boot, Spring Security, Spring Data JPA, Flyway y PostgreSQL.  
-**Paquete base propuesto:** `com.techsupply.erp_backend.security`.
+Implementación: `erp-backend/src/main/java/com/techsupply/erp_backend/security`.
+Contrato: `docs/api/openapi-auth.yaml`. Java 21 y Spring Boot 4.1.1.
 
----
+## 1. Comportamiento y límites
 
-## 1. Propósito y alcance
+- Login por username o correo normalizado, con BCrypt coste 12. El hash nunca se expone en DTO.
+- Contraseñas de altas: al menos 12 caracteres y como máximo 72 bytes UTF-8.
+  Login acepta contraseñas no vacías hasta ese límite de bytes. No se recortan contraseñas.
+- Usuario inexistente, inactivo, bloqueado o contraseña incorrecta: `401` con mensaje genérico.
+  Las ramas que no comparan el hash real ejecutan una comparación BCrypt ficticia.
+  Esto reduce diferencias de cómputo; no garantiza tiempos idénticos en red.
+- Cinco fallos bloquean 15 minutos. Un bloqueo vencido inicia una ventana nueva de intentos;
+  un login correcto reinicia intentos/bloqueo y actualiza el último acceso.
+- Login bloquea la fila de usuario con `FOR UPDATE` dentro de una transacción. El `401`
+  por credenciales incorrectas no revierte el incremento de intentos.
+- Tokens opacos de 32 bytes aleatorios (`SecureRandom`), Base64 URL sin relleno.
+  El servidor almacena SHA-256, nunca el token plano. Vigencia absoluta: dos horas.
+- El filtro exige formato opaco, sesión vigente/no revocada y cuenta activa/no bloqueada.
+  Lee roles y permisos actuales; roles inactivos no aportan autoridades.
+- Logout revoca la sesión actual. Una solicitud posterior con ese token recibe `401`,
+  incluido un segundo logout. Una solicitud ya autenticada antes del commit de revocación
+  puede terminar; no existe cancelación retroactiva de operaciones en curso.
+- `/me` devuelve la identidad y permisos desde persistencia, sin hash de contraseña.
+- El filtro se registra solo en Spring Security. Su cadena administra y limpia el contexto.
 
-El componente centraliza la autenticación de usuarios y la autorización de operaciones del ERP. Los demás módulos (Compras, Ventas, Inventario, Contabilidad y RR. HH.) deben consultar la identidad y aplicar permisos sin implementar su propio mecanismo de login.
+La mitigación por cuenta no sustituye un limitador por origen/IP ni pruebas de carga.
+No se afirma protección completa contra fuerza bruta o enumeración temporal.
 
-Requisitos relacionados:
+## 2. Autorización y HTTP
 
-- **RF-SEG-01:** autenticación.
-- **RF-SEG-02:** roles y permisos.
-- **RF-SEG-03:** auditoría de operaciones críticas; requiere integración con el componente de auditoría.
-- **RF-SEG-04:** gestión de sesión/token, expiración y cierre de sesión.
+Públicos: `POST /api/v1/auth/login`, `/actuator/health` y preflight `OPTIONS`.
+El resto exige autenticación. `OPTIONS` no configura CORS.
 
-Esta documentación describe el diseño elegido y el contrato esperado. No sustituye las pruebas: antes de considerar el componente terminado, hay que comprobar que las clases Java y los endpoints descritos existen realmente en el repositorio y funcionan.
-
-## 2. Decisiones de diseño
-
-### 2.1 Tokens opacos
-
-La primera propuesta usa tokens opacos tipo Bearer en lugar de JWT. El servidor genera un token aleatorio y entrega su valor al cliente una sola vez. En PostgreSQL almacena únicamente su hash SHA-256, asociado al usuario, fecha de emisión, vencimiento y revocación.
-
-Ventajas:
-- Permite revocar sesiones de inmediato.
-- No requiere administrar claves de firma JWT.
-- El token original no se conserva en la base de datos.
-
-Coste:
-- Cada petición autenticada debe consultar el estado del token en PostgreSQL, salvo que se añada una caché cuidadosamente diseñada.
-- Hay que medir el rendimiento para verificar el objetivo de latencia del SRS.
-
-La configuración de Spring Security puede usar `SessionCreationPolicy.STATELESS` porque no depende de una sesión HTTP tradicional. Eso no hace que el token opaco sea “sin estado”: la sesión se mantiene en `tokens_sesion`.
-
-### 2.2 Contraseña y protección de cuentas
-
-- Las contraseñas se almacenan mediante un hash BCrypt, nunca en texto plano.
-- La configuración inicial propuesta usa un coste BCrypt de 12.
-- Se propone bloqueo de 15 minutos después de 5 intentos fallidos consecutivos.
-- Se propone una duración de token de 2 horas.
-- Las cuentas inactivas o bloqueadas no deben autenticarse.
-- Los errores de login deben ser genéricos para no revelar si un usuario existe.
-- El bootstrap inicial del administrador debe ser explícito, temporal y mediante variables de entorno; nunca se deben incluir contraseñas conocidas en el repositorio.
-
-Los límites de intentos y duración son decisiones iniciales y deben confirmarse con el equipo/profesor.
-
-### 2.3 Roles y permisos
-
-Los roles agrupan responsabilidades. Los permisos representan acciones concretas. Las autoridades pueden expresarse como `ROLE_<CODIGO_ROL>` y códigos de permiso sin prefijo, por ejemplo `SEGURIDAD_USUARIOS_ADMIN`.
-
-Ejemplo de protección en Spring Security:
-
-```java
-@PreAuthorize("hasAuthority('SEGURIDAD_USUARIOS_ADMIN')")
-```
-
-La autorización siempre debe comprobarse en el backend. Ocultar botones en React no constituye un control de seguridad.
-
-## 3. Modelo de datos
-
-| Tabla | Propósito |
+| Operación | Permiso |
 |---|---|
-| `usuarios` | Identidad, correo, hash de contraseña, estado, referencias opcionales a empleado/cliente, intentos fallidos, bloqueo y último acceso. |
-| `roles` | Catálogo de roles. |
-| `permisos` | Catálogo de permisos por módulo y acción. |
-| `usuarios_roles` | Relación muchos-a-muchos entre usuarios y roles; puede guardar quién asignó el rol y cuándo. |
-| `roles_permisos` | Relación muchos-a-muchos entre roles y permisos. |
-| `tokens_sesion` | Hash del token, usuario, emisión, vencimiento y revocación. |
+| Consultar usuarios y activar/desactivar | `SEGURIDAD_USUARIOS_ADMIN` |
+| Crear usuario con roles | `SEGURIDAD_USUARIOS_ADMIN` y `SEGURIDAD_ROLES_ADMIN` |
+| Consultar/crear roles, reemplazar roles o permisos del rol | `SEGURIDAD_ROLES_ADMIN` |
+| Consultar/crear permisos | `SEGURIDAD_PERMISOS_ADMIN` |
 
-La tabla `eventos_auditoria` pertenece al componente de auditoría y no debe duplicarse en esta rama.
+Asignar roles o permisos exige además poseer los permisos delegados. Esto impide crear
+una segunda cuenta para adquirir permisos que el actor no tiene. Los códigos de roles se
+traducen a `ROLE_<CODIGO>`; los códigos de permisos son autoridades directas.
+Los permisos nuevos creados en el catálogo no se conceden automáticamente al creador.
+Su concesión inicial necesita una migración revisada que los asigne a un rol autorizado;
+no hay un bypass implícito de la regla de delegación para ADMINISTRADOR.
+La API protege al último administrador frente a desactivación y retirada del rol.
+Las modificaciones de usuarios y asignaciones se coordinan con un bloqueo transaccional
+PostgreSQL para preservar invariantes entre instancias.
 
-### Integración con Gestión Maestra
-
-Las referencias `empleado_id` y `cliente_id` deben tener claves foráneas en el esquema integrado si corresponden a las tablas maestras del modelo aprobado. Si esas tablas todavía no existen, se puede probar el componente de manera aislada y añadir las FK mediante una migración de integración posterior. Esa ausencia debe permanecer como tarea pendiente, no como condición final de producción.
-
-## 4. Flujo de autenticación
-
-1. El cliente envía identificador y contraseña a `POST /api/v1/auth/login` por HTTPS.
-2. El backend busca al usuario por nombre de usuario o correo.
-3. Verifica que la cuenta esté activa y no esté bloqueada.
-4. Compara la contraseña ingresada con el hash BCrypt.
-5. Si el login falla, actualiza el contador de intentos y aplica el bloqueo cuando corresponda.
-6. Si tiene éxito, reinicia el contador, genera un token aleatorio y guarda solo su hash en `tokens_sesion`.
-7. El backend devuelve el token al cliente.
-8. Para cada petición protegida, el cliente envía `Authorization: Bearer <token>`.
-9. El filtro valida existencia, expiración, revocación y estado de la cuenta; después establece la identidad y autoridades en el contexto de seguridad.
-10. `POST /api/v1/auth/logout` revoca el token actual.
-
-Códigos HTTP esperados:
-- `200`: solicitud exitosa.
-- `204`: logout exitoso sin cuerpo de respuesta.
-- `400`: petición inválida.
-- `401`: falta autenticación o las credenciales/token no son válidos.
-- `403`: identidad válida, pero sin permiso suficiente.
-- `409`: conflicto, por ejemplo nombre de usuario o correo duplicado.
-
-## 5. Contrato de endpoints
-
-La especificación `docs/openapi-auth.yaml` describe el contrato esperado. Las rutas deben confirmarse contra los controladores reales.
-
-| Método | Ruta | Acceso esperado | Propósito |
-|---|---|---|---|
-| `POST` | `/api/v1/auth/login` | Público | Iniciar sesión. |
-| `POST` | `/api/v1/auth/logout` | Token válido | Revocar la sesión actual. |
-| `GET` | `/api/v1/auth/me` | Token válido | Consultar usuario y autoridades actuales. |
-| `GET` | `/api/v1/admin/users` | `SEGURIDAD_USUARIOS_ADMIN` | Listar usuarios. |
-| `POST` | `/api/v1/admin/users` | `SEGURIDAD_USUARIOS_ADMIN` | Crear usuario y asignar roles. |
-| `PATCH` | `/api/v1/admin/users/{id}/status` | `SEGURIDAD_USUARIOS_ADMIN` | Activar/desactivar una cuenta. |
-| `PUT` | `/api/v1/admin/users/{id}/roles` | `SEGURIDAD_ROLES_ADMIN` | Reemplazar roles del usuario. |
-| `GET` | `/api/v1/admin/roles` | `SEGURIDAD_ROLES_ADMIN` | Consultar roles. |
-| `POST` | `/api/v1/admin/roles` | `SEGURIDAD_ROLES_ADMIN` | Crear rol. |
-| `PUT` | `/api/v1/admin/roles/{id}/permissions` | `SEGURIDAD_ROLES_ADMIN` | Reemplazar permisos de un rol. |
-| `GET` | `/api/v1/admin/permissions` | `SEGURIDAD_PERMISOS_ADMIN` | Consultar permisos. |
-| `POST` | `/api/v1/admin/permissions` | `SEGURIDAD_PERMISOS_ADMIN` | Crear permiso. |
-
-Los endpoints administrativos no deben considerarse implementados solo porque aparecen en OpenAPI. Cada uno debe existir en el código y contar con pruebas.
-
-## 6. ¿Para qué sirve `openapi-auth.yaml`?
-
-OpenAPI es una descripción legible por herramientas del contrato HTTP. No ejecuta código, no crea tablas y no implementa controladores.
-
-Se utiliza para:
-- Documentar rutas, métodos, parámetros, cuerpos y respuestas.
-- Generar una interfaz interactiva como Swagger UI.
-- Generar clientes o tipos para frontend.
-- Revisar si frontend y backend acuerdan el mismo contrato.
-- Crear pruebas de contrato.
-
-### Cómo abrirlo
-
-Opciones:
-1. Usar Swagger Editor en el navegador y abrir/importar `openapi-auth.yaml`.
-2. Si el proyecto incorpora Swagger UI mediante `springdoc-openapi`, exponer la interfaz desde el backend. La URL habitual es `/swagger-ui/index.html`, pero depende de la configuración y de la dependencia instalada.
-3. Mantenerlo como documentación versionada en `docs/api/`.
-
-Si se utiliza un editor en línea, no pegues tokens, contraseñas, datos de clientes ni otros secretos.
-
-La URL del servidor en el archivo es relativa (`/api/v1`), por lo que el editor puede necesitar que se indique el host local real, por ejemplo `http://localhost:8080/api/v1`, para probar las solicitudes. Esto solo funcionará cuando el backend esté ejecutándose y los endpoints existan.
-
-## 7. Cómo probar manualmente la API
-
-### 7.1 Comprobar prerrequisitos
-
-Desde la raíz del repositorio, revisa la rama y el estado:
-
-```bash
-git branch --show-current
-git status --short
-```
-
-Levanta PostgreSQL con el Compose que ya utiliza el proyecto. Por ejemplo, si el archivo es `deploy/docker-compose.yml`:
-
-```bash
-docker compose -f deploy/docker-compose.yml up -d
-docker compose -f deploy/docker-compose.yml ps
-```
-
-Confirma que el `application.yml` del backend use el nombre de base, usuario, contraseña y puerto correctos. No subas `.env` ni contraseñas a Git.
-
-### 7.2 Ejecutar migraciones y backend
-
-Desde `backend/`:
-
-```bash
-./mvnw test
-./mvnw spring-boot:run
-```
-
-Si no existe Maven Wrapper, usa `mvn test` y `mvn spring-boot:run`.
-
-Al arrancar, revisa los logs para confirmar que Flyway ejecutó las migraciones y que Spring Boot terminó de iniciar. Si Hibernate usa `ddl-auto: validate`, la aplicación puede fallar si las tablas esperadas no existen o no coinciden con las entidades.
-
-**Importante:** antes de ejecutar estos pasos, confirma que el código Java de autenticación está realmente copiado al backend y que compila. Los archivos SQL y OpenAPI por sí solos no crean un API funcional.
-
-### 7.3 Probar login con `curl`
-
-Cuando el endpoint esté implementado y exista una cuenta de prueba creada de forma segura, ejecuta:
-
-```bash
-curl -i -X POST http://localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "identificador": "admin@techsupply.test",
-    "password": "REEMPLAZA_CON_LA_CLAVE_LOCAL"
-  }'
-```
-
-No copies literalmente el usuario ni la contraseña de ejemplo si no los has creado. Usa las credenciales de una cuenta local de pruebas. No uses una contraseña real ni la guardes en Git.
-
-Respuesta esperada para un login exitoso (valores ilustrativos):
+Respuestas exitosas conservadas: login/me/administración `200`, logout `204` sin cuerpo.
+Errores del componente y de seguridad:
 
 ```json
-{
-  "accessToken": "<token-devuelto-por-el-servidor>",
-  "tokenType": "Bearer",
-  "expiresAt": "2026-10-18T18:00:00Z",
-  "usuario": {
-    "id": 1,
-    "username": "admin",
-    "correo": "admin@techsupply.test",
-    "roles": ["ADMINISTRADOR"],
-    "permisos": ["SEGURIDAD_USUARIOS_ADMIN"]
-  }
-}
+{"status":401,"code":"UNAUTHORIZED","message":"Autenticación requerida"}
 ```
 
-La estructura exacta debe coincidir con el DTO real. Si la respuesta es `401`, revisa credenciales, estado/bloqueo de la cuenta y logs; no desactives controles de seguridad para hacer pasar la prueba.
+- `400`: JSON, parámetros o validación inválidos.
+- `401`: credenciales o autenticación inválidas; incluye `WWW-Authenticate: Bearer`.
+- `403`: identidad válida sin permiso suficiente o delegación no autorizada.
+- `404`: usuario/rol no encontrado.
+- `409`: duplicación, conflicto de integridad o protección del último administrador.
+- `503`: fallo de acceso a datos, sin SQL ni detalle de PostgreSQL en la respuesta.
 
-### 7.4 Probar `/me`
+No hay cookies de autenticación ni sesión HTTP. CSRF está desactivado para Bearer en
+`Authorization`; si se adoptan cookies debe revisarse. CORS y la integración React siguen
+pendientes; este cambio no define orígenes permitidos ni modifica el frontend.
 
-Copia el token devuelto en la variable de shell. No lo compartas ni lo guardes en un archivo versionado:
+## 3. Esquema y migraciones
 
-```bash
-read -rsp "Token de acceso: " TOKEN
-echo
+`src/main/resources/db/migration/` contiene:
 
-curl -i http://localhost:8080/api/v1/auth/me \
-  -H "Authorization: Bearer $TOKEN"
-```
+- `V1__security_schema.sql`: usuarios, roles, permisos, relaciones y sesiones; índices,
+  valores predeterminados, FK internas y restricciones.
+- `V2__security_catalogs.sql`: rol ADMINISTRADOR y tres permisos administrativos.
+  No crea cuentas ni contraseñas.
 
-La respuesta debería mostrar la identidad y roles/permisos actuales. Borra la variable al terminar:
+Los identificadores son `bigint`/`Long`, coherentes con JPA y OpenAPI existentes.
+El DBML general y las vistas UML usan ahora Long/bigint: seguridad refleja V1/V2; los demás
+módulos conservan su carácter de diseño objetivo. La propagación documental de tipos no
+crea tablas ni migra instalaciones existentes. Ver `docs/diagrams/README.md`.
 
-```bash
-unset TOKEN
-```
+`identificadores_usuario` y su trigger mantienen un espacio único para username/correo,
+incluyendo colisiones cruzadas y altas concurrentes. No es un catálogo funcional adicional.
+`usuarios_roles` conserva asignador/fecha y `usuarios.creado_en` tiene valor predeterminado.
+Empleado/cliente son referencias escalares opcionales y mutuamente excluyentes;
+las FK a Gestión Maestra quedan pendientes hasta que existan sus tablas compatibles.
 
-### 7.5 Probar un endpoint sin token y uno sin permiso
+**Estas migraciones iniciales se destinan a bases vacías.** No deben ejecutarse sobre una
+base existente sin inventario de esquema e historial Flyway y un plan de adopción específico.
+`baseline-on-migrate` está desactivado; `clean` está deshabilitado. Hibernate usa `validate`,
+no crea ni actualiza tablas. No editar migraciones ya aplicadas en entornos compartidos.
 
-Petición sin token:
+## 4. Compilar, probar y arrancar
 
-```bash
-curl -i http://localhost:8080/api/v1/auth/me
-```
-
-Resultado esperado: `401 Unauthorized`.
-
-Para probar `403 Forbidden`, autentica un usuario válido que no tenga el permiso requerido y llama a un endpoint administrativo que realmente esté protegido. No basta con probarlo con el administrador, porque ese usuario probablemente sí tendrá acceso.
-
-### 7.6 Probar logout y revocación
-
-Con el token válido:
-
-```bash
-curl -i -X POST http://localhost:8080/api/v1/auth/logout \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Resultado esperado: `204 No Content`.
-
-Después vuelve a llamar a `/me` con el mismo token. Resultado esperado: `401 Unauthorized`. Si el token sigue funcionando, hay un defecto de revocación que debe corregirse.
-
-## 8. Cómo ejecutar y entender las pruebas automatizadas
-
-Las pruebas automatizadas son código que comprueba comportamientos esperados sin que tengas que hacer cada petición manualmente. En Spring Boot normalmente se usa JUnit 5; Mockito puede sustituir repositorios/servicios para pruebas unitarias y Spring Boot Test puede levantar partes de la aplicación.
-
-### Pruebas unitarias
-
-Prueban una clase aislada con dependencias simuladas. Son rápidas y sirven para verificar:
-- Login correcto.
-- Contraseña incorrecta.
-- Cuenta inactiva.
-- Bloqueo tras los intentos configurados.
-- Que se persista el hash del token y no el token original.
-
-Comando:
+Desde `erp-backend/`, con Java 21:
 
 ```bash
-cd backend
-./mvnw -Dtest=AuthServiceTest test
-```
-
-El nombre exacto de la clase de prueba puede variar. Comprueba primero qué archivos existen en `src/test/java`.
-
-### Pruebas de integración
-
-Prueban varias piezas reales juntas: Spring, repositorios, migraciones y PostgreSQL. Para autenticación deberían cubrir:
-- Flyway desde una base vacía.
-- Login y persistencia de sesión.
-- `/me` con token válido.
-- Logout y rechazo del token revocado.
-- Expiración de token.
-- Permisos (`403`) y ausencia de autenticación (`401`).
-
-Comando general:
-
-```bash
+./mvnw -v
+./mvnw -DskipTests compile
+./mvnw test
 ./mvnw verify
 ```
 
-Este comando solo ejecutará las pruebas configuradas en el proyecto. Si todavía no existen pruebas de integración, no las crea automáticamente; hay que escribirlas.
+`test` ejecuta pruebas unitarias sin base de datos. `verify` además empaqueta y ejecuta las
+clases `*IT` mediante Failsafe. Requiere Docker accesible y la imagen `postgres:17-alpine`
+(descargada automáticamente si falta), además de acceso a Maven si faltan dependencias.
 
-### Cómo leer los resultados de Maven
+Las integraciones suministran siempre la URL/usuario/contraseña de un contenedor desechable,
+sin reutilización, con contraseña aleatoria y sin volúmenes de bases existentes.
+No usan `DB_URL` del desarrollador. Docker no disponible hace fallar la suite; no se omite
+silenciosamente. No hay mocks de Spring Security, repositorios, Flyway ni PostgreSQL en ellas.
 
-- `BUILD SUCCESS`: los objetivos ejecutados terminaron correctamente; revisa cuántas pruebas se ejecutaron.
-- `BUILD FAILURE`: hay que leer el primer error relevante y el nombre de la prueba/clase que falló.
-- `Tests run: 0`: el comando no encontró pruebas coincidentes o no están configuradas como esperabas.
-- Fallo de conexión o autenticación PostgreSQL: revisa Docker, URL JDBC y variables de entorno.
-- Fallo de Flyway o `ddl-auto: validate`: revisa versiones de migración, tablas y entidades.
+Reportes: `target/surefire-reports/` (unitarias), `target/failsafe-reports/` (integración).
+Para ejecutar integración sin repetir unitarias ni empaquetado, tras compilar pruebas:
 
-Los reportes de pruebas suelen aparecer en `backend/target/surefire-reports/`.
+```bash
+./mvnw test-compile failsafe:integration-test failsafe:verify
+```
 
-## 9. Pruebas de aceptación antes de fusionar
+Para arrancar manualmente, configurar `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` hacia una
+base local nueva y vacía preparada para este esquema. `SERVER_PORT` es opcional (8080).
+`DB_PASSWORD` es obligatorio. El `.env` de Compose no se carga automáticamente en Spring.
+Después:
 
-- [ ] Las migraciones funcionan desde una base PostgreSQL de pruebas vacía.
-- [ ] Login correcto devuelve un token.
-- [ ] Contraseña incorrecta devuelve `401`.
-- [ ] Cuenta inactiva/bloqueada no inicia sesión.
-- [ ] La base almacena el hash del token, no el token original.
-- [ ] `/me` funciona con token válido.
-- [ ] `/me` sin token devuelve `401`.
-- [ ] Un usuario sin permiso recibe `403` al acceder a un endpoint protegido.
-- [ ] Logout revoca la sesión y el token ya no funciona.
-- [ ] Token expirado o revocado es rechazado.
-- [ ] Desactivar una cuenta revoca sus sesiones según la política aprobada.
-- [ ] Las pruebas automatizadas realmente se ejecutaron y sus resultados se revisaron.
-- [ ] OpenAPI coincide con los endpoints y DTO implementados.
-- [ ] Las claves foráneas a Gestión Maestra se agregan al esquema integrado.
-- [ ] Se integra el componente de auditoría para cubrir RF-SEG-03.
+```bash
+./mvnw spring-boot:run
+```
 
-## 10. Reutilización entre módulos/proyectos
+No usar el comando de arranque para probar una base existente sin revisar su compatibilidad.
+El bootstrap administrativo está desactivado por defecto. Activarlo explícitamente mediante
+`APP_SECURITY_BOOTSTRAP_ADMIN_ENABLED=true`, `APP_SECURITY_BOOTSTRAP_ADMIN_USERNAME`,
+`APP_SECURITY_BOOTSTRAP_ADMIN_EMAIL` y `APP_SECURITY_BOOTSTRAP_ADMIN_PASSWORD`.
+Suministrar valores locales por un mecanismo seguro y desactivarlo después de crear la cuenta.
+No almacenar esas credenciales en Git. Requiere los catálogos de V2.
 
-Los módulos consumidores deberían depender de un contrato de aplicación, por ejemplo `AuthenticatedUserProvider`, y consumir un objeto como `AuthenticatedActor`. Deben evitar depender directamente del filtro de tokens o leer `SecurityContextHolder` desde cualquier clase de negocio.
+## 5. Pruebas y pendientes
 
-Si otro proyecto usa JWT u otro proveedor de identidad, puede implementar un adaptador que entregue el mismo contrato. Así, Compras o Inventario no necesitan conocer el mecanismo de autenticación subyacente.
+- `AuthOpenApiContractTest`: compara rutas, códigos 400, campos, tipos y nulabilidad de OpenAPI con controladores y DTO reales, sin base de datos.
+- `AuthServiceTest`: login, errores genéricos, intentos/bloqueo, reinicio y revocación; repositorios simulados.
+- `PasswordValidationTest`: validación de longitud UTF-8 y entradas vacías.
+- `OpaqueTokenServiceTest`: formato/longitud, muestra sin duplicados y vector SHA-256 conocido.
+  Una muestra sin duplicados no demuestra por sí sola seguridad criptográfica.
+- `AuthIntegrationIT`: cadena Spring Security real, API con MockMvc, PostgreSQL/Flyway,
+  persistencia, revocación, permisos, errores y concurrencia.
+- `ErpBackendApplicationIT`: carga de contexto con PostgreSQL desechable y validación de esquema.
 
-Los códigos de permisos deben acordarse entre módulos y documentarse. No se deben aceptar roles enviados por el cliente como prueba de autorización.
+La prueba de contexto anterior dejó de ejecutarse como unitaria para impedir conexiones
+accidentales a la base del desarrollador. Las pruebas de integración no son pruebas E2E de React.
 
-## 11. Estado y tareas pendientes
+Pendientes fuera de este cambio: auditoría RF-SEG-03, FK de Gestión Maestra, CORS/frontend,
+limitación por origen, rendimiento con carga, política de limpieza de sesiones antiguas y
+adopción del esquema en instalaciones existentes. No se acredita cumplimiento integral de Fase 2.
 
-Antes de declarar terminado el componente:
-1. Confirmar que existen y compilan todas las clases Java mencionadas en el contrato.
-2. Ejecutar `./mvnw test` en el backend real.
-3. Añadir pruebas de integración con PostgreSQL y pruebas HTTP.
-4. Verificar que cada endpoint de OpenAPI esté implementado; retirar o marcar como pendiente cualquier ruta que no exista.
-5. Añadir las FK a empleados/clientes cuando las tablas maestras estén disponibles.
-6. Integrar el contrato de auditoría para los eventos críticos.
-7. Actualizar diagramas de secuencia y componentes con la decisión de tokens opacos.
-8. Revisar el diff y hacer commit únicamente cuando los resultados sean reproducibles.
+## 6. Resultado de verificación — 19 de octubre de 2026
 
----
+Comando ejecutado desde `erp-backend/`: `./mvnw verify`.
+Resultado final: **BUILD SUCCESS** con Java 21 y Spring Boot 4.1.1.
 
-**Nota de estado:** `openapi-auth.yaml` describe el contrato; no implementa los endpoints. Las migraciones crean tablas, pero tampoco implementan el API. La autenticación solo puede probarse de extremo a extremo cuando los controladores, servicios, filtro de seguridad, configuración y repositorios estén presentes y funcionando en el backend.
+| Suite | Pruebas | Fallos/errores/omitidas |
+|---|---:|---|
+| AuthServiceTest | 11 | 0 / 0 / 0 |
+| PasswordValidationTest | 1 | 0 / 0 / 0 |
+| OpaqueTokenServiceTest | 2 | 0 / 0 / 0 |
+| AuthOpenApiContractTest | 9 | 0 / 0 / 0 |
+| AuthIntegrationIT | 26 | 0 / 0 / 0 |
+| ErpBackendApplicationIT | 1 | 0 / 0 / 0 |
+| Total | 50 | 0 / 0 / 0 |
+
+PostgreSQL 17 desechable: Flyway aplicó V1/V2 y Hibernate validó el esquema.
+La suite incluyó los trece escenarios mínimos solicitados, protección de delegación,
+colisiones de identificadores, cambios de roles y pruebas concurrentes de intentos y del
+último administrador. También verificó que repetir la desactivación de un administrador
+ya inactivo no produzca un conflicto de último administrador.
+
+Se comprobó el YAML OpenAPI sin claves duplicadas, sus 12 operaciones, las referencias al
+esquema de errores y el 409 de protección del último administrador. No sustituye un validador
+completo de OpenAPI ni una prueba exhaustiva de contrato.
+No se midió cobertura porcentual, carga ni seguridad de un despliegue público.
+
+## 7. Contrato HTTP y reproducción de la verificación real
+
+OpenAPI 1.1.1 completa la documentación de las respuestas existentes, sin cambiar rutas,
+DTO ni comportamiento de producción. Los `400` por validación se declaran en todas las
+operaciones que reciben DTO con `@Valid`, incluidos alta de rol, alta de permiso y cambio
+de estado de usuario. Son rechazos correctos del backend; no se sustituyeron por códigos de éxito.
+
+Todas las respuestas `200` tienen esquema: LoginResponse, UsuarioResumen, UsuarioResponse,
+RolResponse y PermisoResponse. Los campos presentes pero nulos (`empleadoId`, `clienteId`,
+`ultimoAcceso` y descripciones) son requeridos y `nullable`; las listas administrativas tienen
+esquema de sus elementos. `additionalProperties: false` excluye campos ajenos, como hashes.
+El esquema de error continúa siendo `{status, code, message}`. Logout conserva `204` sin cuerpo.
+
+Desde la raíz del repositorio, con Java 21, Docker, Python 3 y PyYAML disponibles:
+
+```bash
+cd erp-backend
+./mvnw -DskipTests package
+cd ..
+python3 erp-backend/scripts/verify-auth-http.py --report /tmp/techsupply-auth-http-results.json
+```
+
+El script inicia el JAR en una dirección loopback con puerto aleatorio y crea PostgreSQL 17
+con almacenamiento temporal, sin usar Compose ni bases o volúmenes existentes. Habilita el
+bootstrap únicamente en ese proceso con una cuenta y contraseña aleatorias; crea mediante
+el API un rol y una cuenta sin permisos. No supone que exista una cuenta administrativa previa.
+Detiene su proceso backend y retira su propio contenedor al finalizar.
+
+Las contraseñas y tokens se mantienen en memoria y se ocultan en el informe. El log privado
+de arranque se elimina. El informe contiene códigos esperados/observados, respuestas depuradas,
+esquemas ausentes, discrepancias de contrato y estado de limpieza. No subir informes con datos
+reales ni usar este script para verificar una base compartida.
+
+Ejecuta 23 casos, incluidos los preparativos: login correcto e incorrecto, usuario inexistente,
+`/me` con y sin token, permisos administrativos, logout, rechazo posterior del token, logout
+repetido, token inexistente, JSON inválido y validaciones de entrada administrativas.
+Su código de salida es 0 si no encuentra discrepancias; 1 si hay fallos de comportamiento,
+contrato o esquemas ausentes; 2 si falla la ejecución o la limpieza del entorno aislado.
+
+Valida los tipos, campos requeridos, referencias, nulabilidad, enum, patrón del token,
+unicidad de conjuntos y exclusión de campos adicionales utilizados en este contrato.
+No es un validador general de OpenAPI. La verificación cubre HTTP local real, sin mocks;
+no acredita TLS/proxy, interfaz React, carga ni seguridad de producción.
+
+Resultado de esta verificación HTTP, 19 de octubre de 2026: **23 casos aprobados**, sin
+fallos de comportamiento, discrepancias de códigos ni esquemas ausentes. Se aplicaron V1/V2
+en PostgreSQL desechable. Se confirmó que el proceso backend terminó y su contenedor se retiró.
+El comando Maven `./mvnw -o verify` también terminó con **BUILD SUCCESS**: 23 pruebas unitarias
+(incluidas nueve de contrato) y 27 de integración, sin fallos, errores ni omisiones.
+La opción `-o` requiere disponer previamente de las dependencias en la caché Maven.

@@ -1,13 +1,14 @@
-
 @startuml CU_Inventario
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Inventario
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
 
 actor "Responsable de almacén" as Almacen
 actor "Responsable de compras" as Compras
 actor "Responsable de ventas" as Ventas
 actor "Auditor" as Auditor
+actor "Aprobador autorizado" as Aprobador
 
 rectangle "ERP - Gestión de Inventario" {
   usecase "Consultar existencias" as Existencias
@@ -26,28 +27,31 @@ rectangle "ERP - Gestión de Inventario" {
 }
 
 
-Almacen --> Existencias
-Almacen --> Entrada
-Almacen --> Salida
-Almacen --> Movimientos
-Almacen --> Conteo
-Almacen --> SolicitarAjuste
-Almacen --> Alertas
-Almacen --> Historial
+Almacen -- Existencias
+Almacen -- Entrada
+Almacen -- Salida
+Almacen -- Movimientos
+Almacen -- Conteo
+Almacen -- SolicitarAjuste
+Almacen -- Alertas
+Almacen -- Historial
 
-Compras --> Existencias
-Compras --> Alertas
+Compras -- Existencias
+Compras -- Alertas
 
-Ventas --> Existencias
+Ventas -- Existencias
 
-Auditor --> Historial
+Auditor -- Historial
+Aprobador -- AutorizarAjuste
+Almacen -- Rotacion
+Almacen -- Obsoletos
 
 PorAlmacen ..> Existencias : <<extend>>
 Conteo ..> Comparar : <<include>>
 SolicitarAjuste ..> Comparar : <<include>>
-AutorizarAjuste ..> SolicitarAjuste : <<extend>>
-Entrada ..> Historial : <<include>>
-Salida ..> Historial : <<include>>
-Movimientos ..> Historial : <<include>>
 
+note bottom of AutorizarAjuste
+  Precondición: solicitud de ajuste pendiente y actor autorizado.
+  Las entradas y salidas registran movimientos; consultar historial es independiente.
+end note
 @enduml

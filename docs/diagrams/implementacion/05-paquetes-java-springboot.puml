@@ -1,77 +1,56 @@
 @startuml TechSupply_Java_Package_Overview
- title TechSupply Solutions - Organización de paquetes Java
- top to bottom direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam packageStyle rectangle
- skinparam nodesep 30
- skinparam ranksep 35
- skinparam defaultTextAlignment center
-
- package "com.techsupply.erp" as Root {
-   package "config" as Config {
-     [Configuración web y CORS]
-     [Configuración OpenAPI]
-     [Configuración JPA]
-   }
-
-   package "security" as Security {
-     [SecurityConfig]
-     [JWT / autenticación]
-     [Autorización por roles y permisos]
-   }
-
-   package "shared" as Shared {
-     package "audit" as Audit {
-       [AuditService]
-       [AuditEvent]
-     }
-     package "notification" as Notification {
-       [NotificationService]
-       [Eventos posteriores al commit]
-     }
-     package "errors" as Errors {
-       [GlobalExceptionHandler]
-       [Errores de aplicación]
-     }
-     package "web" as Web {
-       [Paginación y filtros compartidos]
-     }
-   }
-
-   package "modules" as Modules {
-     package "maestros" as Masters
-     package "compras" as Purchasing
-     package "inventario" as Inventory
-     package "ventas" as Sales
-     package "contabilidad" as Accounting
-     package "rrhh" as Payroll
-     package "reporteria" as Reporting
-   }
-}
-
-package "src/main/resources" as Resources {
-  package "db/migration" as Migrations {
-    [V001__schema_base.sql]
-    [V002__catalogos.sql]
+!include ../_estilo.iuml
+title TechSupply Solutions — Organización real del backend
+caption VISTA MIXTA · Azul: implementado; gris: diseño objetivo; las notas delimitan las integraciones pendientes.
+top to bottom direction
+package "erp-backend/src/main/java/com/techsupply/erp_backend" {
+  component "ErpBackendApplication" as Main <<implementado>>
+  package "security" {
+    package "api" as API {
+      component "AuthController\nAdminUsuariosController\nAuthError / AuthErrorWriter\nAuthExceptionHandler" as ApiClasses <<implementado>>
+    }
+    package "application" as App {
+      component "AuthService / UserManagementService\nAuthenticatedActor / AuthenticatedUserProvider\ndto / validation" as AppClasses <<implementado>>
+    }
+    package "domain.model" as Domain {
+      component "Usuario / Rol / Permiso / TokenSesion" as Models <<implementado>>
+    }
+    package "infrastructure.persistence" as Persistence {
+      component "UsuarioRepository / RolRepository\nPermisoRepository / TokenSesionRepository" as Repos <<implementado>>
+    }
+    package "infrastructure.security" as Security {
+      component "OpaqueBearerAuthenticationFilter / OpaqueTokenService\nSecurityActor / SecurityContextAuthenticatedUserProvider" as SecurityClasses <<implementado>>
+    }
+    package "config" {
+      component "SecurityConfig / SecurityClockConfig\nAdminBootstrapRunner" as Config <<implementado>>
+    }
   }
-  [application.yml]
+  package "Paquetes de negocio previstos · aún no existen" {
+    component "maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería\nauditoría / notificaciones / errores comunes" as Future <<objetivo>>
+  }
 }
-
-package "src/test/java/com/techsupply/erp" as Tests {
-  [Pruebas unitarias]
-  [Pruebas de integración]
+package "src/main/resources" {
+  artifact "application.yaml\nspring.jpa.hibernate.ddl-auto: validate" as Settings
+  package "db/migration" {
+    artifact "V1__security_schema.sql" as V1
+    artifact "V2__security_catalogs.sql" as V2
+  }
 }
-
-note right of Modules
-  Cada módulo de negocio aplica el patrón:
-  api / application / domain / infrastructure.
-  Ver el diagrama de plantilla de módulo.
-end note
-
-note bottom of Migrations
-  Las migraciones versionadas se ejecutan con Flyway
-  como parte controlada del release. Los nombres son
-  ilustrativos; los archivos reales se crean al implementar.
+package "src/test/java/com/techsupply/erp_backend" {
+  artifact "AuthServiceTest / PasswordValidationTest\nOpaqueTokenServiceTest / AuthOpenApiContractTest" as Unit
+  artifact "AuthIntegrationIT / ErpBackendApplicationIT\nPostgresIntegrationSupport" as Integration
+}
+Main ..> Config
+ApiClasses ..> AppClasses
+AppClasses ..> Models
+AppClasses ..> Repos
+SecurityClasses ..> Repos
+V1 --> V2 : orden de migración
+Integration ..> V1
+Unit ..> AppClasses
+note bottom of V2
+  Solo catálogos; no crea cuentas ni contraseñas.
+  El administrador se crea con bootstrap explícito.
+  Flyway se ejecuta al arrancar; no hay job de release separado actual.
 end note
 @enduml

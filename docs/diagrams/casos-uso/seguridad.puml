@@ -1,53 +1,63 @@
-
 @startuml CU_Seguridad
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+title TechSupply Solutions — Seguridad
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
 
 actor "Usuario del ERP" as Usuario
 actor "Administrador del sistema" as Admin
 actor "Auditor" as Auditor
 
 rectangle "ERP - Seguridad" {
-  usecase "Iniciar sesión" as Login
-  usecase "Cerrar sesión" as Logout
-  usecase "Validar credenciales" as Credenciales
-  usecase "Verificar permisos" as Permisos
-  usecase "Consultar perfil propio" as Perfil
-  usecase "Gestionar usuarios" as GestionUsuarios
-  usecase "Activar y desactivar cuentas" as EstadoCuenta
-  usecase "Gestionar roles" as Roles
-  usecase "Asignar permisos por módulo" as AsignarPermisos
-  usecase "Consultar registros de auditoría" as ConsultarAuditoria
-  usecase "Consultar historial de cambios" as Historial
-  usecase "Registrar eventos de seguridad" as Eventos
+  usecase "Iniciar sesión" as Login <<implementado>>
+  usecase "Cerrar sesión" as Logout <<implementado>>
+  usecase "Validar credenciales" as Credenciales <<implementado>>
+  usecase "Verificar permisos" as Permisos <<implementado>>
+  usecase "Consultar perfil propio" as Perfil <<implementado>>
+  usecase "Gestionar usuarios" as GestionUsuarios <<implementado>>
+  usecase "Activar y desactivar cuentas" as EstadoCuenta <<implementado>>
+  usecase "Crear y consultar permisos" as CatalogoPermisos <<implementado>>
+  usecase "Gestionar roles" as Roles <<implementado>>
+  usecase "Asignar permisos por módulo" as AsignarPermisos <<implementado>>
+  usecase "Consultar registros de auditoría" as ConsultarAuditoria <<objetivo>>
+  usecase "Consultar historial de cambios" as Historial <<objetivo>>
+  usecase "Registrar eventos de seguridad" as Eventos <<objetivo>>
 }
 
 
-Usuario --> Login
-Usuario --> Logout
-Usuario --> Perfil
+Usuario -- Login
+Usuario -- Logout
+Usuario -- Perfil
 
-Admin --> GestionUsuarios
-Admin --> EstadoCuenta
-Admin --> Roles
-Admin --> AsignarPermisos
-Admin --> ConsultarAuditoria
+Admin -- GestionUsuarios
+Admin -- EstadoCuenta
+Admin -- CatalogoPermisos
+Admin -- Roles
+Admin -- AsignarPermisos
+Admin -- ConsultarAuditoria
 
-Auditor --> ConsultarAuditoria
-Auditor --> Historial
+Auditor -- ConsultarAuditoria
+Auditor -- Historial
 
 Login ..> Credenciales : <<include>>
-Login ..> Eventos : <<include>>
-Logout ..> Eventos : <<include>>
-GestionUsuarios ..> Eventos : <<include>>
-EstadoCuenta ..> Eventos : <<include>>
-Roles ..> AsignarPermisos : <<include>>
+Login ..> Eventos : integración objetivo
+Logout ..> Eventos : integración objetivo
+GestionUsuarios ..> Eventos : integración objetivo
+EstadoCuenta ..> Eventos : integración objetivo
+CatalogoPermisos ..> Permisos : <<include>>
+Roles ..> Permisos : <<include>>
+AsignarPermisos ..> Permisos : <<include>>
+GestionUsuarios ..> Permisos : <<include>>
+EstadoCuenta ..> Permisos : <<include>>
 ConsultarAuditoria ..> Historial : <<include>>
 
 note bottom of Permisos
-  Las operaciones de los módulos
-  requieren autorización según el rol.
+  Los endpoints administrativos exigen autoridades concretas.
+  Crear usuario requiere USUARIOS_ADMIN y ROLES_ADMIN.
+  Solo se delegan permisos que posee el actor.
+  Gestión actual: consultar/crear usuarios, estado y asignación de roles.
+  No hay edición de perfil ni cambio/recuperación de contraseña implementados.
+  El resto del ERP y auditoría siguen pendientes.
 end note
 
 @enduml
