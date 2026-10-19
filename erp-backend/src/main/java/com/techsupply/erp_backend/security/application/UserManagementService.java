@@ -57,7 +57,9 @@ public class UserManagementService {
     public UsuarioResponse crearUsuario(CrearUsuarioRequest request) {
         String username = normalizar(request.username());
         String correo = normalizar(request.correo());
-        if (usuarioRepository.existsByUsernameIgnoreCase(username) || usuarioRepository.existsByCorreoIgnoreCase(correo)) {
+        usuarioRepository.bloquearAdministracion();
+        if (usuarioRepository.existsByUsernameIgnoreCaseOrCorreoIgnoreCase(username, username)
+                || usuarioRepository.existsByUsernameIgnoreCaseOrCorreoIgnoreCase(correo, correo)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El nombre de usuario o correo ya está registrado");
         }
         if (request.empleadoId() != null && request.clienteId() != null) {
@@ -79,9 +81,10 @@ public class UserManagementService {
 
     @Transactional
     public UsuarioResponse cambiarEstado(Long id, boolean activo) {
-        Usuario usuario = usuarioRepository.buscarConRolesYPermisosPorId(id).orElseThrow(this::usuarioNoEncontrado);
+        usuarioRepository.bloquearAdministracion();
+        Usuario usuario = usuarioRepository.buscarParaActualizacion(id).orElseThrow(this::usuarioNoEncontrado);
         boolean esAdministrador = usuario.getRoles().stream().anyMatch(r -> "ADMINISTRADOR".equals(r.getCodigo()) && r.isActivo());
-        if (!activo && esAdministrador && usuarioRepository.contarAdministradoresActivos() <= 1) {
+        if (!activo && usuario.isActivo() && esAdministrador && usuarioRepository.contarAdministradoresActivos() <= 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede desactivar al último administrador activo");
         }
         usuario.setActivo(activo);
@@ -91,11 +94,12 @@ public class UserManagementService {
 
     @Transactional
     public UsuarioResponse reemplazarRoles(Long id, ReemplazarRolesRequest request) {
-        Usuario usuario = usuarioRepository.buscarConRolesYPermisosPorId(id).orElseThrow(this::usuarioNoEncontrado);
+        usuarioRepository.bloquearAdministracion();
+        Usuario usuario = usuarioRepository.buscarParaActualizacion(id).orElseThrow(this::usuarioNoEncontrado);
         Set<Rol> nuevosRoles = buscarRoles(request.roles());
         boolean eraAdministrador = usuario.getRoles().stream().anyMatch(r -> "ADMINISTRADOR".equals(r.getCodigo()) && r.isActivo());
         boolean seguiraAdministrador = nuevosRoles.stream().anyMatch(r -> "ADMINISTRADOR".equals(r.getCodigo()) && r.isActivo());
-        if (eraAdministrador && !seguiraAdministrador && usuarioRepository.contarAdministradoresActivos() <= 1) {
+        if (usuario.isActivo() && eraAdministrador && !seguiraAdministrador && usuarioRepository.contarAdministradoresActivos() <= 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede retirar el rol al último administrador activo");
         }
         usuario.setRoles(nuevosRoles);
@@ -174,10 +178,16 @@ public class UserManagementService {
     }
 
     private Set<Permiso> buscarPermisos(Set<String> codigosEntrada) {
+        usuarioRepository.bloquearAdministracion();
+        AuthenticatedActor actor = authenticatedUserProvider.currentUser()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticación requerida"));
         Set<String> codigos = codigosEntrada.stream().map(c -> c.trim().toUpperCase(Locale.ROOT)).collect(Collectors.toSet());
         List<Permiso> encontrados = permisoRepository.findByCodigoIn(codigos);
         if (encontrados.size() != codigos.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Uno o más permisos no existen");
+        }
+        if (!actor.authorities().containsAll(codigos)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puede delegar permisos que no posee");
         }
         return new java.util.HashSet<>(encontrados);
     }
@@ -207,6 +217,16 @@ public class UserManagementService {
         List<Rol> encontrados = rolRepository.findByCodigoInAndActivoTrue(codigos);
         if (encontrados.size() != codigos.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Uno o más roles no existen o están inactivos");
+        }
+        AuthenticatedActor actor = authenticatedUserProvider.currentUser()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticación requerida"));
+        if (!actor.authorities().contains("SEGURIDAD_ROLES_ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Se requiere permiso para asignar roles");
+        }
+        Set<String> delegados = encontrados.stream().flatMap(r -> r.getPermisos().stream())
+            .map(Permiso::getCodigo).collect(Collectors.toSet());
+        if (!actor.authorities().containsAll(delegados)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puede delegar permisos que no posee");
         }
         return new java.util.HashSet<>(encontrados);
     }

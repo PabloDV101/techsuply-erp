@@ -44,12 +44,14 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (usuarioRepository.existsByUsernameIgnoreCase(username.trim()) || usuarioRepository.existsByCorreoIgnoreCase(correo.trim())) {
+        usuarioRepository.bloquearAdministracion();
+        if (usuarioRepository.existsByUsernameIgnoreCaseOrCorreoIgnoreCase(username.trim(), username.trim())
+                || usuarioRepository.existsByUsernameIgnoreCaseOrCorreoIgnoreCase(correo.trim(), correo.trim())) {
             log.warn("El usuario configurado para bootstrap ya existe; no se realizaron cambios. Desactiva el bootstrap.");
             return;
         }
-        if (password.length() < 12 || password.length() > 72) {
-            throw new IllegalStateException("La contraseña de bootstrap debe tener entre 12 y 72 caracteres");
+        if (password.length() < 12 || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalStateException("La contraseña de bootstrap debe tener al menos 12 caracteres y como máximo 72 bytes UTF-8");
         }
         Rol admin = rolRepository.findByCodigoAndActivoTrue("ADMINISTRADOR")
             .orElseThrow(() -> new IllegalStateException("Falta el rol ADMINISTRADOR; revisa las migraciones Flyway"));

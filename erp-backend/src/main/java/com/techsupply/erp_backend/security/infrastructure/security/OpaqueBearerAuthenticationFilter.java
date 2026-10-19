@@ -11,6 +11,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.Clock;
+import com.techsupply.erp_backend.security.api.AuthErrorWriter;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
 import java.util.HashSet;
 import java.util.Set;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,10 +25,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class OpaqueBearerAuthenticationFilter extends OncePerRequestFilter {
+    private final Clock clock;
+    private final AuthErrorWriter errors;
     private final TokenSesionRepository tokenSesionRepository;
     private final OpaqueTokenService tokenService;
 
-    public OpaqueBearerAuthenticationFilter(TokenSesionRepository tokenSesionRepository, OpaqueTokenService tokenService) {
+    public OpaqueBearerAuthenticationFilter(TokenSesionRepository tokenSesionRepository, OpaqueTokenService tokenService, Clock clock, AuthErrorWriter errors) {
+        this.clock = clock;
+        this.errors = errors;
         this.tokenSesionRepository = tokenSesionRepository;
         this.tokenService = tokenService;
     }
@@ -33,9 +41,16 @@ public class OpaqueBearerAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ") && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (header != null && header.regionMatches(true, 0, "Bearer ", 0, 7) && SecurityContextHolder.getContext().getAuthentication() == null) {
             String rawToken = header.substring(7).trim();
-            if (!rawToken.isEmpty()) autenticarToken(rawToken);
+            if (rawToken.matches("[A-Za-z0-9_-]{43}")) {
+                try {
+                    autenticarToken(rawToken);
+                } catch (DataAccessException ex) {
+                    errors.write(response, HttpStatus.SERVICE_UNAVAILABLE, "Servicio de datos no disponible");
+                    return;
+                }
+            }
         }
         filterChain.doFilter(request, response);
     }
@@ -43,12 +58,12 @@ public class OpaqueBearerAuthenticationFilter extends OncePerRequestFilter {
     private void autenticarToken(String rawToken) {
         String hash = tokenService.calcularHash(rawToken);
         TokenSesion sesion = tokenSesionRepository
-            .findByTokenHashAndRevocadoEnIsNullAndVenceEnAfter(hash, Instant.now())
+            .findByTokenHashAndRevocadoEnIsNullAndVenceEnAfter(hash, clock.instant())
             .orElse(null);
         if (sesion == null) return;
 
         Usuario usuario = sesion.getUsuario();
-        Instant ahora = Instant.now();
+        Instant ahora = clock.instant();
         if (!usuario.isActivo() || (usuario.getBloqueadoHasta() != null && usuario.getBloqueadoHasta().isAfter(ahora))) return;
 
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();

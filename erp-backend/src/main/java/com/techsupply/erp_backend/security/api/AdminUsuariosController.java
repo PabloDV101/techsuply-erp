@@ -33,7 +33,7 @@ public class AdminUsuariosController {
     public List<UsuarioResponse> listarUsuarios() { return service.listarUsuarios(); }
 
     @PostMapping("/users")
-    @PreAuthorize("hasAuthority('SEGURIDAD_USUARIOS_ADMIN')")
+    @PreAuthorize("hasAuthority('SEGURIDAD_USUARIOS_ADMIN') and hasAuthority('SEGURIDAD_ROLES_ADMIN')")
     public UsuarioResponse crearUsuario(@Valid @RequestBody CrearUsuarioRequest request) {
         return service.crearUsuario(request);
     }

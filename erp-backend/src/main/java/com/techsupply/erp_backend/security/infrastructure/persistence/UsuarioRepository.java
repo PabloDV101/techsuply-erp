@@ -10,14 +10,19 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
-    @Query("""
-        select distinct u from Usuario u
-        left join fetch u.roles r
-        left join fetch r.permisos
-        where lower(u.username) = lower(:identificador)
-           or lower(u.correo) = lower(:identificador)
-        """)
+    // Lock only the user row: PostgreSQL cannot FOR UPDATE an outer fetch join.
+    @Query(value = "select u.* from usuarios u where lower(u.username) = lower(:identificador) "
+        + "or lower(u.correo) = lower(:identificador) for update", nativeQuery = true)
     Optional<Usuario> buscarParaAutenticacion(@Param("identificador") String identificador);
+
+    @Query(value = "select u.* from usuarios u where u.id = :id for update", nativeQuery = true)
+    Optional<Usuario> buscarParaActualizacion(@Param("id") Long id);
+
+    // Serializes administrative invariants across instances; released at transaction end.
+    @Query(value = "select 1 from pg_advisory_xact_lock(74320101)", nativeQuery = true)
+    int bloquearAdministracion();
+
+    boolean existsByUsernameIgnoreCaseOrCorreoIgnoreCase(String username, String correo);
 
     @EntityGraph(attributePaths = {"roles", "roles.permisos"})
     @Query("select distinct u from Usuario u where u.id = :id")

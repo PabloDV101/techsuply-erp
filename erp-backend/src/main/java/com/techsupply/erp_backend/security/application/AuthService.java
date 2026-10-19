@@ -10,6 +10,7 @@ import com.techsupply.erp_backend.security.domain.model.Usuario;
 import com.techsupply.erp_backend.security.infrastructure.persistence.TokenSesionRepository;
 import com.techsupply.erp_backend.security.infrastructure.persistence.UsuarioRepository;
 import com.techsupply.erp_backend.security.infrastructure.security.OpaqueTokenService;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
@@ -27,6 +28,8 @@ public class AuthService {
     private static final Duration DURACION_BLOQUEO = Duration.ofMinutes(15);
     private static final Duration DURACION_SESION = Duration.ofHours(2);
 
+    private final Clock clock;
+    private final String dummyPasswordHash;
     private final UsuarioRepository usuarioRepository;
     private final TokenSesionRepository tokenSesionRepository;
     private final PasswordEncoder passwordEncoder;
@@ -37,7 +40,9 @@ public class AuthService {
                        TokenSesionRepository tokenSesionRepository,
                        PasswordEncoder passwordEncoder,
                        OpaqueTokenService tokenService,
-                       AuthenticatedUserProvider authenticatedUserProvider) {
+                       AuthenticatedUserProvider authenticatedUserProvider, Clock clock) {
+        this.clock = clock;
+        this.dummyPasswordHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
         this.usuarioRepository = usuarioRepository;
         this.tokenSesionRepository = tokenSesionRepository;
         this.passwordEncoder = passwordEncoder;
@@ -48,14 +53,17 @@ public class AuthService {
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public LoginResponse login(LoginRequest request) {
         String identificador = request.identificador().trim().toLowerCase(java.util.Locale.ROOT);
-        Instant ahora = Instant.now();
-        Usuario usuario = usuarioRepository.buscarParaAutenticacion(identificador)
-            .orElseThrow(this::credencialesInvalidas);
-
-        if (!usuario.isActivo()) throw credencialesInvalidas();
-        if (usuario.getBloqueadoHasta() != null && usuario.getBloqueadoHasta().isAfter(ahora)) {
+        Usuario usuario = usuarioRepository.buscarParaAutenticacion(identificador).orElse(null);
+        Instant ahora = clock.instant();
+        if (usuario == null || !usuario.isActivo()) {
+            passwordEncoder.matches(request.password(), dummyPasswordHash);
             throw credencialesInvalidas();
         }
+        if (usuario.getBloqueadoHasta() != null && usuario.getBloqueadoHasta().isAfter(ahora)) {
+            passwordEncoder.matches(request.password(), dummyPasswordHash);
+            throw credencialesInvalidas();
+        }
+        if (usuario.getBloqueadoHasta() != null) usuario.reiniciarIntentosFallidos();
 
         if (!passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
             usuario.incrementarIntentosFallidos();
@@ -82,7 +90,7 @@ public class AuthService {
         tokenSesionRepository.findByTokenHash(tokenService.calcularHash(bearerToken))
             .ifPresent(token -> {
                 if (token.getRevocadoEn() == null) {
-                    token.setRevocadoEn(Instant.now());
+                    token.setRevocadoEn(clock.instant());
                     tokenSesionRepository.save(token);
                 }
             });
