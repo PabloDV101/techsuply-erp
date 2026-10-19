@@ -1,0 +1,216 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP - Authentication API
+  version: 1.0.0
+  description: Contrato inicial del componente de autenticación y administración de usuarios.
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Iniciar sesión
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identificador, password]
+              properties:
+                identificador: { type: string, maxLength: 150, example: admin@techsupply.test }
+                password: { type: string, format: password, maxLength: 72 }
+      responses:
+        '200':
+          description: Token y datos básicos de identidad
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken, tokenType, expiresAt, usuario]
+                properties:
+                  accessToken: { type: string, description: Mostrar/guardar por cliente; no se persiste en claro en servidor }
+                  tokenType: { type: string, example: Bearer }
+                  expiresAt: { type: string, format: date-time }
+                  usuario:
+                    type: object
+                    properties:
+                      id: { type: integer, format: int64 }
+                      username: { type: string }
+                      correo: { type: string, format: email }
+                      roles: { type: array, items: { type: string } }
+                      permisos: { type: array, items: { type: string } }
+        '401': { description: Credenciales inválidas o cuenta no disponible }
+        '400': { description: Cuerpo no válido }
+  /auth/logout:
+    post:
+      summary: Cerrar la sesión actual
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Sesión revocada }
+        '401': { description: Token ausente o no válido }
+  /auth/me:
+    get:
+      summary: Consultar identidad del usuario autenticado
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Usuario, estado, roles y permisos }
+        '401': { description: Token ausente o no válido }
+  /admin/users:
+    get:
+      summary: Listar usuarios
+      security: [{ bearerAuth: [] }]
+      description: Requiere SEGURIDAD_USUARIOS_ADMIN.
+      responses:
+        '200': { description: Lista de usuarios }
+        '403': { description: Falta permiso administrativo }
+    post:
+      summary: Crear usuario y asignarle roles
+      security: [{ bearerAuth: [] }]
+      description: Requiere SEGURIDAD_USUARIOS_ADMIN. No hay registro público.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, correo, password, roles]
+              properties:
+                username: { type: string, maxLength: 60 }
+                correo: { type: string, format: email, maxLength: 150 }
+                password: { type: string, format: password, minLength: 12, maxLength: 72 }
+                roles: { type: array, minItems: 1, items: { type: string } }
+                empleadoId: { type: integer, format: int64, nullable: true }
+                clienteId: { type: integer, format: int64, nullable: true }
+      responses:
+        '200': { description: Usuario creado }
+        '400': { description: Datos inválidos o rol no válido }
+        '401': { description: Falta autenticación }
+        '403': { description: Falta permiso administrativo }
+        '409': { description: Username o correo duplicado }
+  /admin/users/{id}/status:
+    patch:
+      summary: Activar/desactivar una cuenta
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activo]
+              properties:
+                activo: { type: boolean }
+      responses:
+        '200': { description: Estado de usuario actualizado y sesiones revocadas si se desactiva }
+        '403': { description: Falta permiso administrativo }
+        '404': { description: Usuario no encontrado }
+  /admin/users/{id}/roles:
+    put:
+      summary: Reemplazar roles de una cuenta
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles: { type: array, minItems: 1, items: { type: string } }
+      responses:
+        '200': { description: Roles actualizados y sesiones activas revocadas }
+        '400': { description: Roles inexistentes o inactivos }
+        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
+        '404': { description: Usuario no encontrado }
+  /admin/roles:
+    get:
+      summary: Consultar roles activos
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Catálogo de roles }
+        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
+    post:
+      summary: Crear rol y asignarle permisos existentes
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo, nombre, permisos]
+              properties:
+                codigo: { type: string, maxLength: 30 }
+                nombre: { type: string, maxLength: 80 }
+                descripcion: { type: string, nullable: true, maxLength: 250 }
+                permisos: { type: array, items: { type: string } }
+      responses:
+        '200': { description: Rol creado }
+        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
+        '409': { description: El código de rol ya existe }
+  /admin/roles/{id}/permissions:
+    put:
+      summary: Reemplazar permisos de un rol
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permisos]
+              properties:
+                permisos: { type: array, items: { type: string } }
+      responses:
+        '200': { description: Permisos actualizados }
+        '400': { description: Permisos desconocidos o permisos esenciales eliminados }
+        '403': { description: Falta SEGURIDAD_ROLES_ADMIN }
+        '404': { description: Rol no encontrado }
+  /admin/permissions:
+    get:
+      summary: Consultar catálogo de permisos
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Catálogo de permisos }
+        '403': { description: Falta SEGURIDAD_PERMISOS_ADMIN }
+    post:
+      summary: Crear permiso
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo, modulo, accion]
+              properties:
+                codigo: { type: string, maxLength: 60 }
+                modulo: { type: string, maxLength: 40 }
+                accion: { type: string, maxLength: 30 }
+                descripcion: { type: string, nullable: true, maxLength: 250 }
+      responses:
+        '200': { description: Permiso creado }
+        '403': { description: Falta SEGURIDAD_PERMISOS_ADMIN }
+        '409': { description: Código o módulo/acción duplicados }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
