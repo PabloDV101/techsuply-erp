@@ -1,0 +1,85 @@
+@startuml TS02_Proceso_Inventario
+title ERP TechSupply Solutions - Movimientos de Inventario
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Usuario autorizado|
+start
+:Solicitar movimiento de inventario;
+if (¿Documento de origen?) then (Recepcion)
+  |Modulo de compras|
+  :Enviar recepcion confirmada;
+  |Modulo de inventario|
+  :Validar recepcion y cantidades aceptadas;
+elseif (Despacho) then (Despacho)
+  |Modulo de ventas|
+  :Enviar despacho pendiente de confirmar;
+  |Modulo de inventario|
+  :Validar pedido, reserva y cantidades;
+else (Devolucion)
+  |Responsable de compras / ventas|
+  :Registrar devolucion autorizada;
+  :Indicar tipo y cantidades aceptadas;
+  |Modulo de inventario|
+  :Validar documento original y cantidades;
+  if (¿Devolucion al proveedor?) then (Si)
+    :Preparar salida de inventario;
+  else (Devolucion de cliente)
+    :Preparar entrada solo por unidades aceptadas;
+  endif
+endif
+
+:Validar producto, almacen y estado del documento;
+if (¿Documento valido?) then (Si)
+  :Iniciar transaccion de base de datos;
+  if (¿Es despacho de venta?) then (Si)
+    :Validar cantidad contra reserva del pedido y stock fisico;
+    if (¿Reserva y stock suficientes?) then (Si)
+      :Restar cantidad fisica;
+      :Reducir reserva del pedido;
+    else (No)
+      :Revertir transaccion;
+      :Informar reserva o stock insuficiente;
+      stop
+    endif
+  elseif (¿Es devolucion al proveedor?) then (Si)
+    :Validar cantidad disponible no reservada;
+    if (¿Disponible suficiente?) then (Si)
+      :Restar cantidad fisica;
+    else (No)
+      :Revertir transaccion;
+      :Informar stock insuficiente para devolucion;
+      stop
+    endif
+  else (Entrada)
+    :Sumar solo cantidades aceptadas a cantidad fisica;
+  endif
+  :Registrar MovimientoInventario;
+  :Guardar referencia al documento origen;
+  :Registrar auditoria;
+  :Confirmar transaccion;
+else (No)
+  :Rechazar operacion y registrar motivo;
+  stop
+endif
+
+:Recalcular disponibilidad;
+if (¿Disponible por debajo del minimo?) then (Si)
+  :Generar alerta de stock bajo;
+else (No)
+  :Finalizar sin alerta;
+endif
+stop
+@enduml

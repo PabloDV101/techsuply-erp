@@ -1,0 +1,69 @@
+@startuml TS07_Proceso_Seguridad
+title ERP TechSupply Solutions - Autenticacion y Autorizacion
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Usuario|
+start
+:Ingresar correo y contrasena;
+|Frontend React|
+:Enviar credenciales por HTTPS;
+|Spring Security / API|
+:Validar formato y consultar cuenta;
+if (¿Cuenta existente y activa?) then (Si)
+  :Verificar contrasena contra hash seguro;
+else (No)
+  :Rechazar acceso con mensaje generico;
+  :Registrar evento de seguridad;
+  stop
+endif
+if (¿Credenciales correctas?) then (Si)
+  :Emitir token de acceso con expiracion;
+  :Registrar inicio de sesion;
+else (No)
+  :Rechazar acceso con mensaje generico;
+  :Registrar intento fallido;
+  stop
+endif
+|Usuario|
+:Solicitar operacion protegida;
+|Frontend React|
+:Enviar token con solicitud API;
+|Spring Security / API|
+:Validar token y su expiracion;
+:Obtener identidad y permisos;
+if (¿Token valido?) then (Si)
+  :Comprobar permiso requerido;
+else (No)
+  :Responder no autenticado;
+  stop
+endif
+if (¿Usuario autorizado?) then (Si)
+  :Ejecutar validaciones de negocio;
+  if (¿Reglas de negocio satisfechas?) then (Si)
+    :Ejecutar caso de uso;
+    :Registrar auditoria si corresponde;
+    :Responder resultado;
+  else (No)
+    :Responder error de validacion;
+  endif
+else (No)
+  :Responder acceso denegado;
+  :Registrar evento de seguridad;
+endif
+|Usuario|
+:Recibir respuesta;
+stop
+@enduml

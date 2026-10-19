@@ -1,0 +1,53 @@
+
+@startuml CU_Gestion_Maestra
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Responsable de compras" as Compras
+actor "Responsable de ventas" as Ventas
+actor "Responsable de almacén" as Almacen
+actor "Responsable de RR. HH." as RRHH
+actor "Administrador del sistema" as Admin
+
+rectangle "ERP - Gestión Maestra" {
+  usecase "Gestionar productos" as Productos
+  usecase "Consultar productos" as ConsultarProductos
+  usecase "Clasificar productos" as ClasificarProductos
+  usecase "Gestionar proveedores" as Proveedores
+  usecase "Consultar historial de proveedores" as HistorialProveedores
+  usecase "Gestionar clientes" as Clientes
+  usecase "Consultar historial de clientes" as HistorialClientes
+  usecase "Gestionar empleados" as Empleados
+  usecase "Gestionar departamentos y puestos" as Departamentos
+  usecase "Gestionar almacenes" as Almacenes
+  usecase "Consultar catálogos" as Catalogos
+}
+
+Compras --> Proveedores
+Compras --> HistorialProveedores
+Compras --> Productos
+
+Ventas --> Clientes
+Ventas --> HistorialClientes
+Ventas --> ConsultarProductos
+
+Almacen --> Productos
+Almacen --> Almacenes
+Almacen --> ClasificarProductos
+
+RRHH --> Empleados
+RRHH --> Departamentos
+
+Admin --> Productos
+Admin --> Proveedores
+Admin --> Clientes
+Admin --> Empleados
+Admin --> Almacenes
+
+ConsultarProductos ..> Catalogos : <<include>>
+ClasificarProductos ..> Productos : <<extend>>
+HistorialProveedores ..> Proveedores : <<extend>>
+HistorialClientes ..> Clientes : <<extend>>
+
+@enduml

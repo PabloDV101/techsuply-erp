@@ -1,0 +1,48 @@
+@startuml TSS_Secuencia_Recepcion
+ title Confirmacion transaccional de recepcion - modelo v1.1
+ hide footbox
+ skinparam shadowing false
+ skinparam responseMessageBelowArrow true
+ skinparam sequenceMessageAlign center
+ skinparam maxMessageSize 70
+
+ actor "Almacen" as User
+ boundary "RecepcionController" as API
+ control "RecepcionService" as Service
+ control "InventarioService" as Inventory
+ entity "RecepcionCompra / DetalleRecepcion" as Documents
+ entity "Existencia" as Stock
+ entity "MovimientoInventario" as Movement
+ entity "EventoAuditoria" as Audit
+ database "PostgreSQL" as DB
+
+ User -> API : confirmarRecepcion(id, claveIdempotencia)
+ API -> Service : confirmar(id, usuario, clave)
+ Service -> Service : validar permiso, estado e idempotencia
+ alt validacion y escrituras exitosas
+  Service -> DB : BEGIN (transaccion)
+  Service -> Documents : validar orden y lineas pendientes
+  Documents --> Service : recibidas, aceptadas, rechazadas
+  Service -> Service : validar aceptadas + rechazadas = recibidas
+  Service -> Inventory : registrarEntrada por DetalleRecepcion aceptado
+  Inventory -> Stock : bloquear/leer existencia producto-almacen
+  Stock --> Inventory : cantidad fisica y reservada
+  Inventory -> Stock : incrementar fisica por cantidad aceptada
+  Inventory -> Movement : insertar movimiento con detalle_recepcion_id
+  Service -> Documents : marcar detalle y recepcion confirmados
+  Service -> Audit : registrar actor, referencia y resultado
+  Service -> DB : COMMIT
+  DB --> Service : confirmacion
+  Service --> API : resultado confirmado
+  API --> User : HTTP 200 / recepcion confirmada
+ else validacion/escritura falla
+  Service -> DB : ROLLBACK
+  Service --> API : error funcional sin cambios parciales
+  API --> User : HTTP 4xx/5xx segun la causa
+ end
+ note over Service,DB
+  Existencia, movimiento de kardex, estado documental y auditoria
+  forman una sola transaccion. Solo las cantidades aceptadas suman
+  stock; un reintento con la misma clave no duplica la entrada.
+ end note
+@enduml

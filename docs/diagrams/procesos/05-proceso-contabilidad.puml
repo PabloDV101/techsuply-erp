@@ -1,0 +1,72 @@
+@startuml TS05_Proceso_Contabilidad
+title ERP TechSupply Solutions - Registro Financiero y Contable
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Modulo operativo / Contador|
+start
+:Recibir documento origen o pago confirmado;
+:Identificar tipo de operacion;
+|Sistema ERP|
+if (¿Tipo de operacion?) then (Factura de venta)
+  :Validar factura comercial;
+  :Preparar cuenta por cobrar;
+  :Preparar asiento de venta;
+elseif (Factura proveedor) then (Factura proveedor)
+  :Validar factura contra orden y recepcion;
+  if (¿Documentos conciliados?) then (Si)
+    :Preparar cuenta por pagar;
+    :Preparar asiento de compra;
+  else (No)
+    :Registrar discrepancia y detener proceso;
+    stop
+  endif
+elseif (Nomina aprobada) then (Nomina aprobada)
+  :Validar nomina aprobada y su periodo;
+  :Preparar asiento de nomina;
+elseif (Cobro de cliente) then (Cobro de cliente)
+  :Validar pago confirmado y saldo por cobrar;
+  :Preparar aplicacion de cobro;
+  :Preparar asiento de cobro;
+elseif (Pago a proveedor) then (Pago a proveedor)
+  :Validar pago confirmado y saldo por pagar;
+  :Preparar aplicacion de pago;
+  :Preparar asiento de pago;
+else (Asiento manual autorizado)
+  |Contador|
+  :Capturar cuentas e importes;
+  |Sistema ERP|
+  :Preparar asiento manual;
+endif
+
+:Validar cuentas contables activas;
+:Validar periodo contable abierto;
+:Verificar que el documento origen no este contabilizado;
+:Calcular debe y haber;
+if (¿Asiento equilibrado y sin duplicado?) then (Si)
+  :Iniciar transaccion;
+  :Guardar cuenta auxiliar o aplicacion preparada;
+  :Contabilizar asiento;
+  :Registrar referencia al documento origen;
+  :Registrar auditoria;
+  :Confirmar transaccion;
+  stop
+else (No)
+  :Cancelar contabilizacion;
+  :No modificar saldos auxiliares;
+  :Informar error al contador;
+  stop
+endif
+@enduml

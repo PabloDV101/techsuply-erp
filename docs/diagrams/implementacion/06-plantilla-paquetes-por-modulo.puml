@@ -1,0 +1,60 @@
+@startuml TechSupply_Module_Package_Template
+ title TechSupply Solutions - Plantilla interna de un módulo
+ left to right direction
+ skinparam shadowing false
+ skinparam linetype ortho
+ skinparam packageStyle rectangle
+ skinparam componentStyle uml2
+ skinparam nodesep 35
+ skinparam ranksep 40
+ skinparam defaultTextAlignment center
+
+ package "modules.compras" as Module {
+   package "api" as API {
+     component "OrdenCompraController" as Controller
+     component "DTOs / request-response" as DTO
+   }
+   package "application" as Application {
+     component "CrearOrdenCompra" as CreateOrder
+     component "ConfirmarRecepcion" as ConfirmReceipt
+     component "Servicios de aplicación" as AppService
+   }
+   package "domain" as Domain {
+     component "OrdenCompra / RecepcionCompra" as Entities
+     component "Reglas de dominio" as Rules
+     interface "OrdenCompraRepository" as OrderPort
+     interface "RecepcionRepository" as ReceiptPort
+   }
+   package "infrastructure.persistence" as Infra {
+     component "Adaptador JPA" as JPAAdapter
+     component "Entidades / mapeadores JPA" as JpaEntities
+   }
+ }
+
+ database "PostgreSQL" as DB
+
+ Controller --> DTO
+ DTO --> CreateOrder
+ Controller --> ConfirmReceipt
+ CreateOrder --> AppService
+ ConfirmReceipt --> AppService
+ AppService --> Entities
+ Entities --> Rules
+ AppService ..> OrderPort
+ AppService ..> ReceiptPort
+ JPAAdapter ..|> OrderPort : implementa
+ JPAAdapter ..|> ReceiptPort : implementa
+ JPAAdapter --> JpaEntities
+ JpaEntities --> DB : JPA / SQL
+
+ note bottom of Domain
+   El dominio contiene reglas y contratos,
+   no depende de Spring MVC ni de SQL.
+ end note
+
+ note bottom of Infra
+   Solo infraestructura conoce los detalles JPA.
+   Los servicios de otros módulos consumen contratos
+   públicos de aplicación, no este adaptador.
+ end note
+@enduml

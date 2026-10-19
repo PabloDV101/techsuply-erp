@@ -1,0 +1,79 @@
+@startuml TechSupply_Component_Overview
+ title TechSupply Solutions - Componentes principales
+ left to right direction
+ skinparam shadowing false
+ skinparam linetype ortho
+ skinparam componentStyle uml2
+ skinparam packageStyle rectangle
+ skinparam nodesep 34
+ skinparam ranksep 38
+ skinparam defaultTextAlignment center
+
+ actor "Usuario interno" as Employee
+ actor "Cliente" as Customer
+
+ package "Frontend" as Frontend {
+   component "Aplicación web\nReact + TypeScript" as React
+   component "Cliente HTTP\nREST / JSON" as HttpClient
+ }
+
+ package "Backend monolítico modular\nSpring Boot / Java 21" as Backend {
+   component "Cadena de filtros\nSpring Security" as Security
+   component "Controladores REST\nDTOs y validación de entrada" as Controllers
+   component "Servicios de aplicación\ncasos de uso" as AppServices
+
+   package "Módulos de negocio" as Modules {
+     component "Gestión maestra" as Masters
+     component "Compras" as Purchasing
+     component "Inventario" as Inventory
+     component "Ventas" as Sales
+     component "Contabilidad" as Accounting
+     component "RR. HH. y nómina" as Payroll
+   }
+
+   package "Servicios compartidos" as Shared {
+     component "Auditoría" as Audit
+     component "Reportería\nsolo lectura" as Reporting
+     component "Notificaciones" as Notifications
+     component "Manejo global de errores" as ErrorHandler
+   }
+   component "Adaptadores de persistencia\nSpring Data JPA / Hibernate" as Persistence
+ }
+
+ database "PostgreSQL\nuna base de datos, módulos con propiedad de sus tablas" as DB
+
+ Employee --> React
+ Customer --> React
+ React --> HttpClient
+ HttpClient --> Security : HTTPS /api
+ Security --> Controllers : solicitud autenticada
+ Controllers --> AppServices : ejecutar caso de uso
+ AppServices --> Masters
+ AppServices --> Purchasing
+ AppServices --> Inventory
+ AppServices --> Sales
+ AppServices --> Accounting
+ AppServices --> Payroll
+ Purchasing --> Inventory : API interna del módulo\nrecepción confirmada
+ Sales --> Inventory : API interna del módulo\nreserva y despacho
+ Purchasing --> Accounting : servicio de aplicación\ncuenta por pagar validada
+ Sales --> Accounting : servicio de aplicación\ncuenta por cobrar validada
+ Payroll --> Accounting : datos de nómina aprobada
+ AppServices --> Audit : registrar cambios relevantes
+ AppServices --> Notifications : evento posterior al commit
+ Masters --> Persistence
+ Purchasing --> Persistence
+ Inventory --> Persistence
+ Sales --> Persistence
+ Accounting --> Persistence
+ Payroll --> Persistence
+ Reporting --> Persistence : consultas autorizadas
+ Persistence --> DB : JDBC / transacciones
+ Controllers ..> ErrorHandler : errores uniformes
+
+ note bottom of Modules
+   Los módulos comparten el mismo proceso Spring Boot,
+   pero mantienen sus reglas y servicios propios.
+   No deben acceder a repositorios internos de otros módulos.
+ end note
+@enduml

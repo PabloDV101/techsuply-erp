@@ -1,0 +1,68 @@
+@startuml ERP_00_Vista_Logica_Modulos
+title TechSupply Solutions - Vista logica general por modulos
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "Gestion maestra y seguridad" as Maestros {
+  [Usuarios / Roles / Permisos]
+  [Productos / Proveedores / Clientes]
+  [Empleados / Almacenes]
+}
+package "Compras" as Compras {
+  [Requisiciones]
+  [Ordenes de compra]
+  [Recepciones / Factura proveedor]
+}
+package "Inventario" as Inventario {
+  [Existencias]
+  [Movimientos]
+  [Conteos / Ajustes]
+}
+package "Ventas" as Ventas {
+  [Cotizaciones]
+  [Pedidos]
+  [Despachos / Facturas comerciales]
+}
+package "Contabilidad y finanzas" as Contabilidad {
+  [Cuentas por cobrar / Cobros]
+  [Cuentas por pagar / Pagos]
+  [Asientos / Periodos]
+}
+package "RR. HH. y nomina" as Nomina {
+  [Expedientes]
+  [Asistencia / Vacaciones]
+  [Nominas / Pagos de nomina]
+}
+package "Servicios transversales" as Transversales {
+  [Auditoria]
+  [Reporteria]
+  [Notificaciones opcionales]
+}
+
+Maestros --> Compras : maestros y permisos
+Maestros --> Inventario : productos / almacenes / usuarios
+Maestros --> Ventas : clientes / productos / empleados
+Maestros --> Nomina : empleados / usuarios
+Compras --> Inventario : recepcion / devolucion
+Ventas --> Inventario : reserva / despacho
+Compras --> Contabilidad : factura proveedor / CxP
+Ventas --> Contabilidad : factura venta / CxC
+Nomina --> Contabilidad : nomina aprobada
+Maestros ..> Transversales
+Compras ..> Transversales
+Inventario ..> Transversales
+Ventas ..> Transversales
+Contabilidad ..> Transversales
+Nomina ..> Transversales
+
+note bottom of Inventario
+  Unico modulo autorizado a modificar existencias
+  y registrar movimientos de inventario.
+end note
+note bottom of Contabilidad
+  Los documentos origen se validan antes de generar
+  CxC/CxP y asientos; no contabilizar duplicados.
+end note
+@enduml

@@ -1,0 +1,98 @@
+@startuml TechSupply_Backend_Components
+ title TechSupply Solutions - Componentes internos de Spring Boot
+ top to bottom direction
+ skinparam shadowing false
+ skinparam linetype ortho
+ skinparam componentStyle uml2
+ skinparam packageStyle rectangle
+ skinparam nodesep 34
+ skinparam ranksep 38
+ skinparam defaultTextAlignment center
+
+ package "Entrada HTTP" as Entry {
+   component "Spring Security\nFilter Chain" as Security
+   component "REST Controllers" as Controllers
+   component "DTOs + Jakarta Validation\nMapeo request/response" as DTO
+   component "GlobalExceptionHandler" as Errors
+ }
+
+ package "Capa de aplicación" as Application {
+   component "Casos de uso / servicios\n@Transactional en operaciones críticas" as UseCases
+   component "Publicación de eventos\nde aplicación" as AppEvents
+ }
+
+ package "Módulos de negocio" as DomainModules {
+   component "Gestión maestra" as Masters
+   component "Compras" as Purchasing
+   component "Inventario" as Inventory
+   component "Ventas" as Sales
+   component "Contabilidad" as Accounting
+   component "RR. HH. y nómina" as Payroll
+ }
+
+ package "Puertos y adaptadores de persistencia" as PersistenceLayer {
+   interface "Interfaces de repositorio\npor módulo" as RepositoryPorts
+   component "Adaptadores JPA\nSpring Data JPA / Hibernate" as JPAAdapters
+   component "Flyway\nmigraciones de esquema" as Flyway
+ }
+
+ package "Servicios transversales" as CrossCutting {
+   component "Auditoría de negocio" as Audit
+   component "Consultas de reportería" as Reporting
+   component "Notificaciones\nAFTER_COMMIT" as Notifications
+ }
+
+ database "PostgreSQL" as DB
+
+ Security --> Controllers : si autenticación válida
+ Controllers --> DTO : validar / mapear entrada
+ DTO --> UseCases : comandos validados
+ UseCases --> Masters
+ UseCases --> Purchasing
+ UseCases --> Inventory
+ UseCases --> Sales
+ UseCases --> Accounting
+ UseCases --> Payroll
+
+ Masters ..> RepositoryPorts
+ Purchasing ..> RepositoryPorts
+ Inventory ..> RepositoryPorts
+ Sales ..> RepositoryPorts
+ Accounting ..> RepositoryPorts
+ Payroll ..> RepositoryPorts
+ Audit ..> RepositoryPorts
+ Reporting ..> RepositoryPorts
+ JPAAdapters ..|> RepositoryPorts : implementa contratos
+ JPAAdapters --> DB : JDBC / TLS en producción
+ Flyway --> DB : migraciones de release
+
+ UseCases --> Audit : cambios relevantes
+ UseCases --> AppEvents : publicar tras validar
+ AppEvents --> Notifications : después del commit
+ Controllers ..> Errors : respuesta uniforme ante errores
+
+ Purchasing ..> Inventory : interfaz pública\nrecepción
+ Sales ..> Inventory : interfaz pública\nreserva / despacho
+ Purchasing ..> Accounting : interfaz pública\ncuenta por pagar
+ Sales ..> Accounting : interfaz pública\ncuenta por cobrar
+ Payroll ..> Accounting : interfaz pública\nnómina aprobada
+
+ note right of RepositoryPorts
+   Cada módulo es propietario de sus repositorios.
+   Otros módulos no invocan directamente sus
+   implementaciones JPA ni realizan SQL ajeno.
+ end note
+
+ note bottom of UseCases
+   @Transactional se aplica en los servicios de aplicación
+   para operaciones que actualizan documentos relacionados.
+   Las invariantes de negocio pertenecen al módulo dueño.
+ end note
+
+ note bottom of Audit
+   La auditoría de una operación confirmada debe guardarse
+   en la misma transacción cuando se requiera atomicidad.
+   Los eventos de seguridad rechazados pueden registrarse
+   por separado, sin contraseñas ni secretos.
+ end note
+@enduml

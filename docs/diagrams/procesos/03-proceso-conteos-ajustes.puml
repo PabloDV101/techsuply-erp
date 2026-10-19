@@ -1,0 +1,59 @@
+@startuml TS03_Proceso_Conteos_Ajustes
+title ERP TechSupply Solutions - Conteos y Ajustes de Inventario
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #526780
+  FontColor #172B4D
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #B7950B
+  StartColor #2F855A
+  EndColor #526780
+  BarColor #526780
+}
+skinparam ArrowColor #526780
+
+|Responsable de almacen|
+start
+:Crear conteo fisico para un almacen;
+:Registrar cantidad contada por producto;
+|Modulo de inventario|
+:Consultar cantidad registrada;
+:Comparar cantidad fisica y cantidad del sistema;
+if (¿Hay diferencias?) then (Si)
+  :Crear solicitud de ajuste con motivo;
+  :Calcular diferencia por producto;
+  |Aprobador autorizado|
+  :Revisar conteo, diferencia y motivo;
+  if (¿Autoriza ajuste?) then (Si)
+    |Modulo de inventario|
+    :Validar autorizacion y estado del conteo;
+    :Validar stock resultante y reservas;
+    if (¿Stock resultante valido?) then (Si)
+      :Iniciar transaccion;
+      :Aplicar diferencia a cantidad fisica;
+      :Registrar movimiento de ajuste;
+      :Vincular movimiento al conteo y ajuste;
+      :Registrar usuario y auditoria;
+      :Confirmar transaccion;
+      :Cerrar conteo;
+      stop
+    else (No)
+      :Rechazar ajuste por conflicto con reservas;
+      :Registrar incidencia y conservar trazabilidad;
+      stop
+    endif
+  else (No)
+    |Modulo de inventario|
+    :Registrar rechazo y motivo;
+    :Conservar cantidades y conteo para consulta;
+    stop
+  endif
+else (No)
+  :Cerrar conteo sin modificar existencias;
+  :Registrar resultado del conteo;
+  stop
+endif
+@enduml

@@ -1,0 +1,53 @@
+
+@startuml CU_Nomina_RRHH
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Responsable de RR. HH." as RRHH
+actor "Empleado" as Empleado
+actor "Contador" as Contador
+actor "Gerente general" as Gerente
+
+rectangle "ERP - Nómina y Recursos Humanos" {
+  usecase "Registrar empleado" as RegistrarEmpleado
+  usecase "Actualizar expediente laboral" as Expediente
+  usecase "Consultar puesto y departamento" as Puesto
+  usecase "Registrar asistencia" as Asistencia
+  usecase "Consultar asistencia" as ConsultarAsistencia
+  usecase "Solicitar vacaciones" as SolicitarVacaciones
+  usecase "Autorizar vacaciones" as AutorizarVacaciones
+  usecase "Registrar incidencias de nómina" as Incidencias
+  usecase "Procesar nómina" as Nomina
+  usecase "Revisar nómina" as Revisar
+  usecase "Generar reporte de nómina" as ReporteNomina
+  usecase "Enviar información a contabilidad" as Integracion
+  usecase "Consultar recibo de nómina" as Recibo
+}
+
+
+RRHH --> RegistrarEmpleado
+RRHH --> Expediente
+RRHH --> Puesto
+RRHH --> ConsultarAsistencia
+RRHH --> AutorizarVacaciones
+RRHH --> Incidencias
+RRHH --> Nomina
+RRHH --> Revisar
+RRHH --> ReporteNomina
+
+Empleado --> SolicitarVacaciones
+Empleado --> Recibo
+
+Contador --> Integracion
+Contador --> ReporteNomina
+Gerente --> ReporteNomina
+
+Expediente ..> RegistrarEmpleado : <<extend>>
+ConsultarAsistencia ..> Asistencia : <<include>>
+AutorizarVacaciones ..> SolicitarVacaciones : <<extend>>
+Nomina ..> Incidencias : <<include>>
+Nomina ..> Revisar : <<include>>
+Integracion ..> Nomina : <<include>>
+
+@enduml

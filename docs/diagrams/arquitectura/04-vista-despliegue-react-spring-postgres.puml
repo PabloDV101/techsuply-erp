@@ -1,0 +1,59 @@
+@startuml TSS_Despliegue
+ title TechSupply Solutions - Vista de despliegue
+top to bottom direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam componentStyle uml2
+skinparam defaultFontName Arial
+skinparam wrapWidth 190
+skinparam nodesep 28
+skinparam ranksep 34
+
+actor "Usuarios internos y clientes" as Users
+cloud "Internet / red corporativa" as Network
+
+node "Zona perimetral" as DMZ {
+  node "Nginx · HTTPS / TLS 443" as Nginx {
+    artifact "React + TypeScript\narchivos estáticos" as SPA
+    artifact "Proxy inverso /api/*" as Proxy
+  }
+}
+
+node "Red privada de aplicaciones" as AppNet {
+  node "Backend Spring Boot\nJava 21 · MVP: 1 instancia" as Backend {
+    artifact "TechSupply ERP API\nREST + Spring Security\nJPA/Hibernate + Flyway" as API
+  }
+  node "Escalado futuro opcional" as Scale {
+    artifact "Instancias adicionales\ntras validar carga y estado" as Extra
+  }
+}
+
+node "Red privada de datos" as DataNet {
+  database "PostgreSQL\npuerto interno 5432" as DB
+  artifact "Volumen persistente" as Volume
+}
+node "Respaldo separado" as Backup {
+  artifact "Proceso de backup\ny almacenamiento cifrado" as BackupFiles
+}
+cloud "SMTP opcional" as SMTP
+
+Users --> Network
+Network --> Nginx : HTTPS / TLS 443
+Nginx --> SPA : entrega archivos web
+Proxy --> Backend : tráfico API privado
+Backend --> DB : JDBC / TLS
+DB -- Volume : persistencia
+DB ..> BackupFiles : respaldo autorizado
+Backend ..> SMTP : notificación post-commit
+Extra ..> Backend : escala futura
+
+note bottom of DB
+  PostgreSQL no se expone a Internet.
+  Solo acceden backend y proceso de respaldo autorizado.
+end note
+note bottom of Backup
+  Definir retención y probar restauraciones.
+  El backup no sustituye alta disponibilidad.
+end note
+@enduml
