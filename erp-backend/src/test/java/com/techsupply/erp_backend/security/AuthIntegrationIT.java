@@ -236,7 +236,9 @@ class AuthIntegrationIT extends PostgresIntegrationSupport {
     }
 
     @Test void malformedAndUnicodePasswordsReturnUniform400() throws Exception {
-        login("tester", "é".repeat(37)).andExpect(status().isBadRequest()).andExpect(jsonPath("code").value("BAD_REQUEST"));
+        login("tester", "é".repeat(37)).andExpect(status().isBadRequest())
+            .andExpect(jsonPath("code").value("BAD_REQUEST"))
+            .andExpect(jsonPath("message").value("Solicitud inválida"));
         http.perform(post("/api/v1/auth/login").contentType("application/json").content("{"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("message").value("Solicitud inválida"));
     }

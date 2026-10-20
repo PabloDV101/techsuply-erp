@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -79,6 +80,11 @@ public class GlobalApiExceptionHandler {
             default -> ex.getStatusCode().is4xxClientError() ? "La solicitud no pudo procesarse" : "Error interno del servidor";
         };
         return error(ex.getStatusCode(), message);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiError> denied(AccessDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, "Permiso insuficiente");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

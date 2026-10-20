@@ -2,6 +2,8 @@ package com.techsupply.erp_backend.security.api;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -13,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice(basePackages = "com.techsupply.erp_backend.security.api")
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class AuthExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<AuthError> status(ResponseStatusException ex) {
