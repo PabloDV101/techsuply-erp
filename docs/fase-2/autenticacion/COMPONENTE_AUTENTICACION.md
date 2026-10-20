@@ -70,7 +70,7 @@ pendientes; este cambio no define orígenes permitidos ni modifica el frontend.
 
 ## 3. Esquema y migraciones
 
-`src/main/resources/db/migration/` contiene:
+Para seguridad, `src/main/resources/db/migration/` contiene:
 
 - `V1__security_schema.sql`: usuarios, roles, permisos, relaciones y sesiones; índices,
   valores predeterminados, FK internas y restricciones.
@@ -80,9 +80,14 @@ pendientes; este cambio no define orígenes permitidos ni modifica el frontend.
   asignado al rol ADMINISTRADOR existente. Login, logout, bootstrap y 403 publican
   eventos mediante el componente descrito en `docs/fase-2/auditoria/COMPONENTE_AUDITORIA.md`.
 
+El mismo directorio contiene V3 para categorías y V5 para la bandeja APP; la
+autenticación no publica avisos automáticamente. Ver
+`docs/fase-2/notificaciones/COMPONENTE_NOTIFICACIONES.md`.
+
 Los identificadores son `bigint`/`Long`, coherentes con JPA y OpenAPI existentes.
 El DBML general y las vistas UML usan Long/bigint: seguridad refleja V1/V2 y
-categorías de producto refleja V3 y auditoría refleja V4. Los demás catálogos y módulos conservan su
+categorías de producto refleja V3, auditoría V4 y notificaciones internas V5.
+Los demás catálogos y módulos conservan su
 carácter de diseño objetivo. La propagación documental de tipos a esas tablas
 objetivo no crea tablas ni migra instalaciones existentes. Ver `docs/diagrams/README.md`.
 

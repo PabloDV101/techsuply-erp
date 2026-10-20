@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.4 — seguridad, categorías y auditoría físicas actuales; resto modelo objetivo del ERP; SRS-TSS-ERP-001.
+// Versión 1.5 — seguridad, categorías, auditoría y bandeja interna actuales; resto modelo objetivo; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'v1.4. seguridad_implementada (V1/V2), categorias_implementadas (V3) y auditoria_implementada (V4) existen hoy. Las demás tablas son OBJETIVO. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'v1.5. seguridad_implementada (V1/V2), categorias_implementadas (V3), auditoria_implementada (V4) y notificaciones_implementadas (V5) existen hoy. Las demás tablas son OBJETIVO. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -793,18 +793,22 @@ Table ejecuciones_reporte [headercolor: #7F8C8D] {
   Note: 'OBJETIVO: tabla aún no implementada.'
 }
 
-Table notificaciones [headercolor: #7F8C8D] {
+Table notificaciones [headercolor: #2E86C1] {
   id bigint [pk, not null, increment]
-  usuario_id bigint
-  destinatario_externo varchar(150)
-  canal varchar(15) [not null, note: 'APP, EMAIL']
+  usuario_id bigint [not null]
+  tipo_evento varchar(40) [not null]
+  modulo varchar(40) [not null]
+  entidad varchar(80) [not null]
+  entidad_id bigint [not null]
+  clave_operacion varchar(120) [not null]
+  canal varchar(15) [not null, default: 'APP', note: 'Solo APP en V5']
   asunto varchar(200) [not null]
   cuerpo text [not null]
-  estado varchar(15) [not null, note: 'PENDIENTE, ENVIADA, FALLIDA, LEIDA']
+  estado varchar(15) [not null, default: 'NO_LEIDA', note: 'NO_LEIDA o LEIDA']
   creada_en timestamptz [not null, default: `now()`]
-  enviada_en timestamptz
-  intentos smallint [not null, default: 0]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  leida_en timestamptz
+  indexes { (tipo_evento, clave_operacion, usuario_id) [unique] }
+  Note: 'IMPLEMENTADO en V5 para bandeja APP. FK a usuario, CHECK de canal/estado/fecha de lectura, índices por usuario/fecha y usuario/estado/fecha. La entrega se inserta tras commit en nueva transacción; no hay SMTP, Outbox ni reintentos automáticos. Clave de operación única por tipo/destinatario.'
 }
 
 Table parametros_sistema [headercolor: #7F8C8D] {
@@ -1103,6 +1107,10 @@ TableGroup auditoria_implementada {
   eventos_auditoria
 }
 
+TableGroup notificaciones_implementadas {
+  notificaciones
+}
+
 TableGroup erp_objetivo {
   departamentos
   puestos
@@ -1156,7 +1164,6 @@ TableGroup erp_objetivo {
   pagos_nomina
   definiciones_reporte
   ejecuciones_reporte
-  notificaciones
   parametros_sistema
   detalles_factura_venta
   detalles_devolucion_proveedor

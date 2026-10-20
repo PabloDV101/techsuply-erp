@@ -6,7 +6,7 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
 
  package "Entrada HTTP" as Entry {
    component "Spring Security\nFilter Chain" as Security <<implementado>>
-   component "AuthController / AdminUsuariosController\nCategoriaProductoController" as Controllers <<implementado>>
+   component "Auth / Admin / Categorías\nAudit / Notification Controllers" as Controllers <<implementado>>
    component "DTOs + Jakarta Validation\nMapeo request/response" as DTO <<implementado>>
    component "AuthExceptionHandler / AuthErrorWriter\n(alcance actual: seguridad)" as Errors <<implementado>>
    component "common.api\nErrores HTTP / paginación" as GlobalErrors <<implementado>>
@@ -35,7 +35,7 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
  package "Servicios transversales" as CrossCutting {
    component "Auditoría: seguridad y categorías" as Audit <<implementado>>
    component "Consultas de reportería" as Reporting <<objetivo>>
-   component "Notificaciones\nAFTER_COMMIT" as Notifications <<objetivo>>
+   component "Bandeja APP y publicación\nAFTER_COMMIT" as Notifications <<implementado>>
  }
 
  database "PostgreSQL" as DB
@@ -61,11 +61,12 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
  JPAAdapters ..> RepositoryPorts : separación propuesta para otros módulos
  UseCases --> JPAAdapters : dependencia directa actual
  JPAAdapters --> DB : JDBC / TLS en producción
- Flyway --> DB : V1/V2/V3/V4 al arrancar; job de release es objetivo
+ Flyway --> DB : V1–V5 al arrancar; job de release es objetivo
 
  UseCases ..> Audit : cambios relevantes
  UseCases ..> AppEvents : publicar tras validar
- AppEvents ..> Notifications : después del commit
+ AppEvents ..> Notifications : productores futuros
+ Notifications --> DB : inserción idempotente posterior al commit
  Controllers ..> Errors : errores auth (advice prioritario)
  Controllers ..> GlobalErrors : validación / errores HTTP restantes
 
@@ -95,8 +96,8 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
    por separado, sin contraseñas ni secretos.
  end note
 note as EstadoActual
-  Azul: seguridad, categorías, auditoría y errores comunes. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías, auditoría, bandeja APP y errores comunes. Gris: módulos propuestos.
   El cliente React no consume aún el API. La búsqueda de categorías está implementada;
-  auditoría de otros módulos, reportería, notificaciones y su búsqueda siguen pendientes.
+  auditoría de otros módulos, reportería y productores de avisos siguen pendientes.
 end note
 @enduml

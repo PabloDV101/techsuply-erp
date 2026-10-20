@@ -34,8 +34,11 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
   package "audit" {
     component "AuditController / AuditTrail / AuditQueryService\nAuditEvent / AuditEventRepository" as AuditModule <<implementado>>
   }
+  package "notifications" {
+    component "NotificationController / NotificationPublisher\nInboxService / InternalNotification / Writer" as NotificationModule <<implementado>>
+  }
   package "Paquetes de negocio previstos · aún no existen" {
-    component "resto de maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería / notificaciones" as Future <<objetivo>>
+    component "resto de maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería / productores de avisos" as Future <<objetivo>>
   }
 }
 package "src/main/resources" {
@@ -45,6 +48,7 @@ package "src/main/resources" {
     artifact "V2__security_catalogs.sql" as V2
     artifact "V3__product_categories.sql" as V3
     artifact "V4__audit_events.sql" as V4
+    artifact "V5__internal_notifications.sql" as V5
   }
 }
 package "src/test/java/com/techsupply/erp_backend" {
@@ -53,6 +57,7 @@ package "src/test/java/com/techsupply/erp_backend" {
   artifact "AuthIntegrationIT / ErpBackendApplicationIT\nPostgresIntegrationSupport" as Integration
   artifact "CategoriaProductoIntegrationIT" as CategoryIT <<implementado>>
   artifact "AuditIntegrationIT" as AuditIT <<implementado>>
+  artifact "NotificationRequestTest / NotificationOpenApiContractTest\nNotificationIntegrationIT" as NotificationIT <<implementado>>
 }
 Main ..> Config
 ApiClasses ..> AppClasses
@@ -62,6 +67,8 @@ Categories ..> GlobalErrors : paginación / errores
 CategoryIT ..> V3
 AuditIT ..> V4
 AuditModule ..> V4
+NotificationModule ..> V5
+NotificationIT ..> V5
 Categories ..> AuditModule : cambios relevantes
 AppClasses ..> AuditModule : seguridad
 AppClasses ..> Models
@@ -70,6 +77,7 @@ SecurityClasses ..> Repos
 V1 --> V2 : orden de migración
 V2 --> V3 : orden de migración
 V3 --> V4 : orden de migración
+V4 --> V5 : orden de migración
 Integration ..> V1
 Unit ..> AppClasses
 note bottom of V2

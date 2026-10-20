@@ -7,7 +7,7 @@ actor "Desarrollador" as User
 package "Desarrollo local · configuración existente" {
   node "JVM local · Java 21" {
     artifact "erp-backend-0.0.1-SNAPSHOT.jar\nSpring Boot 4.1.1\nSERVER_PORT (8080 por defecto)" as API
-    artifact "Flyway al arrancar\nV1 / V2 + Hibernate validate" as Flyway
+    artifact "Flyway al arrancar\nV1–V5 + Hibernate validate" as Flyway
   }
   node "Docker Compose · deploy/docker-compose.yml" {
     database "postgres:17-alpine\n5432:5432 (publicación actual en todas las interfaces)" as DB

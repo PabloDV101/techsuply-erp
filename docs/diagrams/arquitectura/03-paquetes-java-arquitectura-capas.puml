@@ -30,6 +30,7 @@ package "com.techsupply.erp_backend" {
     component "api / application / dto\ndomain.model / persistence + Specifications\nCategoría de producto" as Categories <<implementado>>
   }
   component "audit: escritura y consulta" as Audit <<implementado>>
+  component "notifications: bandeja APP y publicador" as Notifications <<implementado>>
   package "Módulos pendientes · nombres propuestos" as Modules {
     component "resto de maestros" as Masters <<objetivo>>
     component "compras" as Buy <<objetivo>>
@@ -37,7 +38,7 @@ package "com.techsupply.erp_backend" {
     component "ventas" as Sales <<objetivo>>
     component "contabilidad" as Acc <<objetivo>>
     component "rrhh / nómina" as Pay <<objetivo>>
-    component "reportería / notificaciones" as Shared <<objetivo>>
+    component "reportería / productores de avisos" as Shared <<objetivo>>
   }
 }
 database "PostgreSQL" as DB

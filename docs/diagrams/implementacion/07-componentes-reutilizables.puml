@@ -1,6 +1,6 @@
 @startuml TechSupply_Reusable_Components
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad, errores y búsqueda de categorías implementados; otros módulos pendientes.
+caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; productores de avisos pendientes.
  title TechSupply Solutions - Componentes reutilizables y contratos
  left to right direction
 
@@ -9,9 +9,9 @@ caption VISTA MIXTA · Seguridad, errores y búsqueda de categorías implementad
    component "Jakarta Validation\nDTOs de entrada" as InputValidation <<implementado>>
    component "common.api\nApiError / GlobalApiExceptionHandler" as CommonErrors <<implementado>>
    component "common.api\nPageRequests / PageResponse" as CrudPaging <<implementado>>
-   component "AuditService" as Audit <<objetivo>>
+   component "AuditTrail / AuditQueryService" as Audit <<implementado>>
    component "Búsqueda de categorías\nPageRequests + JPA Specification" as Search <<implementado>>
-   component "NotificationService\nAFTER_COMMIT" as Notify <<objetivo>>
+   component "NotificationPublisher / InboxService\nAPP después del commit" as Notify <<implementado>>
    component "Reporting query services" as Reports <<objetivo>>
    component "AuthExceptionHandler / AuthErrorWriter\n(específico de seguridad)" as Errors <<implementado>>
  }
@@ -19,8 +19,8 @@ caption VISTA MIXTA · Seguridad, errores y búsqueda de categorías implementad
  interface "AuthenticatedUserProvider" as Identity
  component "SecurityContextAuthenticatedUserProvider" as IdentityAdapter <<implementado>>
  IdentityAdapter ..|> Identity
- interface "AuditPort" as IAudit <<objetivo>>
- interface "NotificationPort" as INotify <<objetivo>>
+ interface "AuditTrail" as IAudit <<implementado>>
+ interface "NotificationPublisher" as INotify <<implementado>>
  interface "ReportQueryPort" as IReports <<objetivo>>
 
  package "Módulos consumidores" as Consumers {
@@ -79,13 +79,14 @@ caption VISTA MIXTA · Seguridad, errores y búsqueda de categorías implementad
  end note
 
  note right of Notify
-   Las notificaciones salen después del commit para no enviar
-   avisos sobre operaciones que finalmente se revierten.
-   Para garantías más fuertes, añadir patrón outbox en el futuro.
+   Bandeja APP: inserción después del commit, idempotente por
+   operación/destinatario. Sin productores de negocio actuales.
+   La caída entre commit y callback puede perder el aviso;
+   Outbox y SMTP requieren decisiones futuras.
  end note
 note as EstadoActual
-  Azul: seguridad, validación/errores HTTP y búsqueda de categorías. Gris: objetivos.
-  El cliente React no consume aún el API. Auditoría, reportería y notificaciones
-  siguen pendientes. Búsqueda en otros módulos y aislamiento por fila no están probados.
+  Azul: seguridad, validación, auditoría, búsqueda de categorías y bandeja APP.
+  El cliente React no consume aún el API. Reportería y productores de avisos
+  siguen pendientes. Búsqueda en otros módulos no está probada.
 end note
 @enduml

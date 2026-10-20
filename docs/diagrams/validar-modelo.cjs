@@ -12,6 +12,7 @@ const migrations = [
   ['V1__security_schema.sql', 'seguridad_implementada', 7],
   ['V3__product_categories.sql', 'categorias_implementadas', 1],
   ['V4__audit_events.sql', 'auditoria_implementada', 1],
+  ['V5__internal_notifications.sql', 'notificaciones_implementadas', 1],
 ];
 const tables = [];
 const implementationGroups = new Map();
@@ -65,5 +66,5 @@ for (const table of schema.tables) {
 }
 assert.ok(!/\buuid\b|gen_random_uuid/i.test(primary), 'Stale UUID policy');
 console.log(`DBML OK: ${schema.tables.length} tables, ${schema.refs.length} relationships; both copies identical.`);
-console.log(`Implemented schema matches V1/V3/V4: ${tables.length} tables, column types/nullability, PK/unique constraints and ${expectedRefs.length} foreign keys.`);
+console.log(`Implemented schema matches V1/V3/V4/V5: ${tables.length} tables, column types/nullability, PK/unique constraints and ${expectedRefs.length} foreign keys.`);
 console.log('CHECK, triggers and partial indexes are described in notes; executable authority remains Flyway SQL.');

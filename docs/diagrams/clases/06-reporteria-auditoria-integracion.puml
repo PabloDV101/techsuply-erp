@@ -1,6 +1,6 @@
 @startuml ERP_06_Reporteria_Auditoria_Integracion
 !include ../_estilo.iuml
-caption VISTA MIXTA · EventoAuditoria implementado en V4 para seguridad/categorías; reportería e integración son objetivo.
+caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería e integración son objetivo.
  title TechSupply Solutions - Reportería, auditoría e integración
  hide circle
 
@@ -62,16 +62,20 @@ caption VISTA MIXTA · EventoAuditoria implementado en V4 para seguridad/categor
   +frecuenciaActualizacion: String
   +activo: Boolean
 }
-  class Notificacion {
+  class "InternalNotification" as Notificacion <<implementado>> {
     +id: Long
-    +canal: CanalNotificacion
-    +destinatarioExterno: String
+    +usuarioId: Long
+    +tipoEvento: NotificationType
+    +modulo: String
+    +entidad: String
+    +entidadId: Long
+    +claveOperacion: String
+    +canal: String
     +asunto: String
     +cuerpo: String
-    +estado: EstadoNotificacion
-    +creadaEn: DateTime
-    +enviadaEn: DateTime
-    +intentos: Integer
+    +estado: NotificationStatus
+    +creadaEn: Instant
+    +leidaEn: Instant
   }
   class ParametroSistema {
     +id: Long
@@ -103,14 +107,13 @@ caption VISTA MIXTA · EventoAuditoria implementado en V4 para seguridad/categor
   CSV
   XLSX
 }
- enum CanalNotificacion {
-  APP
-  EMAIL
+ enum NotificationType {
+  STOCK_BAJO
+  APROBACION_PENDIENTE
+  RESULTADO_OPERACION
  }
- enum EstadoNotificacion {
-  PENDIENTE
-  ENVIADA
-  FALLIDA
+ enum NotificationStatus {
+  NO_LEIDA
   LEIDA
  }
  enum EstadoReporte {
@@ -125,7 +128,7 @@ caption VISTA MIXTA · EventoAuditoria implementado en V4 para seguridad/categor
  DefinicionReporte "1" -- "0..*" EjecucionReporte
  Permiso "1" <-- "0..*" DefinicionReporte : permiso requerido
  Indicador "1" -- "0..*" ValorIndicador
- Usuario "0..1" <-- "0..*" Notificacion : destinatario interno opcional
+ Usuario "1" <-- "0..*" Notificacion : destinatario obligatorio
  Usuario "0..1" <-- "0..*" ParametroSistema : actualizado por
 
  note bottom of EventoAuditoria
@@ -136,6 +139,11 @@ caption VISTA MIXTA · EventoAuditoria implementado en V4 para seguridad/categor
  note bottom of EventoIntegracion
   Componente opcional del monolito. Puede materializar el patron
   Outbox para procesar eventos/reintentos tras confirmar la transaccion.
+ end note
+ note bottom of Notificacion
+  V5: solo canal APP, lectura propia e inserción tras commit.
+  Los productores de negocio aún no están conectados.
+  EMAIL, Outbox y reintentos automáticos son objetivos opcionales.
  end note
  note right of EjecucionReporte
   Los filtros, resultados y exportaciones aplican permisos de datos;
