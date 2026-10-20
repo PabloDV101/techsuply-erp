@@ -4,9 +4,11 @@ import com.techsupply.erp_backend.common.api.PageRequests;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.maestros.application.dto.ActualizarCategoriaRequest;
 import com.techsupply.erp_backend.maestros.application.dto.CategoriaResponse;
+import com.techsupply.erp_backend.maestros.application.dto.CategoriaSearchCriteria;
 import com.techsupply.erp_backend.maestros.application.dto.CrearCategoriaRequest;
 import com.techsupply.erp_backend.maestros.domain.model.CategoriaProducto;
 import com.techsupply.erp_backend.maestros.infrastructure.persistence.CategoriaProductoRepository;
+import com.techsupply.erp_backend.maestros.infrastructure.persistence.CategoriaProductoSpecifications;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -45,8 +47,10 @@ public class CategoriaProductoService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<CategoriaResponse> listar(int page, int size, String sort, String direction) {
-        return PageResponse.from(repository.findAll(PageRequests.of(page, size, sort, direction, SORT_FIELDS)),
+    public PageResponse<CategoriaResponse> listar(int page, int size, String sort, String direction,
+            CategoriaSearchCriteria criteria) {
+        return PageResponse.from(repository.findAll(CategoriaProductoSpecifications.matching(criteria),
+                PageRequests.of(page, size, sort, direction, SORT_FIELDS, "id")),
             CategoriaProductoService::response);
     }
 

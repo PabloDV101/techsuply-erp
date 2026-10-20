@@ -12,6 +12,11 @@ public final class PageRequests {
     private PageRequests() {}
 
     public static Pageable of(int page, int size, String sort, String direction, Map<String, String> allowedSorts) {
+        return of(page, size, sort, direction, allowedSorts, null);
+    }
+
+    public static Pageable of(int page, int size, String sort, String direction,
+            Map<String, String> allowedSorts, String tieBreaker) {
         if (page < 0 || size < 1 || size > 100) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Página o tamaño no válido");
         }
@@ -25,6 +30,10 @@ public final class PageRequests {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dirección de ordenación no válida");
         }
-        return PageRequest.of(page, size, Sort.by(order, property));
+        Sort ordering = Sort.by(order, property);
+        if (tieBreaker != null && !property.equals(tieBreaker)) {
+            ordering = ordering.and(Sort.by(order, tieBreaker));
+        }
+        return PageRequest.of(page, size, ordering);
     }
 }

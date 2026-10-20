@@ -6,6 +6,7 @@ import com.techsupply.erp_backend.maestros.application.dto.CategoriaResponse;
 import com.techsupply.erp_backend.maestros.application.dto.CrearCategoriaRequest;
 import com.techsupply.erp_backend.maestros.application.dto.EstadoCategoriaRequest;
 import java.lang.reflect.RecordComponent;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -79,5 +81,22 @@ class CategoriaOpenApiContractTest {
             .containsExactlyInAnyOrder("status", "code", "message");
         assertThat(map(map(schemas.get("CategoriaPage")).get("properties")).keySet())
             .containsExactlyInAnyOrder("content", "page", "size", "totalElements", "totalPages");
+    }
+
+    @Test
+    void documentedSearchParametersMatchController() {
+        Map<String, Object> listing = map(map(map(contract.get("paths")).get("/categories")).get("get"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> documented = (List<Map<String, Object>>) listing.get("parameters");
+        Set<String> names = documented.stream().map(parameter -> (String) parameter.get("name"))
+            .collect(Collectors.toSet());
+        Method listingMethod = Arrays.stream(CategoriaProductoController.class.getDeclaredMethods())
+            .filter(method -> method.getName().equals("listar")).findFirst().orElseThrow();
+        Set<String> actual = Arrays.stream(listingMethod.getParameters())
+            .filter(parameter -> parameter.isAnnotationPresent(RequestParam.class))
+            .map(java.lang.reflect.Parameter::getName).collect(Collectors.toSet());
+        assertThat(names).containsExactlyInAnyOrderElementsOf(actual);
+        assertThat(names).containsExactlyInAnyOrder("page", "size", "sort", "direction", "codigo",
+            "nombre", "activa", "categoriaPadreId");
     }
 }

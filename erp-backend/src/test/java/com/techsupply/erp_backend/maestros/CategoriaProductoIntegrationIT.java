@@ -4,6 +4,9 @@ import com.techsupply.erp_backend.security.PostgresIntegrationSupport;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class CategoriaProductoIntegrationIT extends PostgresIntegrationSupport {
+    private static final Logger log = LoggerFactory.getLogger(CategoriaProductoIntegrationIT.class);
     @Autowired MockMvc http;
     @Autowired JdbcTemplate db;
     @Autowired ObjectMapper json;
@@ -65,8 +69,12 @@ class CategoriaProductoIntegrationIT extends PostgresIntegrationSupport {
     private record CategoryInput(String codigo, String nombre, String descripcion, Long categoriaPadreId) {}
 
     private long create(String token, String code, Long parent) throws Exception {
+        return create(token, code, "Categoría", parent);
+    }
+
+    private long create(String token, String code, String name, Long parent) throws Exception {
         String result = http.perform(post("/api/v1/categories").header("Authorization", "Bearer " + token)
-            .contentType("application/json").content(body(code, "Categoría", parent)))
+            .contentType("application/json").content(body(code, name, parent)))
             .andExpect(status().isCreated()).andExpect(header().exists("Location"))
             .andExpect(jsonPath("codigo").value(code))
             .andReturn().getResponse().getContentAsString();
@@ -126,6 +134,113 @@ class CategoriaProductoIntegrationIT extends PostgresIntegrationSupport {
             http.perform(get("/api/v1/categories?" + query).header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("code").value("BAD_REQUEST"));
         }
+    }
+
+    @Test void searchCombinesOptionalFiltersAndPreservesEmptyPages() throws Exception {
+        String token = token("MAESTROS_CATEGORIAS_ADMIN", "MAESTROS_CATEGORIAS_LEER");
+        long parent = create(token, code(), "Familia de prueba", null);
+        String matchCode = code();
+        long match = create(token, matchCode, "Conectores USB", parent);
+        long inactive = create(token, code(), "Conectores HDMI", parent);
+        create(token, code(), "Conectores externos", null);
+        http.perform(patch("/api/v1/categories/{id}/status", inactive)
+            .header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"activa\":false}"))
+            .andExpect(status().isOk());
+
+        http.perform(get("/api/v1/categories").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content").isArray());
+        http.perform(get("/api/v1/categories").param("codigo", " " + matchCode.toLowerCase(Locale.ROOT) + " ")
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(1))
+            .andExpect(jsonPath("content[0].id").value(match));
+        http.perform(get("/api/v1/categories").param("nombre", "  cOnEcToReS ")
+            .param("activa", "true").param("categoriaPadreId", Long.toString(parent))
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(1))
+            .andExpect(jsonPath("content[0].id").value(match));
+        http.perform(get("/api/v1/categories").param("activa", "false")
+            .param("categoriaPadreId", Long.toString(parent)).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(1))
+            .andExpect(jsonPath("content[0].id").value(inactive));
+        http.perform(get("/api/v1/categories").param("codigo", matchCode).param("page", "1")
+            .param("size", "1").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content.length()").value(0))
+            .andExpect(jsonPath("totalElements").value(1));
+        http.perform(get("/api/v1/categories").param("codigo", code())
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content.length()").value(0))
+            .andExpect(jsonPath("totalElements").value(0));
+    }
+
+    @Test void searchRejectsInvalidFiltersAndTreatsLikeWildcardsLiterally() throws Exception {
+        String token = token("MAESTROS_CATEGORIAS_ADMIN", "MAESTROS_CATEGORIAS_LEER");
+        for (String[] invalid : new String[][] {
+                {"codigo", " "}, {"codigo", "X".repeat(21)}, {"nombre", "  "},
+                {"nombre", "X".repeat(101)}, {"activa", "yes"},
+                {"categoriaPadreId", "0"}, {"categoriaPadreId", "abc"},
+                {"size", "0"}, {"sort", "categoriaPadre.id"}}) {
+            http.perform(get("/api/v1/categories").param(invalid[0], invalid[1])
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("code").value("BAD_REQUEST"));
+        }
+        String special = "Puerto %_\\ USB";
+        long id = create(token, code(), special, null);
+        http.perform(get("/api/v1/categories").param("nombre", "%_\\")
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(1))
+            .andExpect(jsonPath("content[0].id").value(id));
+        http.perform(get("/api/v1/categories").param("nombre", "%")
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(1));
+        http.perform(get("/api/v1/categories").param("nombre", "' OR 1=1 --")
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(0));
+    }
+
+    @Test void searchRequiresReadPermission() throws Exception {
+        String writeOnly = token("MAESTROS_CATEGORIAS_ADMIN");
+        http.perform(get("/api/v1/categories").param("nombre", "USB"))
+            .andExpect(status().isUnauthorized());
+        http.perform(get("/api/v1/categories").param("nombre", "USB")
+            .header("Authorization", "Bearer " + writeOnly))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("code").value("FORBIDDEN"));
+    }
+
+    @Test void searchSortsTiesByIdAndKeepsLargeCatalogPaged() throws Exception {
+        String token = token("MAESTROS_CATEGORIAS_ADMIN", "MAESTROS_CATEGORIAS_LEER");
+        String name = "Empate " + UUID.randomUUID().toString().substring(0, 8);
+        long first = create(token, code(), name, null);
+        long second = create(token, code(), name, null);
+        http.perform(get("/api/v1/categories").param("nombre", name).param("sort", "nombre")
+            .param("size", "1").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].id").value(first));
+        http.perform(get("/api/v1/categories").param("nombre", name).param("sort", "nombre")
+            .param("size", "1").param("page", "1").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].id").value(second));
+        http.perform(get("/api/v1/categories").param("nombre", name).param("sort", "nombre")
+            .param("direction", "desc").param("size", "1")
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].id").value(second));
+
+        String prefix = "B" + UUID.randomUUID().toString().substring(0, 7).toUpperCase(Locale.ROOT);
+        db.update("insert into categorias_producto(codigo,nombre) "
+            + "select ? || lpad(n::text, 5, '0'), 'Lote de búsqueda' from generate_series(1, 1500) n", prefix);
+        http.perform(get("/api/v1/categories").param("nombre", "Lote de búsqueda")
+            .param("size", "100").param("page", "14").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("content.length()").value(100))
+            .andExpect(jsonPath("totalElements").value(1500));
+        long[] millis = new long[20];
+        for (int i = 0; i < millis.length; i++) {
+            long start = System.nanoTime();
+            http.perform(get("/api/v1/categories").param("nombre", "Lote de búsqueda")
+                .param("size", "100").param("page", "14").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+            millis[i] = (System.nanoTime() - start) / 1_000_000;
+        }
+        Arrays.sort(millis);
+        log.info("Category search sample: 1500 rows, 20 sequential MockMvc requests, p95={} ms",
+            millis[18]);
     }
 
     @Test void permissionsAreEnforcedForReadsAndWrites() throws Exception {

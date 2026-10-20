@@ -2,9 +2,11 @@ package com.techsupply.erp_backend.maestros.infrastructure.persistence;
 
 import com.techsupply.erp_backend.maestros.domain.model.CategoriaProducto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
-public interface CategoriaProductoRepository extends JpaRepository<CategoriaProducto, Long> {
+public interface CategoriaProductoRepository extends JpaRepository<CategoriaProducto, Long>,
+    JpaSpecificationExecutor<CategoriaProducto> {
     boolean existsByCodigo(String codigo);
     boolean existsByCodigoAndIdNot(String codigo, Long id);
 

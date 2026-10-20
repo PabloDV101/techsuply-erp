@@ -4,6 +4,7 @@ import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.maestros.application.CategoriaProductoService;
 import com.techsupply.erp_backend.maestros.application.dto.ActualizarCategoriaRequest;
 import com.techsupply.erp_backend.maestros.application.dto.CategoriaResponse;
+import com.techsupply.erp_backend.maestros.application.dto.CategoriaSearchCriteria;
 import com.techsupply.erp_backend.maestros.application.dto.CrearCategoriaRequest;
 import com.techsupply.erp_backend.maestros.application.dto.EstadoCategoriaRequest;
 import jakarta.validation.Valid;
@@ -48,8 +49,13 @@ public class CategoriaProductoController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "codigo") String sort,
-        @RequestParam(defaultValue = "asc") String direction) {
-        return service.listar(page, size, sort, direction);
+        @RequestParam(defaultValue = "asc") String direction,
+        @RequestParam(required = false) String codigo,
+        @RequestParam(required = false) String nombre,
+        @RequestParam(required = false) String activa,
+        @RequestParam(required = false) Long categoriaPadreId) {
+        return service.listar(page, size, sort, direction,
+            CategoriaSearchCriteria.from(codigo, nombre, activa, categoriaPadreId));
     }
 
     @PutMapping("/{id}")
