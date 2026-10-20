@@ -2,7 +2,9 @@ openapi: 3.0.3
 info:
   title: TechSupply ERP - Consulta de auditoría
   version: 1.0.0
-  description: Eventos de solo lectura. El backend controla el catálogo de acciones y los metadatos.
+  description: >-
+    Eventos de solo lectura. El backend controla el catálogo de acciones y los metadatos.
+    La respuesta de error conserva status, code y message como el resto de la API.
 servers:
   - url: /api/v1
 security:

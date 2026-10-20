@@ -54,7 +54,11 @@ Vistas recomendadas para conocer el estado actual:
 
 `common.api` aporta `ApiError`, `GlobalApiExceptionHandler`, `PageRequests` y
 `PageResponse<T>`; `security.api` conserva
-`AuthExceptionHandler` con mayor prioridad y la misma forma JSON de tres campos.
+`AuthExceptionHandler` con mayor prioridad y el mismo record Java `ApiError`.
+El esquema OpenAPI `AuthError` conserva su nombre como alias. `common.api` declara
+`AuthorizationDenialRecorder`; `AuditTrail` lo implementa, de modo que el manejador
+común no importa `audit` y la consulta de auditoría puede usar paginación común
+sin formar un ciclo de paquetes.
 La validación común tiene pruebas MVC aisladas y se ha verificado junto a auth,
 categorías, auditoría y notificaciones. La paginación común tiene tres consumidores reales:
 categorías, consulta de auditoría y bandeja APP; su reutilización en otro módulo de negocio

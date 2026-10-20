@@ -40,12 +40,16 @@ Los errores HTTP usan el objeto JSON común:
 | `code` | Nombre estable del estado HTTP (por ejemplo `BAD_REQUEST` o `INTERNAL_SERVER_ERROR`). Para estados no estándar se usa `HTTP_<número>`. |
 | `message` | Mensaje seguro para el cliente. En restricciones de DTO incluye nombres de campo y mensajes declarados por Bean Validation. |
 
-Se mantiene la forma de tres campos de `AuthError` documentada por el componente
-de autenticación. Los controladores o módulos pueden usar consejos de excepción
+Desde la integración de Fase 2, seguridad también serializa el record Java `ApiError`.
+El nombre `AuthError` permanece en su OpenAPI como alias de esquema para no cambiar
+el nombre consumido por clientes; ambos representan los mismos tres campos.
+Los controladores o módulos pueden usar consejos de excepción
 de mayor prioridad para conservar mensajes funcionales específicos; deben
 mantener el mismo contrato JSON.
 Actualmente `AuthExceptionHandler` tiene mayor prioridad que el consejo global
 en `security.api`; fuera de ese paquete actúa `GlobalApiExceptionHandler`.
+Para registrar un `403`, el consejo global depende de `AuthorizationDenialRecorder`
+en `common.api`; `AuditTrail` lo implementa. Así `common` no importa el módulo de auditoría.
 
 ## Respuestas gestionadas
 

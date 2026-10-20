@@ -6,6 +6,7 @@ left to right direction
 package "com.techsupply.erp_backend" {
   package "common.api" as CommonApi {
     component "ApiError / GlobalApiExceptionHandler\nPageRequests / PageResponse" as GlobalErrors <<implementado>>
+    interface "AuthorizationDenialRecorder" as DenialPort <<implementado>>
   }
   package "security.api" as API {
     component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
@@ -46,11 +47,15 @@ Controllers ..> DTO : valida / devuelve
 Controllers ..> Services : invoca
 Controllers ..> Errors : traduce errores
 Controllers ..> GlobalErrors : fallback de validación / HTTP
+GlobalErrors ..> DenialPort : anota 403
+Audit ..|> DenialPort : implementa vía AuditTrail
+Audit ..> GlobalErrors : paginación de consulta
 Categories ..> GlobalErrors : paginación / errores
 Categories --> DB : repositorio JPA actual
 note right of Errors
   Advice de seguridad con mayor prioridad;
   conserva mensajes del contrato auth.
+  Serializa common.api.ApiError; AuthError es alias OpenAPI.
 end note
 Services ..> Entities
 Services ..> Repo : dependencia directa actual

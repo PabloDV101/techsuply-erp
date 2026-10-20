@@ -23,6 +23,10 @@ la auditoría de un flujo que todavía no existe.
   `AuthenticatedUserProvider`; los módulos no reciben ni almacenan el Bearer. Para cambios
   protegidos, un actor ausente es error. El bootstrap usa `SISTEMA`; el login rechazado usa
   `ANONIMO`; un 403 conserva el ID del actor solo si está autenticado.
+- `AuditTrail` implementa `AuthorizationDenialRecorder`, el puerto mínimo usado por el
+  manejador HTTP común para anotar un 403. La dependencia queda en dirección
+  `audit → common`; `common` no importa clases de `audit`. El manejador de seguridad
+  conserva su ruta específica de denegación y ambos devuelven el mismo `ApiError`.
 - El detalle es una lista cerrada de **nombres de campos modificados** y etiquetas
   `ACTIVO`/`INACTIVO`. No guarda valores previos/nuevos, contraseña, hash, token, nombre de
   usuario intentado, IP ni cuerpo de solicitud. Los IDs de recurso son los ya públicos del
@@ -62,6 +66,8 @@ Desde `erp-backend/`, con Docker disponible para Testcontainers:
 ./mvnw -o verify
 ```
 
+`AuditOpenApiContractTest` compara la ruta, filtros, permiso y campos documentados
+con `AuditController`, `AuditEventResponse`, `PageResponse` y `ApiError`.
 `AuditIntegrationIT` comprueba eventos de éxito/denegación, actor, consulta protegida,
 metadatos seguros, rollback y prohibición de UPDATE/DELETE contra PostgreSQL real aislado.
 La suite anterior de autenticación y categorías se ejecuta en el mismo comando. En un entorno

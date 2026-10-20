@@ -57,6 +57,9 @@ Errores del componente y de seguridad:
 {"status":401,"code":"UNAUTHORIZED","message":"Autenticación requerida"}
 ```
 
+El cuerpo anterior se serializa con el record compartido `ApiError`; el esquema
+`AuthError` de OpenAPI conserva su nombre para compatibilidad documental.
+
 - `400`: JSON, parámetros o validación inválidos.
 - `401`: credenciales o autenticación inválidas; incluye `WWW-Authenticate: Bearer`.
 - `403`: identidad válida sin permiso suficiente o delegación no autorizada.

@@ -1,9 +1,10 @@
 package com.techsupply.erp_backend.audit.application;
 
+import com.techsupply.erp_backend.common.api.AuthorizationDenialRecorder;
 import java.util.Set;
 
 /** Public contract for modules. Successful changes require the caller's transaction. */
-public interface AuditTrail {
+public interface AuditTrail extends AuthorizationDenialRecorder {
     void change(AuditAction action, Long resourceId, Set<AuditField> fields,
                 AuditState previousState, AuditState newState);
 
@@ -15,5 +16,4 @@ public interface AuditTrail {
     void systemBootstrap(Long userId);
     void deniedLoginAfterCommit();
     void logoutAfterCommit(Long userId, Long sessionId);
-    void deniedAuthorization();
 }

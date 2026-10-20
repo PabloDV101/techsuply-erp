@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.concurrent.atomic.AtomicInteger;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class GlobalApiExceptionHandlerTest {
     private MockMvc mvc;
@@ -33,7 +35,7 @@ class GlobalApiExceptionHandlerTest {
         validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mvc = MockMvcBuilders.standaloneSetup(new ValidationProbeController())
-            .setControllerAdvice(new GlobalApiExceptionHandler())
+            .setControllerAdvice(new GlobalApiExceptionHandler(() -> {}))
             .setValidator(validator)
             .build();
     }
@@ -101,6 +103,20 @@ class GlobalApiExceptionHandlerTest {
             .andExpect(jsonPath("$.status").value(403))
             .andExpect(jsonPath("$.code").value("FORBIDDEN"))
             .andExpect(jsonPath("$.message").value("Permiso insuficiente"));
+    }
+
+    @Test
+    void authorizationDenialUsesAuditPortWithoutChangingErrorBody() throws Exception {
+        AtomicInteger recorded = new AtomicInteger();
+        GlobalApiExceptionHandler advice = new GlobalApiExceptionHandler(recorded::incrementAndGet);
+        MockMvc withRecorder = MockMvcBuilders.standaloneSetup(new ValidationProbeController())
+            .setControllerAdvice(advice).setValidator(validator).build();
+        withRecorder.perform(get("/validation/probe/denied"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.status").value(403))
+            .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+            .andExpect(jsonPath("$.message").value("Permiso insuficiente"));
+        assertThat(recorded).hasValue(1);
     }
 
     private void assertBadRequest(String json, String field) throws Exception {

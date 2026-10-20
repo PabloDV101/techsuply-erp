@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security.api;
 
+import com.techsupply.erp_backend.common.api.ApiError;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,6 @@ public class AuthErrorWriter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         if (status == HttpStatus.UNAUTHORIZED) response.setHeader("WWW-Authenticate", "Bearer");
-        mapper.writeValue(response.getOutputStream(), new AuthError(status.value(), status.name(), message));
+        mapper.writeValue(response.getOutputStream(), new ApiError(status.value(), status.name(), message));
     }
 }

@@ -13,13 +13,14 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
    component "Búsqueda de categorías\nPageRequests + JPA Specification" as Search <<implementado>>
    component "NotificationPublisher / InboxService\nAPP después del commit" as Notify <<implementado>>
    component "Reportería: consultas agregadas\nDTO y filtros por reporte" as Reports <<objetivo>>
-   component "AuthExceptionHandler / AuthErrorWriter\n(específico de seguridad)" as Errors <<implementado>>
+   component "AuthExceptionHandler / AuthErrorWriter\n(serializan ApiError común)" as Errors <<implementado>>
  }
 
  interface "AuthenticatedUserProvider" as Identity
  component "SecurityContextAuthenticatedUserProvider" as IdentityAdapter <<implementado>>
  IdentityAdapter ..|> Identity
  interface "AuditTrail" as IAudit <<implementado>>
+ interface "AuthorizationDenialRecorder" as IDenial <<implementado>>
  interface "NotificationPublisher" as INotify <<implementado>>
  interface "Consultas de lectura\npor dominio" as IReports <<objetivo>>
 
@@ -33,6 +34,7 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
  }
 
  Audit - IAudit
+ Audit ..|> IDenial
  Notify - INotify
  Reports - IReports
 
@@ -58,6 +60,7 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
  Reports ..> CrudPaging : página acotada
  Reports ..> IReports : proyecciones de lectura
  InputValidation ..> CommonErrors : errores de entrada
+ CommonErrors ..> IDenial : registrar 403 sin importar audit
  Masters ..> CrudPaging : listado paginado real
  Masters ..> CommonErrors : validación / errores reales
  Errors ..> CommonErrors : misma forma JSON; mayor prioridad
@@ -78,6 +81,7 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
  note bottom of Audit
    @Transactional define la atomicidad en los servicios de aplicación;
    no es un microservicio ni un componente remoto independiente.
+   El puerto de denegación rompe el ciclo common / audit.
  end note
 
  note right of Notify

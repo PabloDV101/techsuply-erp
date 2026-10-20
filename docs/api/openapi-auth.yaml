@@ -523,6 +523,10 @@ components:
   schemas:
     AuthError:
       type: object
+      description: >-
+        Nombre de esquema conservado para clientes del contrato de autenticación.
+        El backend serializa el mismo ApiError compartido por todas las API.
+      x-java-type: com.techsupply.erp_backend.common.api.ApiError
       additionalProperties: false
       required:
       - status

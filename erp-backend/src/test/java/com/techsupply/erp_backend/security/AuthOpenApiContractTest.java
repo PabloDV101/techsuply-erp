@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security;
 
+import com.techsupply.erp_backend.common.api.ApiError;
 import com.techsupply.erp_backend.security.api.*;
 import com.techsupply.erp_backend.security.application.dto.*;
 import jakarta.validation.Valid;
@@ -43,7 +44,7 @@ class AuthOpenApiContractTest {
     }
 
     static Stream<Arguments> records() {
-        return Stream.of(Arguments.of("AuthError", AuthError.class),
+        return Stream.of(Arguments.of("AuthError", ApiError.class),
             Arguments.of("LoginResponse", LoginResponse.class),
             Arguments.of("UsuarioResumen", LoginResponse.UsuarioResumen.class),
             Arguments.of("UsuarioResponse", UsuarioResponse.class),

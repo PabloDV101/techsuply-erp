@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -147,5 +148,53 @@ class AuditIntegrationIT extends PostgresIntegrationSupport {
         }
         http.perform(post("/api/v1/audit/events").header("Authorization", "Bearer " + reader.token()))
             .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test void phaseTwoHttpErrorsKeepTheSameShapeAcrossComponents() throws Exception {
+        Account limited = account();
+        Account reader = account("SEGURIDAD_AUDITORIA_LEER");
+        Account categoryAdmin = account("MAESTROS_CATEGORIAS_ADMIN");
+
+        var unauthenticated = http.perform(get("/api/v1/categories"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(header().string("WWW-Authenticate", "Bearer"))
+            .andReturn();
+        assertError(unauthenticated.getResponse().getContentAsString(), 401, "UNAUTHORIZED");
+
+        var loginDenied = http.perform(post("/api/v1/auth/login").contentType("application/json")
+            .content("{\"identificador\":\"unknown-phase-two\",\"password\":\"invalid-password\"}"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(header().string("WWW-Authenticate", "Bearer"))
+            .andReturn();
+        assertError(loginDenied.getResponse().getContentAsString(), 401, "UNAUTHORIZED");
+
+        var forbidden = http.perform(get("/api/v1/categories")
+            .header("Authorization", "Bearer " + limited.token()))
+            .andExpect(status().isForbidden()).andReturn();
+        assertError(forbidden.getResponse().getContentAsString(), 403, "FORBIDDEN");
+
+        var invalidCategory = http.perform(post("/api/v1/categories")
+            .header("Authorization", "Bearer " + categoryAdmin.token())
+            .contentType("application/json").content("{\"codigo\":\"\",\"nombre\":\"\"}"))
+            .andExpect(status().isBadRequest()).andReturn();
+        assertError(invalidCategory.getResponse().getContentAsString(), 400, "BAD_REQUEST");
+
+        var invalidAudit = http.perform(get("/api/v1/audit/events")
+            .header("Authorization", "Bearer " + reader.token()).param("sort", "password"))
+            .andExpect(status().isBadRequest()).andReturn();
+        assertError(invalidAudit.getResponse().getContentAsString(), 400, "BAD_REQUEST");
+
+        var invalidInbox = http.perform(get("/api/v1/notifications")
+            .header("Authorization", "Bearer " + limited.token()).param("size", "101"))
+            .andExpect(status().isBadRequest()).andReturn();
+        assertError(invalidInbox.getResponse().getContentAsString(), 400, "BAD_REQUEST");
+    }
+
+    private void assertError(String body, int statusCode, String code) throws Exception {
+        var error = json.readTree(body);
+        assertThat(error.size()).isEqualTo(3);
+        assertThat(error.get("status").asInt()).isEqualTo(statusCode);
+        assertThat(error.get("code").asText()).isEqualTo(code);
+        assertThat(error.get("message").asText()).isNotBlank();
     }
 }
