@@ -78,9 +78,10 @@ pendientes; este cambio no define orígenes permitidos ni modifica el frontend.
   No crea cuentas ni contraseñas.
 
 Los identificadores son `bigint`/`Long`, coherentes con JPA y OpenAPI existentes.
-El DBML general y las vistas UML usan ahora Long/bigint: seguridad refleja V1/V2; los demás
-módulos conservan su carácter de diseño objetivo. La propagación documental de tipos no
-crea tablas ni migra instalaciones existentes. Ver `docs/diagrams/README.md`.
+El DBML general y las vistas UML usan Long/bigint: seguridad refleja V1/V2 y
+categorías de producto refleja V3. Los demás catálogos y módulos conservan su
+carácter de diseño objetivo. La propagación documental de tipos a esas tablas
+objetivo no crea tablas ni migra instalaciones existentes. Ver `docs/diagrams/README.md`.
 
 `identificadores_usuario` y su trigger mantienen un espacio único para username/correo,
 incluyendo colisiones cruzadas y altas concurrentes. No es un catálogo funcional adicional.

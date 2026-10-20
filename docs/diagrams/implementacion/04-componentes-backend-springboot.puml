@@ -1,24 +1,24 @@
 @startuml TechSupply_Backend_Components
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
+caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes internos de Spring Boot
  top to bottom direction
 
  package "Entrada HTTP" as Entry {
    component "Spring Security\nFilter Chain" as Security <<implementado>>
-   component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
+   component "AuthController / AdminUsuariosController\nCategoriaProductoController" as Controllers <<implementado>>
    component "DTOs + Jakarta Validation\nMapeo request/response" as DTO <<implementado>>
    component "AuthExceptionHandler / AuthErrorWriter\n(alcance actual: seguridad)" as Errors <<implementado>>
-   component "common.api\nApiError / GlobalApiExceptionHandler" as GlobalErrors <<implementado>>
+   component "common.api\nErrores HTTP / paginación" as GlobalErrors <<implementado>>
  }
 
  package "Capa de aplicación" as Application {
-   component "AuthService / UserManagementService\n@Transactional" as UseCases <<implementado>>
+   component "AuthService / UserManagementService\nCategoriaProductoService / @Transactional" as UseCases <<implementado>>
    component "Publicación de eventos\nde aplicación" as AppEvents <<objetivo>>
  }
 
  package "Módulos de negocio" as DomainModules {
-   component "Gestión maestra" as Masters <<objetivo>>
+   component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
    component "Compras" as Purchasing <<objetivo>>
    component "Inventario" as Inventory <<objetivo>>
    component "Ventas" as Sales <<objetivo>>
@@ -28,7 +28,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
 
  package "Puertos y adaptadores de persistencia" as PersistenceLayer {
    interface "Interfaces de repositorio\npor módulo" as RepositoryPorts <<objetivo>>
-   component "Repositorios security\nSpring Data JPA / Hibernate" as JPAAdapters <<implementado>>
+   component "Repositorios security y categorías\nSpring Data JPA / Hibernate" as JPAAdapters <<implementado>>
    component "Flyway\nmigraciones de esquema" as Flyway <<implementado>>
  }
 
@@ -50,7 +50,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  UseCases ..> Accounting
  UseCases ..> Payroll
 
- Masters ..> RepositoryPorts
+ Masters --> JPAAdapters : categoría actual
  Purchasing ..> RepositoryPorts
  Inventory ..> RepositoryPorts
  Sales ..> RepositoryPorts
@@ -61,7 +61,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  JPAAdapters ..> RepositoryPorts : separación propuesta para otros módulos
  UseCases --> JPAAdapters : dependencia directa actual
  JPAAdapters --> DB : JDBC / TLS en producción
- Flyway --> DB : V1/V2 al arrancar; job de release es objetivo
+ Flyway --> DB : V1/V2/V3 al arrancar; job de release es objetivo
 
  UseCases ..> Audit : cambios relevantes
  UseCases ..> AppEvents : publicar tras validar
@@ -77,7 +77,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
 
  note right of RepositoryPorts
    Diseño objetivo: cada módulo es propietario de sus repositorios.
-   Hoy security usa directamente interfaces Spring Data JPA.
+   Hoy security y categorías usan directamente interfaces Spring Data JPA.
    Otros módulos no invocan directamente sus
    implementaciones JPA ni realizan SQL ajeno.
  end note
@@ -95,7 +95,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
    por separado, sin contraseñas ni secretos.
  end note
 note as EstadoActual
-  Azul: seguridad y errores HTTP comunes. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías y errores comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

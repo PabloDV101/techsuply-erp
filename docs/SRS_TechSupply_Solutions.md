@@ -224,6 +224,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-MAE-02 — Categorías (Media).** El sistema deberá gestionar categorías jerárquicas y asociarlas a productos.  
 *Criterio:* cada producto activo puede consultarse por su categoría; una categoría no puede ser padre de sí misma ni formar ciclos.
 
+*Estado de implementación (Fase 2):* crear, consultar, listar, actualizar y activar/desactivar categorías, con control de ciclos y permisos, está implementado y probado. La asociación y consulta de productos por categoría sigue pendiente porque `productos` aún no existe en las migraciones; por ello RF-MAE-02 no está cerrado en su totalidad.
+
 **RF-MAE-03 — Proveedores (Alta).** El sistema deberá gestionar datos y estado de proveedores, incluyendo contacto, dirección y condiciones de pago.  
 *Criterio:* una orden nueva requiere proveedor activo; las órdenes históricas mantienen la referencia a su proveedor.
 
@@ -469,7 +471,7 @@ Esta decisión limita la complejidad de despliegue y permite operaciones transac
 4. **Persistencia e infraestructura:** implementaciones de repositorios, JPA/Hibernate, migraciones y conexiones externas. Implementa contratos definidos por capas superiores.
 5. **Servicios compartidos:** auditoría, autorización común, validación, reportería, errores y notificaciones. No se deben convertir en un conjunto de dependencias globales que permita saltarse los límites de los módulos.
 
-**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración y errores propios de seguridad. `com.techsupply.erp_backend.common.api` implementa el formato de error y un `@RestControllerAdvice` global para validación de entradas y errores HTTP; el advice de seguridad conserva prioridad para sus endpoints. Este componente transversal solo tiene integración demostrada con seguridad; su reutilización en otro módulo aún está pendiente. Las entidades de seguridad contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Auditoría, portal React, CORS, Nginx/TLS, notificaciones y jobs de despliegue/backup siguen pendientes.
+**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración y errores propios de seguridad. `com.techsupply.erp_backend.common.api` implementa el formato de error, el `@RestControllerAdvice` global y contratos acotados de paginación. `com.techsupply.erp_backend.maestros` implementa únicamente el catálogo jerárquico de categorías de producto; el resto de Gestión Maestra sigue pendiente. El advice de seguridad conserva prioridad para sus endpoints. Las entidades actuales contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Auditoría, portal React, CORS, Nginx/TLS, notificaciones y jobs de despliegue/backup siguen pendientes.
 
 ### 8.4 Módulos del dominio
 
@@ -598,6 +600,7 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 
 | Grupo de requisitos | Caso de uso/proceso | Clases principales | Prueba sugerida |
 |---|---|---|---|
+| RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT; asociación con productos pendiente |
 | RF-COM-01 a RF-COM-08 | Compras y recepción | RequisicionCompra, OrdenCompra, RecepcionCompra, FacturaProveedor | CA-01; validar recepción parcial y factura de proveedor |
 | RF-INV-01 a RF-INV-07 | Inventario, conteo y ajuste | Existencia, MovimientoInventario, ConteoInventario, AjusteInventario | CA-01, CA-02, CA-03 |
 | RF-VEN-01 a RF-VEN-09 | Cotización, portal, pedido y despacho | Cotizacion, PedidoVenta, Despacho, FacturaVenta | CA-02, CA-03 |

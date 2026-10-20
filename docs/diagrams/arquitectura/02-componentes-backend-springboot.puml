@@ -1,11 +1,11 @@
 @startuml TSS_Componentes_Backend
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
+caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes internos del backend
 top to bottom direction
 
 package "Entrada HTTP" as Web {
-  component "AuthController / AdminUsuariosController\nDTO de seguridad" as Controllers <<implementado>>
+  component "AuthController / AdminUsuariosController\nCategoriaProductoController" as Controllers <<implementado>>
   component "Spring Security\nAutenticación y autorización" as Security <<implementado>>
   component "Jakarta Validation + common.api\nErrores HTTP uniformes" as InputErrors <<implementado>>
 }
@@ -15,7 +15,7 @@ package "Aplicación" as Application {
 }
 package "Módulos de dominio (una aplicación Spring Boot)" as Domain {
   component "Seguridad: Usuario, Rol, Permiso, TokenSesion" as Auth <<implementado>>
-  component "Gestión maestra" as Masters <<objetivo>>
+  component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
   component "Compras" as Purchasing <<objetivo>>
   component "Inventario" as Inventory <<objetivo>>
   component "Ventas y despachos" as Sales <<objetivo>>
@@ -42,7 +42,8 @@ Tx --> Auth : persistencia actual
 Tx ..> Domain : integración objetivo
 Domain ..> Shared : utiliza capacidades comunes
 Auth --> Repositories : Spring Data JPA directo
-Domain ..> Repositories : contratos propuestos para módulos futuros
+Masters --> Repositories : Spring Data JPA directo
+Domain ..> Repositories : contratos propuestos para otros módulos
 Shared --> Repositories : eventos / consultas autorizadas
 Repositories --> DB
 Flyway --> DB : esquema versionado
@@ -62,7 +63,7 @@ note bottom of Tx
   cuando la operación lo requiere.
 end note
 note as EstadoActual
-  Azul: seguridad y errores HTTP comunes. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías y errores comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

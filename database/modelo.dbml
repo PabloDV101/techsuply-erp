@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.2 — seguridad física actual y modelo objetivo del ERP; SRS-TSS-ERP-001.
+// Versión 1.3 — seguridad y categorías físicas actuales; resto modelo objetivo del ERP; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'v1.2. Solo seguridad_implementada existe hoy (V1/V2 Flyway). Los demás grupos y relaciones son OBJETIVO. bigint/Long conserva el contrato vigente; no genera ni altera migraciones. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'v1.3. seguridad_implementada (V1/V2) y categorias_implementadas (V3) existen hoy. La FK de categoría a su padre existe; la relación de productos con categorías y las demás tablas futuras son OBJETIVO. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -79,7 +79,7 @@ Table categorias_producto [headercolor: #2E86C1] {
   descripcion varchar(250)
   categoria_padre_id bigint
   activa boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada. Jerarquía de categorías; evitar ciclos y limitar niveles desde el servicio de dominio.'
+  Note: 'IMPLEMENTADO en V3. La FK a categoría padre, CHECK de autopadre, unicidad de código e índice de padre existen en PostgreSQL; el servicio evita ciclos con bloqueo transaccional. La API activa/desactiva sin borrado físico. Productos y su FK a esta tabla aún son objetivo.'
 }
 
 Table productos [headercolor: #2E86C1] {
@@ -936,8 +936,8 @@ Ref: empleados.puesto_id > puestos.id
 Ref: empleados.jefe_id > empleados.id
 Ref fk_futura_usuarios_cliente: usuarios.cliente_id - clientes.id
 Ref fk_futura_usuarios_empleado: usuarios.empleado_id - empleados.id
-Ref: categorias_producto.categoria_padre_id > categorias_producto.id
-Ref: productos.categoria_id > categorias_producto.id
+Ref: categorias_producto.categoria_padre_id > categorias_producto.id // V3: FK actual
+Ref: productos.categoria_id > categorias_producto.id // OBJETIVO: productos aún no existe
 Ref: productos.proveedor_principal_id > proveedores.id
 
 // Seguridad: las siete FK siguientes existen en V1; las demás son diseño objetivo.
@@ -1097,13 +1097,16 @@ TableGroup seguridad_implementada {
   tokens_sesion
 }
 
+TableGroup categorias_implementadas {
+  categorias_producto
+}
+
 TableGroup erp_objetivo {
   departamentos
   puestos
   empleados
   clientes
   proveedores
-  categorias_producto
   productos
   almacenes
   solicitudes_autorizacion

@@ -1,0 +1,149 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP - CRUD de categorías de producto
+  version: 1.0.0
+  description: Primer consumidor del patrón CRUD reutilizable. Borrado físico no disponible.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /categories:
+    get:
+      summary: Listar categorías con paginación
+      description: Requiere MAESTROS_CATEGORIAS_LEER. Incluye categorías inactivas.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: sort, in: query, schema: { type: string, enum: [id, codigo, nombre], default: codigo } }
+        - { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
+      responses:
+        '200': { description: Página de categorías, content: { application/json: { schema: { $ref: '#/components/schemas/CategoriaPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Crear categoría
+      description: Requiere MAESTROS_CATEGORIAS_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearCategoriaRequest' }
+      responses:
+        '201':
+          description: Categoría creada
+          headers:
+            Location: { description: URI de la categoría creada, schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoriaResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /categories/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      summary: Consultar categoría
+      description: Requiere MAESTROS_CATEGORIAS_LEER.
+      responses:
+        '200': { description: Categoría, content: { application/json: { schema: { $ref: '#/components/schemas/CategoriaResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Reemplazar datos editables de categoría
+      description: Requiere MAESTROS_CATEGORIAS_ADMIN. Rechaza ciclos de jerarquía.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActualizarCategoriaRequest' }
+      responses:
+        '200': { description: Categoría actualizada, content: { application/json: { schema: { $ref: '#/components/schemas/CategoriaResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /categories/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      summary: Activar o desactivar categoría sin borrarla
+      description: Requiere MAESTROS_CATEGORIAS_ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstadoCategoriaRequest' }
+      responses:
+        '200': { description: Estado actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/CategoriaResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: opaque }
+  responses:
+    BadRequest: { description: Entrada inválida, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Token ausente o no válido, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Permiso insuficiente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: Categoría o padre inexistente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Conflict: { description: Código duplicado, ciclo o restricción de integridad, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+  schemas:
+    CrearCategoriaRequest:
+      type: object
+      required: [codigo, nombre]
+      properties:
+        codigo: { type: string, minLength: 1, maxLength: 20, pattern: '.*\S.*', description: No puede estar en blanco. Se normaliza a mayúsculas y se eliminan espacios extremos. }
+        nombre: { type: string, minLength: 1, maxLength: 100, pattern: '.*\S.*' }
+        descripcion: { type: string, maxLength: 250, nullable: true }
+        categoriaPadreId: { type: integer, format: int64, minimum: 1, nullable: true }
+    ActualizarCategoriaRequest:
+      type: object
+      required: [codigo, nombre]
+      properties:
+        codigo: { type: string, minLength: 1, maxLength: 20, pattern: '.*\S.*' }
+        nombre: { type: string, minLength: 1, maxLength: 100, pattern: '.*\S.*' }
+        descripcion: { type: string, maxLength: 250, nullable: true }
+        categoriaPadreId: { type: integer, format: int64, minimum: 1, nullable: true }
+    EstadoCategoriaRequest:
+      type: object
+      required: [activa]
+      properties:
+        activa: { type: boolean }
+    CategoriaResponse:
+      type: object
+      additionalProperties: false
+      required: [id, codigo, nombre, descripcion, categoriaPadreId, activa]
+      properties:
+        id: { type: integer, format: int64 }
+        codigo: { type: string }
+        nombre: { type: string }
+        descripcion: { type: string, nullable: true }
+        categoriaPadreId: { type: integer, format: int64, nullable: true }
+        activa: { type: boolean }
+    CategoriaPage:
+      type: object
+      additionalProperties: false
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/CategoriaResponse' } }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [status, code, message]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }

@@ -1,7 +1,7 @@
 @startuml ERP_01_Gestion_Maestra_Seguridad
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
- title TechSupply Solutions - Vista logica: Gestion maestra y seguridad (modelo objetivo)
+caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e integraciones pendientes.
+ title TechSupply Solutions - Vista lógica: Gestión maestra y seguridad (actual y objetivo)
  hide circle
 
  package "Seguridad · entidades actuales y capacidades objetivo" {
@@ -112,10 +112,11 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
   +plazoCreditoDias: Integer
   +activo: Boolean
 }
-  class CategoriaProducto {
+  class CategoriaProducto <<implementado>> {
   +id: Long
   +codigo: String
   +nombre: String
+  +descripcion: String [0..1]
   +activa: Boolean
 }
   class Producto {
@@ -162,7 +163,8 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
 
  note right of Usuario
   IDs Long en Java / bigint en PostgreSQL.
-  Gestión maestra, auditoría y sus FK aún son objetivo.
+  Los vínculos de Usuario con Empleado/Cliente y la auditoría aún son objetivo.
+  La FK de CategoriaProducto a su padre sí existe en V3.
   La cuenta puede vincularse a un empleado o a un cliente,
   nunca a ambos. El portal y su alcance de datos son objetivo.
   Las cuentas tecnicas/admin pueden no tener vinculo persona.

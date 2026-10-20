@@ -102,15 +102,15 @@ formato de error y ocultamiento de detalles de excepciones inesperadas. Es una
 prueba MVC aislada: no requiere PostgreSQL ni reemplaza pruebas de integración
 con los controladores y filtros de cada módulo.
 
-En la última verificación de esta rama, `./mvnw -o verify` terminó con 31 pruebas
-Surefire y 27 Failsafe aprobadas; las de integración usaron PostgreSQL desechable
-mediante Testcontainers, Flyway V1/V2 y validación de esquema Hibernate. El script
+En la verificación previa del componente de validación, `./mvnw -o verify` terminó
+con 31 pruebas Surefire y 27 Failsafe aprobadas; las de integración usaron PostgreSQL
+desechable mediante Testcontainers, Flyway V1/V2 y validación de esquema Hibernate. El script
 `python3 scripts/verify-auth-http.py --report /tmp/techsupply-auth-validation-http-results.json`
 verificó 23 casos HTTP de auth, sin diferencias de comportamiento o contrato.
-Estas pruebas demuestran compatibilidad con el módulo de seguridad, pero aún falta
-probar el componente en un segundo módulo real y medir la cobertura exigida por
-RNF-12. No hay evidencia de cumplimiento de todos los criterios de reutilización
-de RNF-11 o de la rúbrica final.
+Desde el componente CRUD, el advice común también procesa los errores del módulo
+de categorías de producto y sus pruebas HTTP de integración. La cobertura exigida
+por RNF-12 sigue sin medirse; un uso adicional por sí solo no acredita todos los
+criterios de reutilización de RNF-11 o de la rúbrica final.
 
 El componente no tiene entidades ni migraciones propias. Sus códigos de error
 dependen del estado HTTP, no del tipo de identificador de las tablas. El esquema

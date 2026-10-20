@@ -1,6 +1,6 @@
 @startuml TechSupply_Component_Overview
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
+caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes principales
  left to right direction
 
@@ -15,9 +15,9 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  package "Backend monolítico modular\nSpring Boot / Java 21" as Backend {
    component "Cadena de filtros\nSpring Security" as Security <<implementado>>
    component "Controladores REST\nDTOs y validación de entrada" as Controllers <<implementado>>
-   component "AuthService / UserManagementService" as AppServices <<implementado>>
+   component "AuthService / UserManagementService\nCategoriaProductoService" as AppServices <<implementado>>
    package "Módulos de negocio" as Modules {
-     component "Gestión maestra" as Masters <<objetivo>>
+     component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
      component "Compras" as Purchasing <<objetivo>>
      component "Inventario" as Inventory <<objetivo>>
      component "Ventas" as Sales <<objetivo>>
@@ -29,7 +29,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
      component "Auditoría" as Audit <<objetivo>>
      component "Reportería\nsolo lectura" as Reporting <<objetivo>>
      component "Notificaciones" as Notifications <<objetivo>>
-     component "common.api\nApiError / GlobalApiExceptionHandler" as ErrorHandler <<implementado>>
+     component "common.api\nErrores HTTP / paginación" as ErrorHandler <<implementado>>
    }
    component "Adaptadores de persistencia\nSpring Data JPA / Hibernate" as Persistence <<implementado>>
  }
@@ -71,7 +71,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
    No deben acceder a repositorios internos de otros módulos.
  end note
 note as EstadoActual
-  Azul: seguridad y errores HTTP comunes. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías y errores comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

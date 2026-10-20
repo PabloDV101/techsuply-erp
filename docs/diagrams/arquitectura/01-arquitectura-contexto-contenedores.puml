@@ -1,6 +1,6 @@
 @startuml TSS_Contexto_Contenedores
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad, errores comunes y categorías implementados; resto del ERP pendiente.
 title TechSupply Solutions — 01 arquitectura contexto contenedores
 ' Vista lógica de contenedores. Nginx y redes físicas se detallan en la vista de despliegue.
 top to bottom direction
@@ -13,11 +13,11 @@ node "Navegador web" as Browser {
 }
 
 node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
-  component "API REST de seguridad\nControladores y DTO" as API <<implementado>>
-  component "AuthService / UserManagementService\nCasos de uso y transacciones" as App <<implementado>>
+  component "API REST de seguridad y categorías\nControladores y DTO" as API <<implementado>>
+  component "AuthService / UserManagementService\nCategoriaProductoService" as App <<implementado>>
   package "Módulos de dominio" {
     component "Seguridad\nusuarios, roles, permisos y sesiones" as Auth <<implementado>>
-    component "Gestión maestra (objetivo)" as Maestros <<objetivo>>
+    component "Gestión maestra\nsolo categorías" as Maestros <<implementado>>
     component "Compras" as Compras <<objetivo>>
     component "Inventario" as Inventario <<objetivo>>
     component "Ventas y despachos" as Ventas <<objetivo>>
@@ -61,7 +61,7 @@ Transversal ..> SMTP : después del commit
 
 note bottom of Backend
   Diseño objetivo: todos los módulos comparten una aplicación Spring Boot.
-  Hoy solo security está implementado; React conserva la plantilla de Vite.
+  Hoy security y categorías están implementados; React conserva la plantilla de Vite.
   No son microservicios. Los módulos usan servicios públicos
   de aplicación y no modifican repositorios privados ajenos.
 end note
@@ -70,7 +70,7 @@ note bottom of DB
   Las operaciones críticas se ejecutan transaccionalmente.
 end note
 note as EstadoActual
-  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías y errores comunes. Gris: resto propuesto.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

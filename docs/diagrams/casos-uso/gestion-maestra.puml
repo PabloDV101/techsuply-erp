@@ -1,6 +1,6 @@
 @startuml CU_Gestion_Maestra
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+caption VISTA MIXTA · Gestión de categorías implementada; productos y demás catálogos pendientes.
 title TechSupply Solutions — Gestion maestra
 left to right direction
 
@@ -11,6 +11,7 @@ actor "Responsable de RR. HH." as RRHH
 actor "Administrador del sistema" as Admin
 
 rectangle "ERP - Gestión Maestra" {
+  usecase "Gestionar categorías\nde producto" as Categorias <<implementado>>
   usecase "Gestionar productos" as Productos
   usecase "Consultar productos" as ConsultarProductos
   usecase "Clasificar productos" as ClasificarProductos
@@ -40,6 +41,7 @@ RRHH -- Empleados
 RRHH -- Departamentos
 
 Admin -- Productos
+Admin -- Categorias
 Admin -- Proveedores
 Admin -- Clientes
 Admin -- Empleados
@@ -51,5 +53,11 @@ ClasificarProductos ..> Productos : <<extend>>
 note bottom of HistorialProveedores
   Los historiales consultan registros existentes.
   No requieren ejecutar el mantenimiento del catálogo.
+end note
+note right of Categorias
+  API actual: crear, consultar, listar con paginación,
+  actualizar y activar/desactivar. Requiere permisos
+  MAESTROS_CATEGORIAS_LEER o MAESTROS_CATEGORIAS_ADMIN.
+  No hay borrado físico ni productos implementados.
 end note
 @enduml

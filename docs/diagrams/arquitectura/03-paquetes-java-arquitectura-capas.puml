@@ -5,7 +5,7 @@ caption VISTA MIXTA · Azul: implementado; gris: diseño objetivo; las notas del
 left to right direction
 package "com.techsupply.erp_backend" {
   package "common.api" as CommonApi {
-    component "ApiError / GlobalApiExceptionHandler" as GlobalErrors <<implementado>>
+    component "ApiError / GlobalApiExceptionHandler\nPageRequests / PageResponse" as GlobalErrors <<implementado>>
   }
   package "security.api" as API {
     component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
@@ -26,8 +26,11 @@ package "com.techsupply.erp_backend" {
   package "security.config" as Config {
     component "SecurityConfig / SecurityClockConfig\nAdminBootstrapRunner (opcional)" as Configuration <<implementado>>
   }
+  package "maestros" as Maestros {
+    component "api / application / dto\ndomain.model / infrastructure.persistence\nCategoría de producto" as Categories <<implementado>>
+  }
   package "Módulos pendientes · nombres propuestos" as Modules {
-    component "maestros" as Masters <<objetivo>>
+    component "resto de maestros" as Masters <<objetivo>>
     component "compras" as Buy <<objetivo>>
     component "inventario" as Inv <<objetivo>>
     component "ventas" as Sales <<objetivo>>
@@ -41,6 +44,8 @@ Controllers ..> DTO : valida / devuelve
 Controllers ..> Services : invoca
 Controllers ..> Errors : traduce errores
 Controllers ..> GlobalErrors : fallback de validación / HTTP
+Categories ..> GlobalErrors : paginación / errores
+Categories --> DB : repositorio JPA actual
 note right of Errors
   Advice de seguridad con mayor prioridad;
   conserva mensajes del contrato auth.

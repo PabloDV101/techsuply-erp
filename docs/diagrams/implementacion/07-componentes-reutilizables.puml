@@ -8,6 +8,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
    component "Spring Security\nFilter Chain + @PreAuthorize" as Security <<implementado>>
    component "Jakarta Validation\nDTOs de entrada" as InputValidation <<implementado>>
    component "common.api\nApiError / GlobalApiExceptionHandler" as CommonErrors <<implementado>>
+   component "common.api\nPageRequests / PageResponse" as CrudPaging <<implementado>>
    component "AuditService" as Audit <<objetivo>>
    component "Búsqueda común\nPageable / Specification" as Search <<objetivo>>
    component "NotificationService\nAFTER_COMMIT" as Notify <<objetivo>>
@@ -24,7 +25,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  interface "ReportQueryPort" as IReports <<objetivo>>
 
  package "Módulos consumidores" as Consumers {
-   component "Gestión maestra" as Masters <<objetivo>>
+   component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
    component "Compras" as Purchases <<objetivo>>
    component "Inventario" as Inventory <<objetivo>>
    component "Ventas" as Sales <<objetivo>>
@@ -60,6 +61,8 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
 
  Reports ..> IReports
  InputValidation ..> CommonErrors : errores de entrada
+ Masters ..> CrudPaging : listado paginado real
+ Masters ..> CommonErrors : validación / errores reales
  Errors ..> CommonErrors : misma forma JSON; mayor prioridad
 
  note bottom of Security
@@ -70,7 +73,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
 
  note bottom of InputValidation
    Bean Validation y el advice común se prueban en MVC aislado.
-   Su reutilización en otro módulo real aún no está demostrada;
+   Categorías usa el advice común; otro módulo de negocio aún no;
    las invariantes comerciales (stock, saldos, estados) viven
    en el módulo responsable y se validan en el servidor.
  end note

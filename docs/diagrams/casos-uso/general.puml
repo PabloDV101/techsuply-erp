@@ -1,6 +1,6 @@
 @startuml CU_General_ERP
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad y gestión de categorías implementadas; resto pendiente.
 title TechSupply Solutions — General
 left to right direction
 
@@ -16,6 +16,7 @@ actor "Cliente" as Cliente
 rectangle "Sistema ERP - TechSupply Solutions" {
 
   package "Gestión maestra" {
+    usecase "Gestionar categorías de producto" as UC_Categorias <<implementado>>
     usecase "Gestionar productos" as UC_Productos
     usecase "Gestionar proveedores" as UC_Proveedores
     usecase "Gestionar clientes" as UC_Clientes
@@ -103,6 +104,7 @@ RRHH -- UC_Nomina
 RRHH -- UC_Asistencia
 
 Admin -- UC_Usuarios
+Admin -- UC_Categorias
 Admin -- UC_Auditoria
 Admin -- UC_Empleados
 

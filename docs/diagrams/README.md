@@ -8,11 +8,11 @@ acredita su implementación ni el cierre de una fase.
 
 | Estado | Representación | Significado |
 |---|---|---|
-| Implementado | Azul y `<<implementado>>` | Código actual de seguridad y validación/errores HTTP comunes. |
+| Implementado | Azul y `<<implementado>>` | Código actual de seguridad, validación/errores HTTP y categorías de producto. |
 | SQL actual | Verde y `<<SQL>>` | Tablas auxiliares reales sin clase JPA propia. |
 | Objetivo | Gris, `<<objetivo>>` o leyenda de diseño objetivo | Funcionalidad prevista; no está implementada por aparecer aquí. |
 | Opcional/futuro | Texto explícito, notas y estereotipos de futuro | Alternativas del diseño, sujetas a decisión posterior. |
-| Vista mixta | Leyenda y notas de alcance | Combina seguridad actual con módulos/integraciones pendientes. |
+| Vista mixta | Leyenda y notas de alcance | Combina seguridad, validación y categorías actuales con módulos/integraciones pendientes. |
 
 Los colores acompañan etiquetas textuales; no sustituyen la notación UML. Las cajas conservan
 sus tipos: clase, componente, paquete, nodo, artefacto, actor o caso de uso. Las multiplicidades,
@@ -35,7 +35,7 @@ Se usan SVG para poder ampliar los diagramas detallados sin perder texto.
 | Carpeta | Cantidad | Contenido |
 |---|---:|---|
 | `arquitectura/` | 8 | Contexto, componentes, dependencias, despliegue objetivo y secuencias. |
-| `casos-uso/` | 9 | Alcance por actor/módulo; seguridad distingue implementación y auditoría pendiente. |
+| `casos-uso/` | 9 | Alcance por actor/módulo; seguridad y categorías distinguen implementación del resto pendiente. |
 | `clases/` | 7 | `00` es el mapa de componentes del dominio; `01`–`06` son vistas de clases. |
 | `despliegue/` | 3 | Ejecución actual, MVP objetivo y objetivo escalable. |
 | `implementacion/` | 5 | Organización real, arquitectura objetivo, plantilla futura y reutilización. |
@@ -51,10 +51,12 @@ Vistas recomendadas para conocer el estado actual:
 5. `despliegue/00-despliegue-actual.puml`: JVM local, Compose existente y pruebas desechables.
 6. `clases/01-gestion-maestra-seguridad.puml`: entidades actuales y relaciones futuras con maestros/auditoría.
 
-`common.api` aporta `ApiError` y `GlobalApiExceptionHandler`; `security.api` conserva
+`common.api` aporta `ApiError`, `GlobalApiExceptionHandler`, `PageRequests` y
+`PageResponse<T>`; `security.api` conserva
 `AuthExceptionHandler` con mayor prioridad y la misma forma JSON de tres campos.
-La validación común tiene pruebas MVC aisladas y se ha verificado junto a auth;
-su reutilización en un segundo módulo de negocio aún no está demostrada.
+La validación común tiene pruebas MVC aisladas y se ha verificado junto a auth y
+categorías. La paginación común tiene un consumidor real: categorías; su reutilización
+en un segundo módulo de negocio aún no está demostrada.
 
 Las demás vistas conservan los procesos de compras, inventario, ventas, finanzas, RR. HH. y
 reportería. Son objetivos funcionales, sin clases de producción que los implementen todavía.
@@ -65,28 +67,32 @@ Nginx, HTTPS/TLS, SMTP, trabajos de respaldo/release y cliente React integrado s
 Hoy Compose solo configura PostgreSQL, con volumen persistente y publicación `5432:5432`;
 Flyway se ejecuta al arrancar Spring Boot. Las pruebas usan otro PostgreSQL desechable.
 La separación por puertos de los módulos futuros no describe el aislamiento actual de JPA:
-`security.application` depende directamente de repositorios Spring Data y el dominio usa JPA.
+`security.application` y `maestros.application` dependen directamente de repositorios
+Spring Data y sus modelos actuales usan JPA.
 
 ## DBML y SQL
 
 - Fuente canónica: `database/modelo.dbml`.
 - Copia para diagramación: `docs/diagrams/modelodatos/modelo.dbml`, idéntica byte a byte.
 - `database/modelo.dbdiagram` solo contiene configuración visual; no es un esquema alternativo.
-- El modelo tiene 71 tablas y 141 relaciones: siete tablas de seguridad implementadas y
-  64 tablas objetivo del ERP. Los grupos y notas explican la diferencia.
+- El modelo tiene 71 tablas y 141 relaciones: siete tablas de seguridad y la tabla
+  `categorias_producto` implementadas; 63 tablas objetivo. Los grupos y notas
+  explican la diferencia.
 - Identificadores: `Long` en Java, `bigint` autogenerado en SQL. Se propagó esta convención
   documental a los módulos futuros para mantener compatibles sus referencias.
 - `identificadores_usuario` y su trigger describen la unicidad conjunta de username/correo.
   `usuarios_roles` conserva asignador/fecha; `roles_permisos` conserva la PK compuesta.
 - `fk_futura_usuarios_cliente` y `fk_futura_usuarios_empleado` son relaciones de diseño;
-  no existen como FK en las migraciones actuales. Los catálogos maestros aún no existen.
+  no existen como FK en las migraciones actuales. De Gestión Maestra solo existe
+  `categorias_producto`.
 - El DBML incluye notas sobre CHECK, normalización, triggers e índices parciales. La sintaxis
   lógica `increment` no sustituye la definición física `GENERATED BY DEFAULT AS IDENTITY`.
 
 La autoridad ejecutable del esquema actual es `erp-backend/src/main/resources/db/migration/`:
-V1 crea seguridad y V2 sus catálogos. El DBML global mezcla esquema actual y diseño futuro;
-**no debe exportarse y ejecutarse completo como sustituto de Flyway**. Esta sincronización no
-modifica migraciones, datos ni bases existentes. No habilita baseline/clean automáticos.
+V1 crea seguridad, V2 sus catálogos y V3 categorías de producto. El DBML global
+mezcla esquema actual y diseño futuro; **no debe exportarse y ejecutarse completo
+como sustituto de Flyway**. V3 es una migración nueva: al iniciar el backend contra
+una base existente, Flyway la aplicará. No habilita baseline/clean automáticos.
 
 ## Validar y generar las vistas
 
@@ -110,7 +116,7 @@ Para PNG, añadir `--formato png` y usar otro directorio de salida. PlantUML uti
 tras `@startuml` para el artefacto: por ejemplo, `TSS_Secuencia_Auth.svg`.
 Los generados quedan fuera del repositorio. Los diagramas extensos se consultan ampliando el SVG.
 
-Para analizar DBML y comparar seguridad con V1, instalar el analizador oficial en un directorio
+Para analizar DBML y comparar las tablas actuales con V1/V3, instalar el analizador oficial en un directorio
 auxiliar, con acceso a npm cuando no esté disponible:
 
 ```bash
@@ -123,20 +129,19 @@ DBML_CORE_PATH=/tmp/techsupply-diagram-tools/node_modules/@dbml/core \
 ```
 
 El validador comprueba las dos copias, sintaxis DBML, columnas, tipos, nulabilidad, PK,
-unicidad y siete FK de las tablas actuales; además exige que las otras tablas estén marcadas
+unicidad y ocho FK de las tablas actuales; además exige que las otras tablas estén marcadas
 como objetivo. No ejecuta SQL ni conecta a PostgreSQL. Los CHECK, triggers e índices parciales
 se documentan en notas; su ejecución sigue correspondiendo a las pruebas Flyway/PostgreSQL.
 
 ## Resultado de esta revisión
 
 - 42 fuentes PlantUML validadas y renderizadas a SVG sin errores de sintaxis tras
-  incorporar `common.api` a las vistas de componentes y paquetes.
-- Ambas copias DBML aceptadas por el analizador oficial y comparadas con V1 en esta revisión.
-- Se conservaron todas las clases/enumeraciones y casos de uso originales; las actividades de
-  negocio se mantuvieron. Seguridad se detalló según su implementación real.
-- Revisión visual de una muestra de paquetes, seguridad, ventas y compras/inventario.
-- Esta sincronización documental no modificó fuentes, configuración, dependencias ni migraciones del backend.
-- No se ejecutó SQL ni se accedió a bases compartidas. El código permanece sin commit.
+  incorporar el catálogo de categorías y la paginación común a las vistas pertinentes.
+- Ambas copias DBML aceptadas por el analizador oficial y comparadas con V1/V3 en esta revisión.
+- Se conservan las vistas de procesos de los módulos pendientes y se distingue
+  `CategoriaProducto` implementada del resto de Gestión Maestra propuesto.
+- V3 y las pruebas de integración ejecutaron SQL solo en PostgreSQL desechable de
+  Testcontainers. No se accedió a bases compartidas. El código permanece sin commit.
 
 Los reportes de autenticación anteriores siguen documentados en
 `docs/fase-2/autenticacion/COMPONENTE_AUTENTICACION.md`; no se presentan como pruebas nuevas
