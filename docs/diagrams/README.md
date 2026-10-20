@@ -8,7 +8,7 @@ acredita su implementación ni el cierre de una fase.
 
 | Estado | Representación | Significado |
 |---|---|---|
-| Implementado | Azul y `<<implementado>>` | Código actual del componente de seguridad. |
+| Implementado | Azul y `<<implementado>>` | Código actual de seguridad y validación/errores HTTP comunes. |
 | SQL actual | Verde y `<<SQL>>` | Tablas auxiliares reales sin clase JPA propia. |
 | Objetivo | Gris, `<<objetivo>>` o leyenda de diseño objetivo | Funcionalidad prevista; no está implementada por aparecer aquí. |
 | Opcional/futuro | Texto explícito, notas y estereotipos de futuro | Alternativas del diseño, sujetas a decisión posterior. |
@@ -50,6 +50,11 @@ Vistas recomendadas para conocer el estado actual:
 4. `procesos/07-proceso-seguridad.puml`: bloqueo, reinicio, expiración y revocación.
 5. `despliegue/00-despliegue-actual.puml`: JVM local, Compose existente y pruebas desechables.
 6. `clases/01-gestion-maestra-seguridad.puml`: entidades actuales y relaciones futuras con maestros/auditoría.
+
+`common.api` aporta `ApiError` y `GlobalApiExceptionHandler`; `security.api` conserva
+`AuthExceptionHandler` con mayor prioridad y la misma forma JSON de tres campos.
+La validación común tiene pruebas MVC aisladas y se ha verificado junto a auth;
+su reutilización en un segundo módulo de negocio aún no está demostrada.
 
 Las demás vistas conservan los procesos de compras, inventario, ventas, finanzas, RR. HH. y
 reportería. Son objetivos funcionales, sin clases de producción que los implementen todavía.
@@ -124,12 +129,13 @@ se documentan en notas; su ejecución sigue correspondiendo a las pruebas Flyway
 
 ## Resultado de esta revisión
 
-- 42 fuentes PlantUML validadas y renderizadas a SVG sin errores de sintaxis.
-- Ambas copias DBML aceptadas por el analizador oficial y comparadas con V1.
+- 42 fuentes PlantUML validadas y renderizadas a SVG sin errores de sintaxis tras
+  incorporar `common.api` a las vistas de componentes y paquetes.
+- Ambas copias DBML aceptadas por el analizador oficial y comparadas con V1 en esta revisión.
 - Se conservaron todas las clases/enumeraciones y casos de uso originales; las actividades de
   negocio se mantuvieron. Seguridad se detalló según su implementación real.
 - Revisión visual de una muestra de paquetes, seguridad, ventas y compras/inventario.
-- No se modificaron fuentes, configuración, dependencias ni migraciones del backend.
+- Esta sincronización documental no modificó fuentes, configuración, dependencias ni migraciones del backend.
 - No se ejecutó SQL ni se accedió a bases compartidas. El código permanece sin commit.
 
 Los reportes de autenticación anteriores siguen documentados en

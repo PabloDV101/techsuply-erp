@@ -5,6 +5,9 @@ caption VISTA MIXTA · Azul: implementado; gris: diseño objetivo; las notas del
 top to bottom direction
 package "erp-backend/src/main/java/com/techsupply/erp_backend" {
   component "ErpBackendApplication" as Main <<implementado>>
+  package "common.api" as CommonApi {
+    component "ApiError / GlobalApiExceptionHandler" as GlobalErrors <<implementado>>
+  }
   package "security" {
     package "api" as API {
       component "AuthController\nAdminUsuariosController\nAuthError / AuthErrorWriter\nAuthExceptionHandler" as ApiClasses <<implementado>>
@@ -26,7 +29,7 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
     }
   }
   package "Paquetes de negocio previstos · aún no existen" {
-    component "maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería\nauditoría / notificaciones / errores comunes" as Future <<objetivo>>
+    component "maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería\nauditoría / notificaciones" as Future <<objetivo>>
   }
 }
 package "src/main/resources" {
@@ -38,10 +41,13 @@ package "src/main/resources" {
 }
 package "src/test/java/com/techsupply/erp_backend" {
   artifact "AuthServiceTest / PasswordValidationTest\nOpaqueTokenServiceTest / AuthOpenApiContractTest" as Unit
+  artifact "GlobalApiExceptionHandlerTest\nMockMvc aislado" as ValidationTest <<implementado>>
   artifact "AuthIntegrationIT / ErpBackendApplicationIT\nPostgresIntegrationSupport" as Integration
 }
 Main ..> Config
 ApiClasses ..> AppClasses
+ApiClasses ..> GlobalErrors : fallback HTTP (menor prioridad)
+ValidationTest ..> GlobalErrors
 AppClasses ..> Models
 AppClasses ..> Repos
 SecurityClasses ..> Repos

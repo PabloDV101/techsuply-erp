@@ -4,6 +4,9 @@ title TechSupply Solutions — Dependencias de paquetes actuales y objetivo
 caption VISTA MIXTA · Azul: implementado; gris: diseño objetivo; las notas delimitan las integraciones pendientes.
 left to right direction
 package "com.techsupply.erp_backend" {
+  package "common.api" as CommonApi {
+    component "ApiError / GlobalApiExceptionHandler" as GlobalErrors <<implementado>>
+  }
   package "security.api" as API {
     component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
     component "AuthExceptionHandler / AuthErrorWriter" as Errors <<implementado>>
@@ -37,6 +40,11 @@ database "PostgreSQL" as DB
 Controllers ..> DTO : valida / devuelve
 Controllers ..> Services : invoca
 Controllers ..> Errors : traduce errores
+Controllers ..> GlobalErrors : fallback de validación / HTTP
+note right of Errors
+  Advice de seguridad con mayor prioridad;
+  conserva mensajes del contrato auth.
+end note
 Services ..> Entities
 Services ..> Repo : dependencia directa actual
 Services ..> Identity

@@ -1,12 +1,13 @@
 @startuml TSS_Componentes_Backend
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes internos del backend
 top to bottom direction
 
 package "Entrada HTTP" as Web {
   component "AuthController / AdminUsuariosController\nDTO de seguridad" as Controllers <<implementado>>
   component "Spring Security\nAutenticación y autorización" as Security <<implementado>>
+  component "Jakarta Validation + common.api\nErrores HTTP uniformes" as InputErrors <<implementado>>
 }
 package "Aplicación" as Application {
   component "Casos de uso" as UseCases <<implementado>>
@@ -34,6 +35,7 @@ package "Persistencia e infraestructura" as Infra {
 }
 
 Controllers --> UseCases
+Controllers ..> InputErrors : validación / respuesta de error
 Security ..> Controllers : protege endpoints
 UseCases --> Tx
 Tx --> Auth : persistencia actual
@@ -60,7 +62,7 @@ note bottom of Tx
   cuando la operación lo requiere.
 end note
 note as EstadoActual
-  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  Azul: seguridad y errores HTTP comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

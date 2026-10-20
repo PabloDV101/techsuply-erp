@@ -1,6 +1,6 @@
 @startuml TechSupply_Component_Overview
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes principales
  left to right direction
 
@@ -29,7 +29,7 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
      component "Auditoría" as Audit <<objetivo>>
      component "Reportería\nsolo lectura" as Reporting <<objetivo>>
      component "Notificaciones" as Notifications <<objetivo>>
-     component "Manejo global de errores" as ErrorHandler <<implementado>>
+     component "common.api\nApiError / GlobalApiExceptionHandler" as ErrorHandler <<implementado>>
    }
    component "Adaptadores de persistencia\nSpring Data JPA / Hibernate" as Persistence <<implementado>>
  }
@@ -71,7 +71,7 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
    No deben acceder a repositorios internos de otros módulos.
  end note
 note as EstadoActual
-  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  Azul: seguridad y errores HTTP comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

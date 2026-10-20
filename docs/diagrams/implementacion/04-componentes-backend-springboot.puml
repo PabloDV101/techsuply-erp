@@ -1,6 +1,6 @@
 @startuml TechSupply_Backend_Components
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes internos de Spring Boot
  top to bottom direction
 
@@ -9,6 +9,7 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
    component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
    component "DTOs + Jakarta Validation\nMapeo request/response" as DTO <<implementado>>
    component "AuthExceptionHandler / AuthErrorWriter\n(alcance actual: seguridad)" as Errors <<implementado>>
+   component "common.api\nApiError / GlobalApiExceptionHandler" as GlobalErrors <<implementado>>
  }
 
  package "Capa de aplicación" as Application {
@@ -65,7 +66,8 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
  UseCases ..> Audit : cambios relevantes
  UseCases ..> AppEvents : publicar tras validar
  AppEvents ..> Notifications : después del commit
- Controllers ..> Errors : respuesta uniforme ante errores
+ Controllers ..> Errors : errores auth (advice prioritario)
+ Controllers ..> GlobalErrors : validación / errores HTTP restantes
 
  Purchasing ..> Inventory : interfaz pública\nrecepción
  Sales ..> Inventory : interfaz pública\nreserva / despacho
@@ -93,7 +95,7 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
    por separado, sin contraseñas ni secretos.
  end note
 note as EstadoActual
-  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  Azul: seguridad y errores HTTP comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note

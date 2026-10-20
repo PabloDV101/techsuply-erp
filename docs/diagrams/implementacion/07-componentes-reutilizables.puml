@@ -1,17 +1,18 @@
 @startuml TechSupply_Reusable_Components
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes reutilizables y contratos
  left to right direction
 
  package "Implementaciones compartidas" as Providers {
    component "Spring Security\nFilter Chain + @PreAuthorize" as Security <<implementado>>
    component "Jakarta Validation\nDTOs de entrada" as InputValidation <<implementado>>
+   component "common.api\nApiError / GlobalApiExceptionHandler" as CommonErrors <<implementado>>
    component "AuditService" as Audit <<objetivo>>
    component "Búsqueda común\nPageable / Specification" as Search <<objetivo>>
    component "NotificationService\nAFTER_COMMIT" as Notify <<objetivo>>
    component "Reporting query services" as Reports <<objetivo>>
-   component "AuthExceptionHandler / AuthErrorWriter\n(alcance actual: seguridad)" as Errors <<implementado>>
+   component "AuthExceptionHandler / AuthErrorWriter\n(específico de seguridad)" as Errors <<implementado>>
  }
 
  interface "AuthenticatedUserProvider" as Identity
@@ -58,6 +59,8 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
  Payroll ..> INotify
 
  Reports ..> IReports
+ InputValidation ..> CommonErrors : errores de entrada
+ Errors ..> CommonErrors : misma forma JSON; mayor prioridad
 
  note bottom of Security
    Implementado en seguridad; reutilización en otros módulos aún no demostrada.
@@ -66,7 +69,8 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
  end note
 
  note bottom of InputValidation
-   Las reglas de entrada comunes se reutilizan aquí;
+   Bean Validation y el advice común se prueban en MVC aislado.
+   Su reutilización en otro módulo real aún no está demostrada;
    las invariantes comerciales (stock, saldos, estados) viven
    en el módulo responsable y se validan en el servidor.
  end note
@@ -82,7 +86,7 @@ caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones p
    Para garantías más fuertes, añadir patrón outbox en el futuro.
  end note
 note as EstadoActual
-  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  Azul: seguridad y validación/errores HTTP comunes. Gris: objetivos.
   El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
   son objetivos; dibujar sus contratos no acredita que existan o estén probados.
 end note
