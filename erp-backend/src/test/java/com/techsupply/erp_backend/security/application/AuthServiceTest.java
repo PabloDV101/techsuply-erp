@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security.application;
 
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.security.application.dto.LoginRequest;
 import com.techsupply.erp_backend.security.domain.model.TokenSesion;
 import com.techsupply.erp_backend.security.domain.model.Usuario;
@@ -21,6 +22,7 @@ class AuthServiceTest {
     private final TokenSesionRepository sessions = mock(TokenSesionRepository.class);
     private final PasswordEncoder passwords = mock(PasswordEncoder.class);
     private final AuthenticatedUserProvider actors = mock(AuthenticatedUserProvider.class);
+    private final AuditTrail audit = mock(AuditTrail.class);
     private final OpaqueTokenService tokens = new OpaqueTokenService();
     private final Instant now = Instant.parse("2026-10-19T12:00:00Z");
     private AuthService service;
@@ -29,7 +31,8 @@ class AuthServiceTest {
     @BeforeEach
     void setup() {
         when(passwords.encode(anyString())).thenReturn("dummy-hash");
-        service = new AuthService(users, sessions, passwords, tokens, actors, Clock.fixed(now, ZoneOffset.UTC));
+        when(sessions.saveAndFlush(any(TokenSesion.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        service = new AuthService(users, sessions, passwords, tokens, actors, Clock.fixed(now, ZoneOffset.UTC), audit);
         user = new Usuario();
         user.setUsername("tester");
         user.setCorreo("tester@example.test");
@@ -41,7 +44,8 @@ class AuthServiceTest {
         assertThatThrownBy(() -> service.login(new LoginRequest("tester", "wrong")))
             .isInstanceOfSatisfying(ResponseStatusException.class,
                 ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
-        verify(sessions, never()).save(any());
+        verify(sessions, never()).saveAndFlush(any());
+        verify(audit).deniedLoginAfterCommit();
     }
 
     @Test void successfulLoginPersistsOnlyDigestAndExpiry() {
@@ -49,11 +53,12 @@ class AuthServiceTest {
         when(passwords.matches("correct", "stored-hash")).thenReturn(true);
         var response = service.login(new LoginRequest(" TESTER ", "correct"));
         var saved = ArgumentCaptor.forClass(TokenSesion.class);
-        verify(sessions).save(saved.capture());
+        verify(sessions).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getTokenHash()).isEqualTo(tokens.calcularHash(response.accessToken()))
             .isNotEqualTo(response.accessToken());
         assertThat(response.expiresAt()).isEqualTo(now.plusSeconds(7200));
         assertThat(user.getUltimoAcceso()).isEqualTo(now);
+        verify(audit).verifiedLogin(nullable(Long.class), nullable(Long.class));
     }
 
     @Test void wrongPasswordIncrementsAttempts() {
@@ -107,6 +112,7 @@ class AuthServiceTest {
         service.logout("token");
         assertThat(session.getRevocadoEn()).isEqualTo(now);
         verify(sessions).save(session);
+        verify(audit).logoutAfterCommit(nullable(Long.class), nullable(Long.class));
     }
 
     @Test void repeatedLogoutDoesNotChangeRevocationTime() {

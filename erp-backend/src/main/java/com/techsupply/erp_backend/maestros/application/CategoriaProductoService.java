@@ -1,5 +1,9 @@
 package com.techsupply.erp_backend.maestros.application;
 
+import com.techsupply.erp_backend.audit.application.AuditAction;
+import com.techsupply.erp_backend.audit.application.AuditField;
+import com.techsupply.erp_backend.audit.application.AuditState;
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.common.api.PageRequests;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.maestros.application.dto.ActualizarCategoriaRequest;
@@ -12,6 +16,7 @@ import com.techsupply.erp_backend.maestros.infrastructure.persistence.CategoriaP
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,9 +28,11 @@ public class CategoriaProductoService {
     private static final Map<String, String> SORT_FIELDS = Map.of(
         "id", "id", "codigo", "codigo", "nombre", "nombre");
     private final CategoriaProductoRepository repository;
+    private final AuditTrail auditTrail;
 
-    public CategoriaProductoService(CategoriaProductoRepository repository) {
+    public CategoriaProductoService(CategoriaProductoRepository repository, AuditTrail auditTrail) {
         this.repository = repository;
+        this.auditTrail = auditTrail;
     }
 
     @Transactional
@@ -38,7 +45,9 @@ public class CategoriaProductoService {
         categoria.setNombre(request.nombre().trim());
         categoria.setDescripcion(normalizarOpcional(request.descripcion()));
         categoria.setCategoriaPadre(buscarPadre(request.categoriaPadreId()));
-        return response(repository.saveAndFlush(categoria));
+        CategoriaProducto guardada = repository.saveAndFlush(categoria);
+        auditTrail.change(AuditAction.CATEGORY_CREATED, guardada.getId());
+        return response(guardada);
     }
 
     @Transactional(readOnly = true)
@@ -62,19 +71,33 @@ public class CategoriaProductoService {
         if (repository.existsByCodigoAndIdNot(codigo, id)) throw conflictoCodigo();
         CategoriaProducto padre = buscarPadre(request.categoriaPadreId());
         verificarSinCiclo(categoria, padre);
+        String nombre = request.nombre().trim();
+        String descripcion = normalizarOpcional(request.descripcion());
+        Set<AuditField> cambiados = new HashSet<>();
+        if (!Objects.equals(categoria.getCodigo(), codigo)) cambiados.add(AuditField.CODIGO);
+        if (!Objects.equals(categoria.getNombre(), nombre)) cambiados.add(AuditField.NOMBRE);
+        if (!Objects.equals(categoria.getDescripcion(), descripcion)) cambiados.add(AuditField.DESCRIPCION);
+        if (!Objects.equals(categoria.getCategoriaPadre() == null ? null : categoria.getCategoriaPadre().getId(),
+                padre == null ? null : padre.getId())) cambiados.add(AuditField.CATEGORIA_PADRE);
         categoria.setCodigo(codigo);
-        categoria.setNombre(request.nombre().trim());
-        categoria.setDescripcion(normalizarOpcional(request.descripcion()));
+        categoria.setNombre(nombre);
+        categoria.setDescripcion(descripcion);
         categoria.setCategoriaPadre(padre);
-        return response(repository.saveAndFlush(categoria));
+        CategoriaProducto guardada = repository.saveAndFlush(categoria);
+        if (!cambiados.isEmpty()) auditTrail.change(AuditAction.CATEGORY_UPDATED, id, cambiados, null, null);
+        return response(guardada);
     }
 
     @Transactional
     public CategoriaResponse cambiarEstado(Long id, boolean activa) {
         repository.bloquearJerarquia();
         CategoriaProducto categoria = buscar(id);
+        boolean anterior = categoria.isActiva();
         categoria.setActiva(activa);
-        return response(repository.saveAndFlush(categoria));
+        CategoriaProducto guardada = repository.saveAndFlush(categoria);
+        if (anterior != activa) auditTrail.change(AuditAction.CATEGORY_STATUS_CHANGED, id, Set.of(AuditField.ACTIVA),
+            anterior ? AuditState.ACTIVO : AuditState.INACTIVO, activa ? AuditState.ACTIVO : AuditState.INACTIVO);
+        return response(guardada);
     }
 
     private CategoriaProducto buscar(Long id) {

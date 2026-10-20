@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security.config;
 
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.security.infrastructure.security.OpaqueBearerAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,7 +32,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, OpaqueBearerAuthenticationFilter tokenFilter, AuthErrorWriter errors) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, OpaqueBearerAuthenticationFilter tokenFilter, AuthErrorWriter errors, AuditTrail auditTrail) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
@@ -40,8 +41,10 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, cause) ->
                     errors.write(response, HttpStatus.UNAUTHORIZED, "Autenticación requerida"))
-                .accessDeniedHandler((request, response, cause) ->
-                    errors.write(response, HttpStatus.FORBIDDEN, "Permiso insuficiente")))
+                .accessDeniedHandler((request, response, cause) -> {
+                    auditTrail.deniedAuthorization();
+                    errors.write(response, HttpStatus.FORBIDDEN, "Permiso insuficiente");
+                }))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

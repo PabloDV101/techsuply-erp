@@ -1,5 +1,9 @@
 package com.techsupply.erp_backend.security.application;
 
+import com.techsupply.erp_backend.audit.application.AuditAction;
+import com.techsupply.erp_backend.audit.application.AuditField;
+import com.techsupply.erp_backend.audit.application.AuditState;
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.security.application.dto.ActualizarEstadoUsuarioRequest;
 import com.techsupply.erp_backend.security.application.dto.CrearUsuarioRequest;
 import com.techsupply.erp_backend.security.application.dto.CrearRolRequest;
@@ -36,16 +40,18 @@ public class UserManagementService {
     private final TokenSesionRepository tokenSesionRepository;
     private final AuthenticatedUserProvider authenticatedUserProvider;
     private final PasswordEncoder passwordEncoder;
+    private final AuditTrail auditTrail;
 
     public UserManagementService(UsuarioRepository usuarioRepository, RolRepository rolRepository,
                                  PermisoRepository permisoRepository, TokenSesionRepository tokenSesionRepository, PasswordEncoder passwordEncoder,
-                                 AuthenticatedUserProvider authenticatedUserProvider) {
+                                 AuthenticatedUserProvider authenticatedUserProvider, AuditTrail auditTrail) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.permisoRepository = permisoRepository;
         this.tokenSesionRepository = tokenSesionRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticatedUserProvider = authenticatedUserProvider;
+        this.auditTrail = auditTrail;
     }
 
     @Transactional(readOnly = true)
@@ -76,6 +82,7 @@ public class UserManagementService {
         usuario.setRoles(roles);
         Usuario guardado = usuarioRepository.saveAndFlush(usuario);
         registrarAsignadorDeRoles(guardado.getId());
+        auditTrail.change(AuditAction.USER_CREATED, guardado.getId());
         return AuthService.usuarioResponse(guardado);
     }
 
@@ -83,13 +90,17 @@ public class UserManagementService {
     public UsuarioResponse cambiarEstado(Long id, boolean activo) {
         usuarioRepository.bloquearAdministracion();
         Usuario usuario = usuarioRepository.buscarParaActualizacion(id).orElseThrow(this::usuarioNoEncontrado);
+        boolean anterior = usuario.isActivo();
         boolean esAdministrador = usuario.getRoles().stream().anyMatch(r -> "ADMINISTRADOR".equals(r.getCodigo()) && r.isActivo());
         if (!activo && usuario.isActivo() && esAdministrador && usuarioRepository.contarAdministradoresActivos() <= 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede desactivar al último administrador activo");
         }
         usuario.setActivo(activo);
         if (!activo) tokenSesionRepository.revocarSesionesActivasDeUsuario(id, Instant.now());
-        return AuthService.usuarioResponse(usuarioRepository.save(usuario));
+        Usuario guardado = usuarioRepository.save(usuario);
+        if (anterior != activo) auditTrail.change(AuditAction.USER_STATUS_CHANGED, id, Set.of(AuditField.ACTIVO),
+            anterior ? AuditState.ACTIVO : AuditState.INACTIVO, activo ? AuditState.ACTIVO : AuditState.INACTIVO);
+        return AuthService.usuarioResponse(guardado);
     }
 
     @Transactional
@@ -97,6 +108,7 @@ public class UserManagementService {
         usuarioRepository.bloquearAdministracion();
         Usuario usuario = usuarioRepository.buscarParaActualizacion(id).orElseThrow(this::usuarioNoEncontrado);
         Set<Rol> nuevosRoles = buscarRoles(request.roles());
+        Set<Long> anteriores = usuario.getRoles().stream().map(Rol::getId).collect(Collectors.toSet());
         boolean eraAdministrador = usuario.getRoles().stream().anyMatch(r -> "ADMINISTRADOR".equals(r.getCodigo()) && r.isActivo());
         boolean seguiraAdministrador = nuevosRoles.stream().anyMatch(r -> "ADMINISTRADOR".equals(r.getCodigo()) && r.isActivo());
         if (usuario.isActivo() && eraAdministrador && !seguiraAdministrador && usuarioRepository.contarAdministradoresActivos() <= 1) {
@@ -106,6 +118,8 @@ public class UserManagementService {
         Usuario guardado = usuarioRepository.saveAndFlush(usuario);
         registrarAsignadorDeRoles(guardado.getId());
         tokenSesionRepository.revocarSesionesActivasDeUsuario(id, Instant.now());
+        if (!anteriores.equals(nuevosRoles.stream().map(Rol::getId).collect(Collectors.toSet())))
+            auditTrail.change(AuditAction.USER_ROLES_REPLACED, id, Set.of(AuditField.ROLES), null, null);
         return AuthService.usuarioResponse(guardado);
     }
 
@@ -131,7 +145,9 @@ public class UserManagementService {
         rol.setDescripcion(request.descripcion() == null ? null : request.descripcion().trim());
         rol.setActivo(true);
         rol.setPermisos(buscarPermisos(request.permisos()));
-        return rolResponse(rolRepository.save(rol));
+        Rol guardado = rolRepository.saveAndFlush(rol);
+        auditTrail.change(AuditAction.ROLE_CREATED, guardado.getId());
+        return rolResponse(guardado);
     }
 
     @Transactional
@@ -139,6 +155,7 @@ public class UserManagementService {
         Rol rol = rolRepository.buscarConPermisosPorId(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rol no encontrado"));
         Set<Permiso> nuevosPermisos = buscarPermisos(request.permisos());
+        Set<Long> anteriores = rol.getPermisos().stream().map(Permiso::getId).collect(Collectors.toSet());
         if ("ADMINISTRADOR".equals(rol.getCodigo())) {
             Set<String> codigos = nuevosPermisos.stream().map(Permiso::getCodigo).collect(Collectors.toSet());
             if (!codigos.contains("SEGURIDAD_USUARIOS_ADMIN") || !codigos.contains("SEGURIDAD_ROLES_ADMIN")
@@ -149,6 +166,8 @@ public class UserManagementService {
         }
         rol.setPermisos(nuevosPermisos);
         Rol guardado = rolRepository.save(rol);
+        if (!anteriores.equals(nuevosPermisos.stream().map(Permiso::getId).collect(Collectors.toSet())))
+            auditTrail.change(AuditAction.ROLE_PERMISSIONS_REPLACED, id, Set.of(AuditField.PERMISOS), null, null);
         return rolResponse(guardado);
     }
 
@@ -173,7 +192,8 @@ public class UserManagementService {
         permiso.setModulo(modulo);
         permiso.setAccion(accion);
         permiso.setDescripcion(request.descripcion() == null ? null : request.descripcion().trim());
-        Permiso guardado = permisoRepository.save(permiso);
+        Permiso guardado = permisoRepository.saveAndFlush(permiso);
+        auditTrail.change(AuditAction.PERMISSION_CREATED, guardado.getId());
         return new PermisoResponse(guardado.getId(), guardado.getCodigo(), guardado.getModulo(), guardado.getAccion(), guardado.getDescripcion());
     }
 

@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security.api;
 
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.Ordered;
@@ -17,9 +18,15 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice(basePackages = "com.techsupply.erp_backend.security.api")
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AuthExceptionHandler {
+    private final AuditTrail auditTrail;
+
+    public AuthExceptionHandler(AuditTrail auditTrail) {
+        this.auditTrail = auditTrail;
+    }
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<AuthError> status(ResponseStatusException ex) {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        if (status == HttpStatus.FORBIDDEN) auditTrail.deniedAuthorization();
         return error(status, ex.getReason() == null ? status.getReasonPhrase() : ex.getReason());
     }
 
@@ -31,6 +38,7 @@ public class AuthExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<AuthError> denied(AccessDeniedException ex) {
+        auditTrail.deniedAuthorization();
         return error(HttpStatus.FORBIDDEN, "Permiso insuficiente");
     }
 

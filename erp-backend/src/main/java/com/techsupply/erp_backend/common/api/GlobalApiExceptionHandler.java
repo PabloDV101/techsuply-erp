@@ -1,10 +1,12 @@
 package com.techsupply.erp_backend.common.api;
 
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -35,6 +37,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class GlobalApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalApiExceptionHandler.class);
+    @Autowired(required = false)
+    private AuditTrail auditTrail;
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     ResponseEntity<ApiError> invalidBody(BindException ex) {
@@ -70,6 +74,7 @@ public class GlobalApiExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<ApiError> responseStatus(ResponseStatusException ex) {
         HttpStatus knownStatus = HttpStatus.resolve(ex.getStatusCode().value());
+        if (knownStatus == HttpStatus.FORBIDDEN && auditTrail != null) auditTrail.deniedAuthorization();
         String message = switch (knownStatus == null ? HttpStatus.INTERNAL_SERVER_ERROR : knownStatus) {
             case BAD_REQUEST -> "Solicitud inválida";
             case UNAUTHORIZED -> "Autenticación requerida o credenciales inválidas";
@@ -84,6 +89,7 @@ public class GlobalApiExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ApiError> denied(AccessDeniedException ex) {
+        if (auditTrail != null) auditTrail.deniedAuthorization();
         return error(HttpStatus.FORBIDDEN, "Permiso insuficiente");
     }
 

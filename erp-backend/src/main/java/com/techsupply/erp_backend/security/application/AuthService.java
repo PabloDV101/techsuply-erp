@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security.application;
 
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.security.application.dto.LoginRequest;
 import com.techsupply.erp_backend.security.application.dto.LoginResponse;
 import com.techsupply.erp_backend.security.application.dto.UsuarioResponse;
@@ -35,12 +36,13 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final OpaqueTokenService tokenService;
     private final AuthenticatedUserProvider authenticatedUserProvider;
+    private final AuditTrail auditTrail;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        TokenSesionRepository tokenSesionRepository,
                        PasswordEncoder passwordEncoder,
                        OpaqueTokenService tokenService,
-                       AuthenticatedUserProvider authenticatedUserProvider, Clock clock) {
+                       AuthenticatedUserProvider authenticatedUserProvider, Clock clock, AuditTrail auditTrail) {
         this.clock = clock;
         this.dummyPasswordHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
         this.usuarioRepository = usuarioRepository;
@@ -48,6 +50,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.authenticatedUserProvider = authenticatedUserProvider;
+        this.auditTrail = auditTrail;
     }
 
     @Transactional(noRollbackFor = ResponseStatusException.class)
@@ -57,10 +60,12 @@ public class AuthService {
         Instant ahora = clock.instant();
         if (usuario == null || !usuario.isActivo()) {
             passwordEncoder.matches(request.password(), dummyPasswordHash);
+            auditTrail.deniedLoginAfterCommit();
             throw credencialesInvalidas();
         }
         if (usuario.getBloqueadoHasta() != null && usuario.getBloqueadoHasta().isAfter(ahora)) {
             passwordEncoder.matches(request.password(), dummyPasswordHash);
+            auditTrail.deniedLoginAfterCommit();
             throw credencialesInvalidas();
         }
         if (usuario.getBloqueadoHasta() != null) usuario.reiniciarIntentosFallidos();
@@ -71,6 +76,7 @@ public class AuthService {
                 usuario.setBloqueadoHasta(ahora.plus(DURACION_BLOQUEO));
             }
             usuarioRepository.save(usuario);
+            auditTrail.deniedLoginAfterCommit();
             throw credencialesInvalidas();
         }
 
@@ -80,7 +86,8 @@ public class AuthService {
 
         String tokenPlano = tokenService.generarToken();
         Instant vence = ahora.plus(DURACION_SESION);
-        tokenSesionRepository.save(new TokenSesion(usuario, tokenService.calcularHash(tokenPlano), ahora, vence));
+        TokenSesion session = tokenSesionRepository.saveAndFlush(new TokenSesion(usuario, tokenService.calcularHash(tokenPlano), ahora, vence));
+        auditTrail.verifiedLogin(usuario.getId(), session.getId());
         return new LoginResponse(tokenPlano, "Bearer", vence, resumen(usuario));
     }
 
@@ -92,6 +99,7 @@ public class AuthService {
                 if (token.getRevocadoEn() == null) {
                     token.setRevocadoEn(clock.instant());
                     tokenSesionRepository.save(token);
+                    auditTrail.logoutAfterCommit(token.getUsuario().getId(), token.getId());
                 }
             });
     }

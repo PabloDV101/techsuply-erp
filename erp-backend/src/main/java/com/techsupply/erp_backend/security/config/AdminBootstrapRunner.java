@@ -1,5 +1,6 @@
 package com.techsupply.erp_backend.security.config;
 
+import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.security.domain.model.Rol;
 import com.techsupply.erp_backend.security.domain.model.Usuario;
 import com.techsupply.erp_backend.security.infrastructure.persistence.RolRepository;
@@ -24,18 +25,20 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditTrail auditTrail;
     private final String username;
     private final String correo;
     private final String password;
 
     public AdminBootstrapRunner(UsuarioRepository usuarioRepository, RolRepository rolRepository,
-                                PasswordEncoder passwordEncoder,
+                                PasswordEncoder passwordEncoder, AuditTrail auditTrail,
                                 @Value("${app.security.bootstrap-admin.username}") String username,
                                 @Value("${app.security.bootstrap-admin.email}") String correo,
                                 @Value("${app.security.bootstrap-admin.password}") String password) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditTrail = auditTrail;
         this.username = username;
         this.correo = correo;
         this.password = password;
@@ -61,7 +64,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         usuario.setPasswordHash(passwordEncoder.encode(password));
         usuario.setActivo(true);
         usuario.setRoles(Set.of(admin));
-        usuarioRepository.save(usuario);
+        usuarioRepository.saveAndFlush(usuario);
+        auditTrail.systemBootstrap(usuario.getId());
         log.warn("Se creó la cuenta administradora inicial '{}'. Desactiva app.security.bootstrap-admin.enabled inmediatamente.", usuario.getUsername());
     }
 }
