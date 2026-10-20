@@ -72,7 +72,7 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
  end note
 note as EstadoActual
   Azul: seguridad, categorías y errores comunes. Gris: módulos y contratos propuestos.
-  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
-  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+  El cliente React no consume aún el API. La búsqueda de categorías está implementada;
+  auditoría, reportería, notificaciones y búsqueda en otros módulos siguen pendientes.
 end note
 @enduml

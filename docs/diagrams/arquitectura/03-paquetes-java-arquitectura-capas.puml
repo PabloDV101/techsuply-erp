@@ -27,7 +27,7 @@ package "com.techsupply.erp_backend" {
     component "SecurityConfig / SecurityClockConfig\nAdminBootstrapRunner (opcional)" as Configuration <<implementado>>
   }
   package "maestros" as Maestros {
-    component "api / application / dto\ndomain.model / infrastructure.persistence\nCategoría de producto" as Categories <<implementado>>
+    component "api / application / dto\ndomain.model / persistence + Specifications\nCategoría de producto" as Categories <<implementado>>
   }
   package "Módulos pendientes · nombres propuestos" as Modules {
     component "resto de maestros" as Masters <<objetivo>>

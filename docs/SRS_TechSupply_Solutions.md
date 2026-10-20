@@ -361,6 +361,11 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-REP-02 — Informes parametrizables (Media).** El sistema deberá permitir filtrar, ordenar y paginar catálogos y reportes; habilitar exportación PDF/CSV/XLSX cuando el formato se implemente.  
 *Criterio:* la exportación mantiene filtros, respeta permisos y registra la ejecución cuando corresponda.
 
+*Estado de implementación (Fase 2):* el catálogo de categorías permite filtros
+opcionales combinables, ordenación permitida y paginación con límites, probado
+mediante API sobre PostgreSQL aislado. Los demás catálogos, reportes y formatos
+de exportación siguen pendientes; este avance no cierra RF-REP-02.
+
 **RF-REP-03 — Análisis de gestión (Media).** El sistema deberá ofrecer reportes de rotación, clasificación ABC, rentabilidad por cliente y margen operativo conforme a definiciones documentadas.  
 *Criterio:* cada indicador define fórmula, fuentes, periodo y exclusiones; si faltan datos, se identifica el indicador como no disponible en lugar de inventar valores.
 

@@ -8,7 +8,7 @@ acredita su implementación ni el cierre de una fase.
 
 | Estado | Representación | Significado |
 |---|---|---|
-| Implementado | Azul y `<<implementado>>` | Código actual de seguridad, validación/errores HTTP y categorías de producto. |
+| Implementado | Azul y `<<implementado>>` | Código actual de seguridad, validación/errores HTTP, categorías de producto y su búsqueda. |
 | SQL actual | Verde y `<<SQL>>` | Tablas auxiliares reales sin clase JPA propia. |
 | Objetivo | Gris, `<<objetivo>>` o leyenda de diseño objetivo | Funcionalidad prevista; no está implementada por aparecer aquí. |
 | Opcional/futuro | Texto explícito, notas y estereotipos de futuro | Alternativas del diseño, sujetas a decisión posterior. |
@@ -57,6 +57,8 @@ Vistas recomendadas para conocer el estado actual:
 La validación común tiene pruebas MVC aisladas y se ha verificado junto a auth y
 categorías. La paginación común tiene un consumidor real: categorías; su reutilización
 en un segundo módulo de negocio aún no está demostrada.
+`maestros` añade criterios validados y `CategoriaProductoSpecifications` para
+filtros combinables con JPA; la búsqueda de otros módulos sigue pendiente.
 
 Las demás vistas conservan los procesos de compras, inventario, ventas, finanzas, RR. HH. y
 reportería. Son objetivos funcionales, sin clases de producción que los implementen todavía.

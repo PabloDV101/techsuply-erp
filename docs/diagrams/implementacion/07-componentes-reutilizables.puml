@@ -1,6 +1,6 @@
 @startuml TechSupply_Reusable_Components
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros módulos pendientes.
+caption VISTA MIXTA · Seguridad, errores y búsqueda de categorías implementados; otros módulos pendientes.
  title TechSupply Solutions - Componentes reutilizables y contratos
  left to right direction
 
@@ -10,7 +10,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
    component "common.api\nApiError / GlobalApiExceptionHandler" as CommonErrors <<implementado>>
    component "common.api\nPageRequests / PageResponse" as CrudPaging <<implementado>>
    component "AuditService" as Audit <<objetivo>>
-   component "Búsqueda común\nPageable / Specification" as Search <<objetivo>>
+   component "Búsqueda de categorías\nPageRequests + JPA Specification" as Search <<implementado>>
    component "NotificationService\nAFTER_COMMIT" as Notify <<objetivo>>
    component "Reporting query services" as Reports <<objetivo>>
    component "AuthExceptionHandler / AuthErrorWriter\n(específico de seguridad)" as Errors <<implementado>>
@@ -20,7 +20,6 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  component "SecurityContextAuthenticatedUserProvider" as IdentityAdapter <<implementado>>
  IdentityAdapter ..|> Identity
  interface "AuditPort" as IAudit <<objetivo>>
- interface "SearchPort" as ISearch <<objetivo>>
  interface "NotificationPort" as INotify <<objetivo>>
  interface "ReportQueryPort" as IReports <<objetivo>>
 
@@ -34,7 +33,6 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  }
 
  Audit - IAudit
- Search - ISearch
  Notify - INotify
  Reports - IReports
 
@@ -49,10 +47,7 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
  Accounting ..> IAudit
  Payroll ..> IAudit
 
- Masters ..> ISearch
- Purchases ..> ISearch
- Inventory ..> ISearch
- Sales ..> ISearch
+ Masters ..> Search : filtros propios + página
 
  Purchases ..> INotify
  Inventory ..> INotify
@@ -89,8 +84,8 @@ caption VISTA MIXTA · Seguridad y errores HTTP comunes implementados; otros mó
    Para garantías más fuertes, añadir patrón outbox en el futuro.
  end note
 note as EstadoActual
-  Azul: seguridad y validación/errores HTTP comunes. Gris: objetivos.
-  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
-  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+  Azul: seguridad, validación/errores HTTP y búsqueda de categorías. Gris: objetivos.
+  El cliente React no consume aún el API. Auditoría, reportería y notificaciones
+  siguen pendientes. Búsqueda en otros módulos y aislamiento por fila no están probados.
 end note
 @enduml

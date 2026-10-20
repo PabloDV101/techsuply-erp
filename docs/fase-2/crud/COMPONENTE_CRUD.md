@@ -40,6 +40,10 @@ duplicado, ciclo o conflicto de integridad devuelve `409`. DTO inválido o
 paginación incorrecta devuelve `400`. Auth conserva `401`/`403`. Los errores
 mantienen `{status, code, message}` sin detalles internos.
 
+El listado admite ahora filtros opcionales sobre código, nombre, estado y padre
+directo. Véase [el componente de búsqueda](../busqueda/COMPONENTE_BUSQUEDA.md)
+para sus reglas, validación y alcance.
+
 ## Reutilización en otro módulo
 
 Un módulo nuevo define su entidad y migración, DTO públicos, repositorio, servicio
@@ -69,12 +73,12 @@ FK, padre inexistente y ciclos con MockMvc + Spring Security + Flyway + PostgreS
 real de Testcontainers. El mismo comando ejecuta regresiones de auth y validación.
 El contenedor de prueba no usa ni modifica una base compartida.
 
-Resultado ejecutado: `./mvnw -o verify` terminó en `BUILD SUCCESS`, con 33 pruebas
-Surefire y 32 Failsafe, sin fallos, errores ni omisiones. Flyway aplicó V1–V3 en
+Resultado ejecutado: `./mvnw -o verify` terminó en `BUILD SUCCESS`, con 34 pruebas
+Surefire y 36 Failsafe, sin fallos, errores ni omisiones. Flyway aplicó V1–V3 en
 un PostgreSQL desechable y Hibernate validó el esquema. El contrato OpenAPI de
 categorías se comprobó contra las rutas del controlador y los campos de los DTO.
 También se validaron las dos copias DBML frente a V1/V3 y se renderizaron las
-42 fuentes PlantUML sin errores.
+42 fuentes PlantUML sin errores en la revisión inicial del CRUD.
 
 Pendientes: integrar `PageRequests`/`PageResponse` con un segundo módulo para
 demostrar reutilización transversal, definir la política de categorías inactivas

@@ -29,7 +29,7 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
     }
   }
   package "maestros" {
-    component "CategoriaProductoController / Service\nDTO / Entity / Repository" as Categories <<implementado>>
+    component "CategoriaProductoController / Service\nDTO / Entity / Repository / Specifications" as Categories <<implementado>>
   }
   package "Paquetes de negocio previstos · aún no existen" {
     component "resto de maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería\nauditoría / notificaciones" as Future <<objetivo>>

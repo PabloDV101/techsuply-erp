@@ -10,13 +10,23 @@ security:
 paths:
   /categories:
     get:
-      summary: Listar categorías con paginación
-      description: Requiere MAESTROS_CATEGORIAS_LEER. Incluye categorías inactivas.
+      summary: Buscar categorías con filtros combinables y paginación
+      description: >-
+        Requiere MAESTROS_CATEGORIAS_LEER. Los filtros presentes se combinan con AND.
+        Sin filtros incluye categorías activas e inactivas. codigo compara exactamente
+        tras quitar espacios extremos y convertir a mayúsculas; nombre busca texto
+        parcial sin distinguir mayúsculas, tratando %, _ y barra invertida literalmente.
+        categoriaPadreId selecciona solo hijas directas. El orden se estabiliza con id
+        cuando el campo principal no es id. Una página fuera de rango devuelve contenido vacío.
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
         - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
         - { name: sort, in: query, schema: { type: string, enum: [id, codigo, nombre], default: codigo } }
         - { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
+        - { name: codigo, in: query, description: Código exacto; el valor presente no puede estar en blanco., schema: { type: string, minLength: 1, maxLength: 20 } }
+        - { name: nombre, in: query, description: Subcadena literal; el valor presente no puede estar en blanco., schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: activa, in: query, schema: { type: boolean } }
+        - { name: categoriaPadreId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
       responses:
         '200': { description: Página de categorías, content: { application/json: { schema: { $ref: '#/components/schemas/CategoriaPage' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
