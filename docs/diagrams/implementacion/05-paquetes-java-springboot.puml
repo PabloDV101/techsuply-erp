@@ -31,8 +31,11 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
   package "maestros" {
     component "CategoriaProductoController / Service\nDTO / Entity / Repository / Specifications" as Categories <<implementado>>
   }
+  package "audit" {
+    component "AuditController / AuditTrail / AuditQueryService\nAuditEvent / AuditEventRepository" as AuditModule <<implementado>>
+  }
   package "Paquetes de negocio previstos · aún no existen" {
-    component "resto de maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería\nauditoría / notificaciones" as Future <<objetivo>>
+    component "resto de maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería / notificaciones" as Future <<objetivo>>
   }
 }
 package "src/main/resources" {
@@ -41,6 +44,7 @@ package "src/main/resources" {
     artifact "V1__security_schema.sql" as V1
     artifact "V2__security_catalogs.sql" as V2
     artifact "V3__product_categories.sql" as V3
+    artifact "V4__audit_events.sql" as V4
   }
 }
 package "src/test/java/com/techsupply/erp_backend" {
@@ -48,6 +52,7 @@ package "src/test/java/com/techsupply/erp_backend" {
   artifact "GlobalApiExceptionHandlerTest\nMockMvc aislado" as ValidationTest <<implementado>>
   artifact "AuthIntegrationIT / ErpBackendApplicationIT\nPostgresIntegrationSupport" as Integration
   artifact "CategoriaProductoIntegrationIT" as CategoryIT <<implementado>>
+  artifact "AuditIntegrationIT" as AuditIT <<implementado>>
 }
 Main ..> Config
 ApiClasses ..> AppClasses
@@ -55,11 +60,16 @@ ApiClasses ..> GlobalErrors : fallback HTTP (menor prioridad)
 ValidationTest ..> GlobalErrors
 Categories ..> GlobalErrors : paginación / errores
 CategoryIT ..> V3
+AuditIT ..> V4
+AuditModule ..> V4
+Categories ..> AuditModule : cambios relevantes
+AppClasses ..> AuditModule : seguridad
 AppClasses ..> Models
 AppClasses ..> Repos
 SecurityClasses ..> Repos
 V1 --> V2 : orden de migración
 V2 --> V3 : orden de migración
+V3 --> V4 : orden de migración
 Integration ..> V1
 Unit ..> AppClasses
 note bottom of V2

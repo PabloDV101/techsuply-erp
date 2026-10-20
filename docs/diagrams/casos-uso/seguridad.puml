@@ -1,6 +1,6 @@
 @startuml CU_Seguridad
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+caption VISTA MIXTA · Seguridad y consulta de auditoría implementadas parcialmente; ERP restante pendiente.
 title TechSupply Solutions — Seguridad
 left to right direction
 
@@ -19,9 +19,9 @@ rectangle "ERP - Seguridad" {
   usecase "Crear y consultar permisos" as CatalogoPermisos <<implementado>>
   usecase "Gestionar roles" as Roles <<implementado>>
   usecase "Asignar permisos por módulo" as AsignarPermisos <<implementado>>
-  usecase "Consultar registros de auditoría" as ConsultarAuditoria <<objetivo>>
+  usecase "Consultar registros de auditoría" as ConsultarAuditoria <<implementado>>
   usecase "Consultar historial de cambios" as Historial <<objetivo>>
-  usecase "Registrar eventos de seguridad" as Eventos <<objetivo>>
+  usecase "Registrar eventos de seguridad" as Eventos <<implementado>>
 }
 
 
@@ -57,7 +57,7 @@ note bottom of Permisos
   Solo se delegan permisos que posee el actor.
   Gestión actual: consultar/crear usuarios, estado y asignación de roles.
   No hay edición de perfil ni cambio/recuperación de contraseña implementados.
-  El resto del ERP y auditoría siguen pendientes.
+  La auditoría de módulos futuros sigue pendiente.
 end note
 
 @enduml

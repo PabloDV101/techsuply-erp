@@ -1,0 +1,79 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP - Consulta de auditoría
+  version: 1.0.0
+  description: Eventos de solo lectura. El backend controla el catálogo de acciones y los metadatos.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /audit/events:
+    get:
+      summary: Consultar eventos auditables
+      description: >-
+        Requiere SEGURIDAD_AUDITORIA_LEER. Los filtros se combinan con AND. Una página
+        fuera de rango devuelve content vacío. El orden se estabiliza con id.
+        No existen rutas de creación, actualización o eliminación de eventos.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: sort, in: query, schema: { type: string, enum: [fecha, id], default: fecha } }
+        - { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: usuarioId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+        - { name: modulo, in: query, description: Código exacto; mayúsculas, números y guion bajo., schema: { type: string, minLength: 1, maxLength: 40 } }
+        - { name: entidad, in: query, description: Código exacto; mayúsculas, números y guion bajo., schema: { type: string, minLength: 1, maxLength: 80 } }
+        - { name: entidadId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+        - { name: desde, in: query, description: Inicio inclusivo en UTC/RFC 3339., schema: { type: string, format: date-time } }
+        - { name: hasta, in: query, description: Fin inclusivo en UTC/RFC 3339; debe ser mayor o igual a desde., schema: { type: string, format: date-time } }
+        - { name: resultado, in: query, schema: { type: string, enum: [EXITO, DENEGADO] } }
+      responses:
+        '200':
+          description: Página de eventos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    AuditPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/AuditEvent' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    AuditEvent:
+      type: object
+      required: [id, actorTipo, modulo, entidad, accion, resultado, fecha, camposModificados]
+      properties:
+        id: { type: integer, format: int64 }
+        usuarioId: { type: integer, format: int64, nullable: true }
+        actorTipo: { type: string, enum: [USUARIO, SISTEMA, ANONIMO] }
+        modulo: { type: string }
+        entidad: { type: string }
+        entidadId: { type: integer, format: int64, nullable: true }
+        accion: { type: string }
+        resultado: { type: string, enum: [EXITO, DENEGADO] }
+        motivoCodigo: { type: string, nullable: true }
+        fecha: { type: string, format: date-time }
+        camposModificados: { type: array, items: { type: string } }
+        estadoAnterior: { type: string, nullable: true, enum: [ACTIVO, INACTIVO] }
+        estadoNuevo: { type: string, nullable: true, enum: [ACTIVO, INACTIVO] }
+    ApiError:
+      type: object
+      required: [status, code, message]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+  responses:
+    BadRequest: { description: Parámetros inválidos, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Falta autenticación, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Permiso insuficiente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }

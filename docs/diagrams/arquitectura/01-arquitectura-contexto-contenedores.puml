@@ -1,6 +1,6 @@
 @startuml TSS_Contexto_Contenedores
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad, errores comunes y categorías implementados; resto del ERP pendiente.
+caption VISTA MIXTA · Seguridad, categorías y auditoría de ambos implementadas; resto del ERP pendiente.
 title TechSupply Solutions — 01 arquitectura contexto contenedores
 ' Vista lógica de contenedores. Nginx y redes físicas se detallan en la vista de despliegue.
 top to bottom direction
@@ -13,7 +13,7 @@ node "Navegador web" as Browser {
 }
 
 node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
-  component "API REST de seguridad y categorías\nControladores y DTO" as API <<implementado>>
+  component "API REST de seguridad, categorías y auditoría\nControladores y DTO" as API <<implementado>>
   component "AuthService / UserManagementService\nCategoriaProductoService" as App <<implementado>>
   package "Módulos de dominio" {
     component "Seguridad\nusuarios, roles, permisos y sesiones" as Auth <<implementado>>
@@ -23,7 +23,8 @@ node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
     component "Ventas y despachos" as Ventas <<objetivo>>
     component "Contabilidad y finanzas" as Contabilidad <<objetivo>>
     component "RR. HH. y nómina" as Nomina <<objetivo>>
-    component "Reportería y auditoría" as Transversal <<objetivo>>
+    component "Reportería objetivo" as Transversal <<objetivo>>
+    component "Auditoría de seguridad y categorías" as Audit <<implementado>>
   }
   component "Persistencia\nSpring Data JPA / Hibernate" as Persistence <<implementado>>
 }
@@ -43,6 +44,7 @@ App ..> Ventas
 App ..> Contabilidad
 App ..> Nomina
 App ..> Transversal
+App --> Audit
 Compras ..> Inventario : recepción / devolución
 Ventas ..> Inventario : reserva / despacho
 Compras ..> Contabilidad : factura proveedor validada
@@ -56,12 +58,13 @@ Ventas --> Persistence
 Contabilidad --> Persistence
 Nomina --> Persistence
 Transversal --> Persistence
+Audit --> Persistence
 Persistence --> DB : JDBC / SQL
 Transversal ..> SMTP : después del commit
 
 note bottom of Backend
   Diseño objetivo: todos los módulos comparten una aplicación Spring Boot.
-  Hoy security y categorías están implementados; React conserva la plantilla de Vite.
+  Hoy security, categorías y auditoría limitada están implementados; React conserva la plantilla de Vite.
   No son microservicios. Los módulos usan servicios públicos
   de aplicación y no modifican repositorios privados ajenos.
 end note
@@ -70,8 +73,8 @@ note bottom of DB
   Las operaciones críticas se ejecutan transaccionalmente.
 end note
 note as EstadoActual
-  Azul: seguridad, categorías y errores comunes. Gris: resto propuesto.
+  Azul: seguridad, categorías, auditoría y errores comunes. Gris: resto propuesto.
   El cliente React no consume aún el API. La búsqueda de categorías está implementada;
-  auditoría, reportería, notificaciones y búsqueda en otros módulos siguen pendientes.
+  auditoría de otros módulos, reportería, notificaciones y su búsqueda siguen pendientes.
 end note
 @enduml

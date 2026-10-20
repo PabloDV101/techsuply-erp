@@ -24,7 +24,7 @@ package "Módulos de dominio (una aplicación Spring Boot)" as Domain {
 }
 package "Servicios compartidos" as Shared {
   component "Validación de negocio" as Validation <<objetivo>>
-  component "Auditoría" as Audit <<objetivo>>
+  component "Auditoría: seguridad y categorías" as Audit <<implementado>>
   component "Reportería" as Reporting <<objetivo>>
   component "Notificaciones post-commit" as Notifications <<objetivo>>
 }
@@ -63,8 +63,8 @@ note bottom of Tx
   cuando la operación lo requiere.
 end note
 note as EstadoActual
-  Azul: seguridad, categorías y errores comunes. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías, auditoría y errores comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. La búsqueda de categorías está implementada;
-  auditoría, reportería, notificaciones y búsqueda en otros módulos siguen pendientes.
+  auditoría de otros módulos, reportería, notificaciones y su búsqueda siguen pendientes.
 end note
 @enduml

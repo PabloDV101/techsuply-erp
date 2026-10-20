@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.3 — seguridad y categorías físicas actuales; resto modelo objetivo del ERP; SRS-TSS-ERP-001.
+// Versión 1.4 — seguridad, categorías y auditoría físicas actuales; resto modelo objetivo del ERP; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'v1.3. seguridad_implementada (V1/V2) y categorias_implementadas (V3) existen hoy. La FK de categoría a su padre existe; la relación de productos con categorías y las demás tablas futuras son OBJETIVO. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'v1.4. seguridad_implementada (V1/V2), categorias_implementadas (V3) y auditoria_implementada (V4) existen hoy. Las demás tablas son OBJETIVO. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -190,21 +190,19 @@ Table solicitudes_autorizacion [headercolor: #566573] {
   Note: 'OBJETIVO: tabla aún no implementada. El solicitante y quien resuelve deben ser distintos. La entidad polimórfica se valida desde aplicación.'
 }
 
-Table eventos_auditoria [headercolor: #566573] {
+Table eventos_auditoria [headercolor: #2E86C1] {
   id bigint [pk, not null, increment]
   usuario_id bigint
-  username_intentado varchar(60)
+  actor_tipo varchar(10) [not null, note: 'USUARIO, SISTEMA o ANONIMO; CHECK coherente con usuario_id']
   modulo varchar(40) [not null]
   entidad varchar(80) [not null]
   entidad_id bigint
-  accion varchar(30) [not null]
-  resultado varchar(20) [not null]
+  accion varchar(40) [not null]
+  resultado varchar(10) [not null, note: 'EXITO o DENEGADO']
+  motivo_codigo varchar(40)
   fecha timestamptz [not null, default: `now()`]
-  ip inet
-  valores_anteriores jsonb
-  valores_nuevos jsonb
-  detalle jsonb
-  Note: 'OBJETIVO: tabla aún no implementada. Solo inserción para el rol de aplicación; nunca almacenar contraseñas, tokens ni secretos.'
+  detalle jsonb [not null, default: `'{}'::jsonb`, note: 'Solo nombres de campos y etiquetas de estado aprobadas']
+  Note: 'IMPLEMENTADO en V4. Trigger bloquea UPDATE/DELETE; índices de fecha/actor/recurso. El escritor no admite valores arbitrarios, contraseñas, tokens ni secretos. Retención pendiente de política aprobada.'
 }
 
 // ==================== COMPRAS ====================
@@ -1101,6 +1099,10 @@ TableGroup categorias_implementadas {
   categorias_producto
 }
 
+TableGroup auditoria_implementada {
+  eventos_auditoria
+}
+
 TableGroup erp_objetivo {
   departamentos
   puestos
@@ -1110,7 +1112,6 @@ TableGroup erp_objetivo {
   productos
   almacenes
   solicitudes_autorizacion
-  eventos_auditoria
   requisiciones_compra
   detalles_requisicion
   ordenes_compra

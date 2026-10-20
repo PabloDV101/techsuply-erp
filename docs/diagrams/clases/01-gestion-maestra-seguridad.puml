@@ -61,15 +61,18 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
     -venceEn: Instant
     -revocadoEn: Instant [0..1]
   }
-  class EventoAuditoria <<objetivo>> {
+  class EventoAuditoria <<implementado>> {
   +id: Long
-  +fechaHora: DateTime
+  +fecha: Instant
+  +usuarioId: Long
+  +actorTipo: AuditActorType
+  +modulo: String
   +accion: String
   +entidad: String
   +entidadId: Long
-  +resultado: String
-  +valoresAnteriores: JSON
-  +valoresNuevos: JSON
+  +resultado: AuditResult
+  +motivoCodigo: String
+  +detalle: JSON
 }
  }
  package "Estructura organizacional" {
@@ -163,7 +166,7 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
 
  note right of Usuario
   IDs Long en Java / bigint en PostgreSQL.
-  Los vínculos de Usuario con Empleado/Cliente y la auditoría aún son objetivo.
+  Los vínculos de Usuario con Empleado/Cliente son objetivo; auditoría V4 ya existe.
   La FK de CategoriaProducto a su padre sí existe en V3.
   La cuenta puede vincularse a un empleado o a un cliente,
   nunca a ambos. El portal y su alcance de datos son objetivo.
@@ -189,8 +192,8 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
   existencias se controla por producto y almacen.
  end note
  note bottom of EventoAuditoria
-  OBJETIVO: no existe integración de auditoría en el backend actual.
-  Registro de solo adicion para cambios/operaciones criticas.
+  IMPLEMENTADO V4: solo adición para seguridad y categorías.
+  Otros módulos deberán publicar eventos al implementarse.
   No almacenar contrasenas, tokens ni secretos.
  end note
 @enduml

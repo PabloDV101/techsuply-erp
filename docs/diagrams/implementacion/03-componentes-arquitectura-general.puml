@@ -26,7 +26,7 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
    }
 
    package "Servicios compartidos" as Shared {
-     component "Auditoría" as Audit <<objetivo>>
+     component "Auditoría: seguridad y categorías" as Audit <<implementado>>
      component "Reportería\nsolo lectura" as Reporting <<objetivo>>
      component "Notificaciones" as Notifications <<objetivo>>
      component "common.api\nErrores HTTP / paginación" as ErrorHandler <<implementado>>
@@ -71,8 +71,8 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
    No deben acceder a repositorios internos de otros módulos.
  end note
 note as EstadoActual
-  Azul: seguridad, categorías y errores comunes. Gris: módulos y contratos propuestos.
+  Azul: seguridad, categorías, auditoría y errores comunes. Gris: módulos y contratos propuestos.
   El cliente React no consume aún el API. La búsqueda de categorías está implementada;
-  auditoría, reportería, notificaciones y búsqueda en otros módulos siguen pendientes.
+  auditoría de otros módulos, reportería, notificaciones y su búsqueda siguen pendientes.
 end note
 @enduml

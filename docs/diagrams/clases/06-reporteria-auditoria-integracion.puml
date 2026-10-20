@@ -1,20 +1,22 @@
 @startuml ERP_06_Reporteria_Auditoria_Integracion
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Vista logica: Reporteria, auditoria e integracion (modelo objetivo)
+caption VISTA MIXTA · EventoAuditoria implementado en V4 para seguridad/categorías; reportería e integración son objetivo.
+ title TechSupply Solutions - Reportería, auditoría e integración
  hide circle
 
  package "Auditoria e integracion" {
-  class EventoAuditoria {
+  class EventoAuditoria <<implementado>> {
   +id: Long
-  +fechaHora: DateTime
+  +fecha: Instant
+  +usuarioId: Long
+  +actorTipo: AuditActorType
+  +modulo: String
   +accion: String
   +entidad: String
   +entidadId: Long
-  +resultado: String
-  +valoresAnteriores: JSON
-  +valoresNuevos: JSON
-  +direccionOrigen: String
+  +resultado: AuditResult
+  +motivoCodigo: String
+  +detalle: JSON
 }
   class EventoIntegracion <<OpcionalMVP>> {
   +id: Long
@@ -127,8 +129,9 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  Usuario "0..1" <-- "0..*" ParametroSistema : actualizado por
 
  note bottom of EventoAuditoria
-  Solo adicion para altas, cambios, aprobaciones, cancelaciones,
-  accesos denegados y operaciones financieras. No registra secretos.
+  V4: solo adición para seguridad y categorías.
+  Detalle cerrado: nombres de campos/estados, sin valores ni secretos.
+  Aprobaciones y operaciones financieras son objetivo de módulos futuros.
  end note
  note bottom of EventoIntegracion
   Componente opcional del monolito. Puede materializar el patron

@@ -4,7 +4,9 @@
 
 La rúbrica identifica CRUD como candidato reutilizable. En el backend actual no
 se introduce una superclase para entidades ni un endpoint universal: cada módulo
-conserva su DTO, servicio, permisos, transacciones y reglas de negocio. Se comparten
+conserva su DTO, servicio, permisos, transacciones y reglas de negocio. Desde V4, las altas,
+ediciones y cambios de estado de categorías publican eventos de auditoría en la misma
+transacción; véase `docs/fase-2/auditoria/COMPONENTE_AUDITORIA.md`. Se comparten
 `PageRequests` (página/tamaño acotados y lista explícita de ordenaciones),
 `PageResponse<T>`, Bean Validation y el formato `ApiError` existente. Las
 operaciones protegidas se implementan en el servicio dueño del recurso.

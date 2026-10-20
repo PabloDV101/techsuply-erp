@@ -76,10 +76,13 @@ pendientes; este cambio no define orígenes permitidos ni modifica el frontend.
   valores predeterminados, FK internas y restricciones.
 - `V2__security_catalogs.sql`: rol ADMINISTRADOR y tres permisos administrativos.
   No crea cuentas ni contraseñas.
+- `V4__audit_events.sql`: tabla de auditoría y permiso `SEGURIDAD_AUDITORIA_LEER`
+  asignado al rol ADMINISTRADOR existente. Login, logout, bootstrap y 403 publican
+  eventos mediante el componente descrito en `docs/fase-2/auditoria/COMPONENTE_AUDITORIA.md`.
 
 Los identificadores son `bigint`/`Long`, coherentes con JPA y OpenAPI existentes.
 El DBML general y las vistas UML usan Long/bigint: seguridad refleja V1/V2 y
-categorías de producto refleja V3. Los demás catálogos y módulos conservan su
+categorías de producto refleja V3 y auditoría refleja V4. Los demás catálogos y módulos conservan su
 carácter de diseño objetivo. La propagación documental de tipos a esas tablas
 objetivo no crea tablas ni migra instalaciones existentes. Ver `docs/diagrams/README.md`.
 
