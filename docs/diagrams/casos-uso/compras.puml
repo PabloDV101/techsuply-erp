@@ -1,0 +1,51 @@
+@startuml CU_Compras
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Compras
+left to right direction
+
+actor "Responsable de compras" as Comprador
+actor "Responsable de almacén" as Almacen
+actor "Contador" as Contador
+actor "Proveedor" as Proveedor
+
+rectangle "ERP - Gestión de Compras" {
+  usecase "Identificar necesidad de compra" as Necesidad
+  usecase "Generar requisición" as Requisicion
+  usecase "Revisar y autorizar requisición" as Autorizar
+  usecase "Consultar proveedores" as ConsultarProveedores
+  usecase "Comparar condiciones comerciales" as Comparar
+  usecase "Generar orden de compra" as Orden
+  usecase "Consultar estado de orden" as EstadoOrden
+  usecase "Registrar recepción de mercancía" as Recepcion
+  usecase "Verificar mercancía recibida" as Verificar
+  usecase "Registrar discrepancias" as Discrepancias
+  usecase "Registrar devolución a proveedor" as Devolucion
+  usecase "Notificar recepción a contabilidad" as Notificar
+}
+
+Comprador -- Necesidad
+Comprador -- Requisicion
+Comprador -- Autorizar
+Comprador -- ConsultarProveedores
+Comprador -- Comparar
+Comprador -- Orden
+Comprador -- EstadoOrden
+
+Proveedor -- EstadoOrden
+Almacen -- Recepcion
+Almacen -- Devolucion
+Contador -- Notificar
+
+Requisicion ..> Necesidad : <<include>>
+Orden ..> ConsultarProveedores : <<include>>
+Orden ..> Comparar : <<include>>
+Recepcion ..> Verificar : <<include>>
+Discrepancias ..> Verificar : <<extend>>
+Notificar ..> Recepcion : <<extend>>
+
+note bottom of Devolucion
+  Precondición: recepción confirmada y cantidades aceptadas no devueltas.
+  Devolver es otro caso de uso, no una extensión temporal de registrar recepción.
+end note
+@enduml

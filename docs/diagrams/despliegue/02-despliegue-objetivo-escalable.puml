@@ -1,0 +1,76 @@
+@startuml TechSupply_Deployment_Target
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Despliegue objetivo escalable
+ top to bottom direction
+
+ actor "Usuario interno o cliente" as User
+ cloud "Internet / red corporativa" as Network
+
+ node "Zona perimetral" as Edge {
+   component "Nginx\nHTTPS :443\nSPA + reverse proxy" as Nginx
+   artifact "Frontend React + TypeScript\narchivos estáticos" as SPA
+ }
+
+ node "Red privada de aplicaciones" as AppNet {
+   node "Instancia backend A" as AppHostA {
+     artifact "TechSupply API\nSpring Boot / Java 21" as APIA
+   }
+   node "Instancia backend B" as AppHostB {
+     artifact "TechSupply API\nSpring Boot / Java 21" as APIB
+   }
+ }
+
+ node "Red privada de datos" as DataNet {
+   database "PostgreSQL\nBase de datos ERP\nPuerto 5432" as DB
+ }
+
+ node "Release / migraciones" as Release {
+   artifact "Flyway\nmigraciones SQL versionadas" as Flyway
+ }
+
+ node "Tarea de respaldo" as BackupJob {
+   artifact "pg_dump programado\nWAL/PITR si se configura" as BackupTool
+ }
+ cloud "Almacenamiento de respaldos\nseparado y cifrado" as BackupStorage
+ cloud "Servidor SMTP (opcional)" as SMTP
+
+ User --> Network
+ Network --> Nginx : HTTPS / TLS :443
+ Nginx --> SPA : sirve archivos
+ Nginx --> APIA : proxy /api/*\nTLS en red privada
+ Nginx --> APIB : proxy /api/*\nTLS en red privada
+ APIA --> DB : JDBC / TLS :5432
+ APIB --> DB : JDBC / TLS :5432
+ Flyway --> DB : ejecutar una vez\nantes del despliegue compatible
+ BackupTool --> DB : acceso restringido
+ BackupTool --> BackupStorage : copia cifrada
+ APIA --> SMTP : SMTP/TLS
+ APIB --> SMTP : SMTP/TLS
+
+ note bottom of AppNet
+   Ambas instancias ejecutan el mismo monolito modular.
+   No se separan los módulos en microservicios.
+   Sesión HTTP stateless; Bearer opaco validado en PostgreSQL.
+   tokens_sesion es estado compartido y permite revocación.
+   Medir carga antes de añadir instancias; no usar JWT como supuesto.
+ end note
+
+ note right of DB
+   Esta topología escala el backend, pero PostgreSQL
+   sigue siendo un punto único de fallo. Alta
+   disponibilidad de BD requiere diseño adicional.
+ end note
+
+ note bottom of Release
+   Ejecutar migraciones como paso controlado del release.
+   Verificar compatibilidad antes de desplegar versiones
+   nuevas en todas las instancias.
+ end note
+note as ImplementacionActual
+  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
+  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
+  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
+  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
+end note
+@enduml

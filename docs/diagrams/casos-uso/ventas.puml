@@ -1,0 +1,60 @@
+@startuml CU_Ventas
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Ventas
+left to right direction
+
+actor "Responsable de ventas" as Vendedor
+actor "Cliente" as Cliente
+actor "Responsable de almacén" as Almacen
+actor "Contador" as Contador
+
+rectangle "ERP - Gestión de Ventas" {
+  usecase "Consultar catálogo y precios" as Catalogo
+  usecase "Registrar cliente" as RegistrarCliente
+  usecase "Generar cotización" as Cotizacion
+  usecase "Consultar disponibilidad" as Disponibilidad
+  usecase "Registrar pedido" as Pedido
+  usecase "Validar condiciones comerciales" as Condiciones
+  usecase "Validar crédito disponible" as Credito
+  usecase "Confirmar pedido" as Confirmar
+  usecase "Consultar estado del pedido" as Estado
+  usecase "Preparar y despachar pedido" as Despachar
+  usecase "Generar factura" as Factura
+  usecase "Registrar devolución de cliente" as Devolucion
+  usecase "Consultar historial del cliente" as Historial
+}
+
+
+Vendedor -- Catalogo
+Vendedor -- RegistrarCliente
+Vendedor -- Cotizacion
+Vendedor -- Pedido
+Vendedor -- Confirmar
+Vendedor -- Estado
+Vendedor -- Factura
+Vendedor -- Historial
+Vendedor -- Devolucion
+Almacen -- Devolucion
+
+Cliente -- Catalogo
+Cliente -- Cotizacion
+Cliente -- Pedido
+Cliente -- Estado
+
+Almacen -- Disponibilidad
+Almacen -- Despachar
+Contador -- Factura
+
+Cotizacion ..> Catalogo : <<include>>
+Pedido ..> Disponibilidad : <<include>>
+Pedido ..> Condiciones : <<include>>
+Confirmar ..> Credito : <<include>>
+Confirmar ..> Disponibilidad : <<include>>
+
+note bottom of Despachar
+  Precondición: pedido confirmado con reserva.
+  Facturar requiere despacho completo; devolver requiere documento original válido.
+  Consultar historial no incluye registrar de nuevo al cliente.
+end note
+@enduml

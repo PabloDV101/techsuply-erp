@@ -1,0 +1,60 @@
+@startuml CU_Contabilidad
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Contabilidad
+left to right direction
+
+actor "Contador" as Contador
+actor "Gerente general" as Gerente
+actor "Responsable de compras" as Compras
+actor "Responsable de ventas" as Ventas
+actor "Auditor" as Auditor
+
+rectangle "ERP - Contabilidad y Finanzas" {
+  usecase "Gestionar plan de cuentas" as PlanCuentas
+  usecase "Consultar documentos de origen" as Documentos
+  usecase "Registrar asiento contable" as Asiento
+  usecase "Validar partida doble" as Validar
+  usecase "Consultar mayor general" as Mayor
+  usecase "Generar balance de prueba" as Balance
+  usecase "Registrar cuentas por pagar" as CuentasPagar
+  usecase "Registrar cuentas por cobrar" as CuentasCobrar
+  usecase "Registrar pagos y cobros" as Pagos
+  usecase "Conciliar operaciones" as Conciliar
+  usecase "Generar estado de resultados" as Resultados
+  usecase "Generar balance general" as BalanceGeneral
+  usecase "Generar flujo de efectivo" as FlujoEfectivo
+  usecase "Consultar trazabilidad contable" as Trazabilidad
+}
+
+
+Contador -- PlanCuentas
+Contador -- Asiento
+Contador -- Mayor
+Contador -- Balance
+Contador -- CuentasPagar
+Contador -- CuentasCobrar
+Contador -- Pagos
+Contador -- Conciliar
+Contador -- Resultados
+Contador -- BalanceGeneral
+Contador -- FlujoEfectivo
+
+Compras -- CuentasPagar
+Ventas -- CuentasCobrar
+
+Gerente -- Resultados
+Gerente -- BalanceGeneral
+Gerente -- FlujoEfectivo
+Auditor -- Trazabilidad
+
+Asiento ..> Documentos : <<include>>
+Asiento ..> Validar : <<include>>
+Conciliar ..> Documentos : <<include>>
+Trazabilidad ..> Documentos : <<include>>
+
+note bottom of Mayor
+  Mayor y balance consultan partidas contabilizadas.
+  Consultar nunca incluye registrar un asiento nuevo.
+end note
+@enduml

@@ -1,0 +1,57 @@
+@startuml CU_Inventario
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title TechSupply Solutions — Inventario
+left to right direction
+
+actor "Responsable de almacén" as Almacen
+actor "Responsable de compras" as Compras
+actor "Responsable de ventas" as Ventas
+actor "Auditor" as Auditor
+actor "Aprobador autorizado" as Aprobador
+
+rectangle "ERP - Gestión de Inventario" {
+  usecase "Consultar existencias" as Existencias
+  usecase "Consultar existencias por almacén" as PorAlmacen
+  usecase "Registrar entrada de productos" as Entrada
+  usecase "Registrar salida de productos" as Salida
+  usecase "Registrar otros movimientos" as Movimientos
+  usecase "Realizar conteo físico" as Conteo
+  usecase "Comparar stock físico y registrado" as Comparar
+  usecase "Solicitar ajuste de inventario" as SolicitarAjuste
+  usecase "Autorizar ajuste" as AutorizarAjuste
+  usecase "Consultar historial de movimientos" as Historial
+  usecase "Generar alertas de stock mínimo" as Alertas
+  usecase "Consultar rotación de productos" as Rotacion
+  usecase "Consultar productos obsoletos" as Obsoletos
+}
+
+
+Almacen -- Existencias
+Almacen -- Entrada
+Almacen -- Salida
+Almacen -- Movimientos
+Almacen -- Conteo
+Almacen -- SolicitarAjuste
+Almacen -- Alertas
+Almacen -- Historial
+
+Compras -- Existencias
+Compras -- Alertas
+
+Ventas -- Existencias
+
+Auditor -- Historial
+Aprobador -- AutorizarAjuste
+Almacen -- Rotacion
+Almacen -- Obsoletos
+
+PorAlmacen ..> Existencias : <<extend>>
+Conteo ..> Comparar : <<include>>
+SolicitarAjuste ..> Comparar : <<include>>
+
+note bottom of AutorizarAjuste
+  Precondición: solicitud de ajuste pendiente y actor autorizado.
+  Las entradas y salidas registran movimientos; consultar historial es independiente.
+end note
+@enduml

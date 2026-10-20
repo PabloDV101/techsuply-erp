@@ -1,0 +1,64 @@
+@startuml TSS_Paquetes_Java
+!include ../_estilo.iuml
+title TechSupply Solutions — Dependencias de paquetes actuales y objetivo
+caption VISTA MIXTA · Azul: implementado; gris: diseño objetivo; las notas delimitan las integraciones pendientes.
+left to right direction
+package "com.techsupply.erp_backend" {
+  package "security.api" as API {
+    component "AuthController / AdminUsuariosController" as Controllers <<implementado>>
+    component "AuthExceptionHandler / AuthErrorWriter" as Errors <<implementado>>
+  }
+  package "security.application" as App {
+    component "AuthService / UserManagementService" as Services <<implementado>>
+    interface "AuthenticatedUserProvider" as Identity
+    component "DTO y validación UTF-8" as DTO <<implementado>>
+  }
+  package "security.domain.model" as Domain {
+    component "Usuario / Rol / Permiso / TokenSesion\nEntidades JPA" as Entities <<implementado>>
+  }
+  package "security.infrastructure" as Infra {
+    component "persistence\nRepositorios Spring Data JPA" as Repo <<implementado>>
+    component "security\nFiltro Bearer, token y adaptador de identidad" as Adapter <<implementado>>
+  }
+  package "security.config" as Config {
+    component "SecurityConfig / SecurityClockConfig\nAdminBootstrapRunner (opcional)" as Configuration <<implementado>>
+  }
+  package "Módulos pendientes · nombres propuestos" as Modules {
+    component "maestros" as Masters <<objetivo>>
+    component "compras" as Buy <<objetivo>>
+    component "inventario" as Inv <<objetivo>>
+    component "ventas" as Sales <<objetivo>>
+    component "contabilidad" as Acc <<objetivo>>
+    component "rrhh / nómina" as Pay <<objetivo>>
+    component "reportería / auditoría / notificaciones" as Shared <<objetivo>>
+  }
+}
+database "PostgreSQL" as DB
+Controllers ..> DTO : valida / devuelve
+Controllers ..> Services : invoca
+Controllers ..> Errors : traduce errores
+Services ..> Entities
+Services ..> Repo : dependencia directa actual
+Services ..> Identity
+Adapter ..|> Identity : implementa
+Adapter ..> Repo : consulta sesión y permisos
+Configuration ..> Adapter : configura cadena
+Repo --> DB : JPA / SQL
+Buy ..> Inv : recepción / devolución (objetivo)
+Sales ..> Inv : reserva / despacho (objetivo)
+Buy ..> Acc : origen validado (objetivo)
+Sales ..> Acc : factura validada (objetivo)
+Pay ..> Acc : nómina aprobada (objetivo)
+Masters ..> Shared
+Buy ..> Shared
+Inv ..> Shared
+Sales ..> Shared
+Acc ..> Shared
+Pay ..> Shared
+note bottom of Domain
+  Estado actual: dominio contiene anotaciones JPA;
+  aplicación usa repositorios Spring Data directamente.
+  El aislamiento por puertos de los futuros módulos es una propuesta,
+  no una propiedad ya implementada en security.
+end note
+@enduml

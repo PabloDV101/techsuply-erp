@@ -1,0 +1,89 @@
+@startuml TechSupply_Reusable_Components
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+ title TechSupply Solutions - Componentes reutilizables y contratos
+ left to right direction
+
+ package "Implementaciones compartidas" as Providers {
+   component "Spring Security\nFilter Chain + @PreAuthorize" as Security <<implementado>>
+   component "Jakarta Validation\nDTOs de entrada" as InputValidation <<implementado>>
+   component "AuditService" as Audit <<objetivo>>
+   component "Búsqueda común\nPageable / Specification" as Search <<objetivo>>
+   component "NotificationService\nAFTER_COMMIT" as Notify <<objetivo>>
+   component "Reporting query services" as Reports <<objetivo>>
+   component "AuthExceptionHandler / AuthErrorWriter\n(alcance actual: seguridad)" as Errors <<implementado>>
+ }
+
+ interface "AuthenticatedUserProvider" as Identity
+ component "SecurityContextAuthenticatedUserProvider" as IdentityAdapter <<implementado>>
+ IdentityAdapter ..|> Identity
+ interface "AuditPort" as IAudit <<objetivo>>
+ interface "SearchPort" as ISearch <<objetivo>>
+ interface "NotificationPort" as INotify <<objetivo>>
+ interface "ReportQueryPort" as IReports <<objetivo>>
+
+ package "Módulos consumidores" as Consumers {
+   component "Gestión maestra" as Masters <<objetivo>>
+   component "Compras" as Purchases <<objetivo>>
+   component "Inventario" as Inventory <<objetivo>>
+   component "Ventas" as Sales <<objetivo>>
+   component "Contabilidad" as Accounting <<objetivo>>
+   component "RR. HH. / nómina" as Payroll <<objetivo>>
+ }
+
+ Audit - IAudit
+ Search - ISearch
+ Notify - INotify
+ Reports - IReports
+
+ Masters ..> Identity : identidad (integración objetivo)
+ Purchases ..> Identity
+ Inventory ..> Identity
+ Sales ..> Identity
+ Masters ..> IAudit
+ Purchases ..> IAudit
+ Inventory ..> IAudit
+ Sales ..> IAudit
+ Accounting ..> IAudit
+ Payroll ..> IAudit
+
+ Masters ..> ISearch
+ Purchases ..> ISearch
+ Inventory ..> ISearch
+ Sales ..> ISearch
+
+ Purchases ..> INotify
+ Inventory ..> INotify
+ Sales ..> INotify
+ Payroll ..> INotify
+
+ Reports ..> IReports
+
+ note bottom of Security
+   Implementado en seguridad; reutilización en otros módulos aún no demostrada.
+   Los permisos se aplican en la API y en casos de uso sensibles.
+   Ocultar botones en React no es un control de seguridad.
+ end note
+
+ note bottom of InputValidation
+   Las reglas de entrada comunes se reutilizan aquí;
+   las invariantes comerciales (stock, saldos, estados) viven
+   en el módulo responsable y se validan en el servidor.
+ end note
+
+ note bottom of Audit
+   @Transactional define la atomicidad en los servicios de aplicación;
+   no es un microservicio ni un componente remoto independiente.
+ end note
+
+ note right of Notify
+   Las notificaciones salen después del commit para no enviar
+   avisos sobre operaciones que finalmente se revierten.
+   Para garantías más fuertes, añadir patrón outbox en el futuro.
+ end note
+note as EstadoActual
+  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
+  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+end note
+@enduml

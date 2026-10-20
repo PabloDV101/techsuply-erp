@@ -1,0 +1,45 @@
+@startuml TS08_Proceso_Reporteria
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+title ERP TechSupply Solutions - Consulta y Generacion de Reportes
+
+|Usuario autorizado|
+start
+:Seleccionar reporte o indicador;
+:Indicar filtros y periodo;
+|API Spring Boot / Seguridad|
+:Validar token y permisos del usuario;
+if (¿Tiene acceso al reporte y sus datos?) then (Si)
+  |Servicio de reporteria|
+  :Validar parametros y rango de fechas;
+  :Consultar fuentes autorizadas;
+  :Aplicar filtros y calculos definidos;
+  :Registrar solicitud de reporte;
+  if (¿Mostrar en pantalla?) then (Si)
+    :Preparar resultado paginado;
+  elseif (¿Exportar archivo?) then (Si)
+    :Generar archivo con datos autorizados;
+    :Validar formato permitido;
+  else (Dashboard)
+    :Calcular indicadores y periodo;
+  endif
+  if (¿Generacion correcta?) then (Si)
+    :Registrar resultado y duracion;
+    |Servicio de auditoria|
+    :Registrar ejecucion relevante;
+    |Usuario autorizado|
+    :Consultar resultado o descargar archivo;
+    stop
+  else (No)
+    |Servicio de reporteria|
+    :Registrar ejecucion fallida;
+    :Devolver mensaje sin datos sensibles;
+    stop
+  endif
+else (No)
+  |API Spring Boot / Seguridad|
+  :Denegar acceso;
+  :Registrar evento de seguridad;
+  stop
+endif
+@enduml

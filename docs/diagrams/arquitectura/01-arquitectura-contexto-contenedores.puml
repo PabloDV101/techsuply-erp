@@ -1,0 +1,77 @@
+@startuml TSS_Contexto_Contenedores
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+title TechSupply Solutions — 01 arquitectura contexto contenedores
+' Vista lógica de contenedores. Nginx y redes físicas se detallan en la vista de despliegue.
+top to bottom direction
+
+actor "Usuario interno\n(Gerencia, Compras, Almacén,\nVentas, Contabilidad y RR. HH.)" as Interno
+actor "Cliente" as Cliente
+
+node "Navegador web" as Browser {
+  component "Aplicación web / portal\nReact + TypeScript" as Web <<objetivo>>
+}
+
+node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
+  component "API REST de seguridad\nControladores y DTO" as API <<implementado>>
+  component "AuthService / UserManagementService\nCasos de uso y transacciones" as App <<implementado>>
+  package "Módulos de dominio" {
+    component "Seguridad\nusuarios, roles, permisos y sesiones" as Auth <<implementado>>
+    component "Gestión maestra (objetivo)" as Maestros <<objetivo>>
+    component "Compras" as Compras <<objetivo>>
+    component "Inventario" as Inventario <<objetivo>>
+    component "Ventas y despachos" as Ventas <<objetivo>>
+    component "Contabilidad y finanzas" as Contabilidad <<objetivo>>
+    component "RR. HH. y nómina" as Nomina <<objetivo>>
+    component "Reportería y auditoría" as Transversal <<objetivo>>
+  }
+  component "Persistencia\nSpring Data JPA / Hibernate" as Persistence <<implementado>>
+}
+
+database "PostgreSQL\nDatos relacionales normalizados" as DB
+cloud "SMTP opcional\nNotificaciones" as SMTP
+
+Interno --> Web : utiliza
+Cliente --> Web : utiliza portal
+Web --> API : HTTPS / JSON\n(vía proxy en despliegue)
+API --> App : invoca casos de uso
+App --> Auth
+App ..> Maestros
+App ..> Compras
+App ..> Inventario
+App ..> Ventas
+App ..> Contabilidad
+App ..> Nomina
+App ..> Transversal
+Compras ..> Inventario : recepción / devolución
+Ventas ..> Inventario : reserva / despacho
+Compras ..> Contabilidad : factura proveedor validada
+Ventas ..> Contabilidad : factura comercial validada
+Nomina ..> Contabilidad : nómina aprobada
+Auth --> Persistence
+Maestros ..> Persistence
+Compras --> Persistence
+Inventario --> Persistence
+Ventas --> Persistence
+Contabilidad --> Persistence
+Nomina --> Persistence
+Transversal --> Persistence
+Persistence --> DB : JDBC / SQL
+Transversal ..> SMTP : después del commit
+
+note bottom of Backend
+  Diseño objetivo: todos los módulos comparten una aplicación Spring Boot.
+  Hoy solo security está implementado; React conserva la plantilla de Vite.
+  No son microservicios. Los módulos usan servicios públicos
+  de aplicación y no modifican repositorios privados ajenos.
+end note
+note bottom of DB
+  Acceso solo desde backend y procesos autorizados.
+  Las operaciones críticas se ejecutan transaccionalmente.
+end note
+note as EstadoActual
+  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
+  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+end note
+@enduml

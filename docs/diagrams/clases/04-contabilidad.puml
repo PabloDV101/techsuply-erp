@@ -1,0 +1,188 @@
+@startuml ERP_04_Contabilidad
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Vista logica: Contabilidad y finanzas (modelo objetivo)
+ hide circle
+
+ package "Catalogos contables" {
+  class CuentaContable {
+  +id: Long
+  +codigo: String
+  +nombre: String
+  +tipo: TipoCuenta
+  +naturaleza: NaturalezaCuenta
+  +nivel: Integer
+  +aceptaMovimientos: Boolean
+  +activa: Boolean
+}
+  class PeriodoContable {
+  +id: Long
+  +fechaInicio: Date
+  +fechaFin: Date
+  +estado: EstadoPeriodo
+  +cerrar()
+}
+ }
+ package "Libro diario y mayor" {
+  class AsientoContable {
+  +id: Long
+  +folio: String
+  +fechaContable: Date
+  +descripcion: String
+  +estado: EstadoAsiento
+  +origenTipo: String
+  +origenId: Long
+  +claveIdempotencia: String
+  +validarBalance(): Boolean
+  +contabilizar()
+  +revertir()
+}
+  class DetalleAsiento {
+  +id: Long
+  +numeroLinea: Integer
+  +debe: Decimal
+  +haber: Decimal
+  +descripcion: String
+}
+ }
+ package "Control presupuestario (futuro)" {
+  class Presupuesto <<Futura>> {
+    +id: Long
+    +anio: Integer
+    +mes: Integer
+    +monto: Decimal
+  }
+ }
+ package "Cuentas auxiliares" {
+  class CuentaPorCobrar {
+  +id: Long
+  +montoOriginal: Decimal
+  +/saldoPendiente: Decimal
+  +fechaEmision: Date
+  +fechaVencimiento: Date
+  +estado: EstadoCuentaAuxiliar
+}
+  class AplicacionCobro {
+  +id: Long
+  +montoAplicado: Decimal
+  +fechaAplicacion: DateTime
+}
+  class CobroCliente {
+  +id: Long
+  +folio: String
+  +fecha: DateTime
+  +monto: Decimal
+  +medio: MedioPago
+  +estado: EstadoPago
+  +claveIdempotencia: String
+}
+  class CuentaPorPagar {
+  +id: Long
+  +montoOriginal: Decimal
+  +/saldoPendiente: Decimal
+  +fechaEmision: Date
+  +fechaVencimiento: Date
+  +estado: EstadoCuentaAuxiliar
+}
+  class AplicacionPagoProveedor {
+  +id: Long
+  +montoAplicado: Decimal
+  +fechaAplicacion: DateTime
+}
+  class PagoProveedor {
+  +id: Long
+  +folio: String
+  +fecha: DateTime
+  +monto: Decimal
+  +medio: MedioPago
+  +estado: EstadoPago
+  +claveIdempotencia: String
+}
+ }
+ package "Referencias a otros modulos" {
+  class FacturaVenta <<Ventas>>
+  class FacturaProveedor <<Compras>>
+  class Cliente <<GestionMaestra>>
+  class Proveedor <<GestionMaestra>>
+  class Usuario <<Seguridad>>
+  class Departamento <<GestionMaestra>>
+ }
+ enum TipoCuenta {
+  ACTIVO
+  PASIVO
+  CAPITAL
+  INGRESO
+  COSTO
+  GASTO
+}
+ enum NaturalezaCuenta {
+  DEUDORA
+  ACREEDORA
+}
+ enum EstadoPeriodo {
+  ABIERTO
+  CERRADO
+}
+ enum EstadoAsiento {
+  BORRADOR
+  CONTABILIZADO
+  REVERSADO
+}
+ enum EstadoCuentaAuxiliar {
+  ABIERTA
+  PARCIAL
+  PAGADA
+  VENCIDA
+  CANCELADA
+}
+ enum MedioPago {
+  TRANSFERENCIA
+  TARJETA
+  EFECTIVO
+  CHEQUE
+  OTRO
+}
+ enum EstadoPago {
+  REGISTRADO
+  CONFIRMADO
+  RECHAZADO
+  REVERSADO
+}
+
+ CuentaContable "0..1" <-- "0..*" CuentaContable : cuenta padre
+ PeriodoContable "1" -- "0..*" AsientoContable
+ PeriodoContable "0..*" --> "0..1" Usuario : cerrado por
+ AsientoContable "1" *-- "2..*" DetalleAsiento
+ DetalleAsiento "0..*" --> "1" CuentaContable
+ AsientoContable "0..1" --> "0..1" AsientoContable : contraasiento de
+ AsientoContable "0..*" --> "1" Usuario : creado por
+ AsientoContable "0..*" --> "0..1" Usuario : contabilizado por
+ FacturaVenta "1" -- "0..1" CuentaPorCobrar : origina
+ FacturaProveedor "1" -- "0..1" CuentaPorPagar : origina
+ Departamento "1" -- "0..*" Presupuesto
+ CuentaContable "1" -- "0..*" Presupuesto
+ Cliente "1" -- "0..*" CobroCliente
+ Proveedor "1" -- "0..*" PagoProveedor
+ CobroCliente "1" -- "0..*" AplicacionCobro
+ CuentaPorCobrar "1" -- "0..*" AplicacionCobro
+ PagoProveedor "1" -- "0..*" AplicacionPagoProveedor
+ CuentaPorPagar "1" -- "0..*" AplicacionPagoProveedor
+ Usuario "1" <-- "0..*" CobroCliente : registrado por
+ Usuario "1" <-- "0..*" PagoProveedor : registrado por
+
+ note bottom of AsientoContable
+  Periodo abierto, al menos dos partidas y total debe = total haber.
+  Una clave idempotente evita duplicados. Un asiento contabilizado
+  es inmutable y se corrige con un contraasiento.
+ end note
+ note right of CuentaPorCobrar
+  Saldo derivado = monto original - aplicaciones de cobros confirmados.
+  Cada cobro aplicado debe corresponder al mismo cliente; no exceder
+  el saldo de la cuenta ni el monto no aplicado del cobro.
+ end note
+ note right of CuentaPorPagar
+  Saldo derivado = monto original - aplicaciones de pagos confirmados.
+  Cada pago aplicado debe corresponder al mismo proveedor; no exceder
+  el saldo de la cuenta ni el monto no aplicado del pago.
+ end note
+@enduml

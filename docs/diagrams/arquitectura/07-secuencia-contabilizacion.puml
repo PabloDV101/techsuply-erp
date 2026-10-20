@@ -1,0 +1,42 @@
+@startuml TSS_Secuencia_Contabilizacion
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title Validacion y contabilizacion idempotente - modelo objetivo
+ hide footbox
+
+ actor "Contador" as User
+ boundary "ContabilidadController" as API
+ control "ContabilidadService" as Service
+ entity "Documento origen validado" as Source
+ entity "PeriodoContable" as Period
+ entity "AsientoContable" as Entry
+ entity "DetalleAsiento" as Lines
+ database "PostgreSQL" as DB
+
+ User -> API : contabilizar(documentoId, claveIdempotencia)
+ API -> Service : contabilizar(request, usuario)
+ Service -> DB : BEGIN (transaccion)
+ Service -> Source : validar factura, aplicacion o nomina
+ Source --> Service : importes, origen y estado
+ Service -> Period : verificar fecha dentro de periodo abierto
+ Service -> Entry : buscar por clave y origen idempotente
+ alt ya contabilizado
+  Entry --> Service : asiento existente
+  Service -> DB : COMMIT sin duplicar
+  Service --> API : devolver asiento existente
+ else nuevo asiento
+  Service -> Entry : construir encabezado
+  Service -> Lines : crear partidas contables
+  Service -> Service : validar >= 2 partidas y suma debe = haber
+  Service -> Entry : marcar CONTABILIZADO y registrar autor
+  Service -> DB : guardar asiento, partidas y referencia al origen
+  Service -> DB : COMMIT
+  Service --> API : asiento contabilizado
+ end
+ API --> User : resultado
+ note over Service,DB
+  Solo se contabiliza en periodo abierto. Cualquier fallo produce
+  rollback. Un asiento contabilizado no se edita: se revierte mediante
+  contraasiento y las acciones quedan auditadas.
+ end note
+@enduml

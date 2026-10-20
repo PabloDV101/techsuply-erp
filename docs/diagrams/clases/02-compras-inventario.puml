@@ -1,0 +1,299 @@
+@startuml ERP_02_Compras_Inventario
+!include ../_estilo.iuml
+caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+ title TechSupply Solutions - Vista logica: Compras e inventario (modelo objetivo)
+ hide circle
+
+ package "Compras" {
+  class RequisicionCompra {
+  +id: Long
+  +folio: String
+  +fecha: DateTime
+  +estado: EstadoRequisicion
+  +solicitar()
+  +aprobar()
+  +rechazar()
+}
+  class DetalleRequisicion {
+  +id: Long
+  +cantidadSolicitada: Decimal
+  +cantidadAprobada: Decimal
+}
+  class OrdenCompra {
+  +id: Long
+  +folio: String
+  +fechaEmision: DateTime
+  +estado: EstadoOrdenCompra
+  +aprobadaEn: DateTime
+  +motivoRechazo: String
+  +subtotal: Decimal
+  +impuestos: Decimal
+  +total: Decimal
+}
+  class DetalleOrdenCompra {
+  +id: Long
+  +cantidad: Decimal
+  +precioUnitario: Decimal
+  +descuentoPct: Decimal
+  +tasaImpuesto: Decimal
+  +calcularPendiente(): Decimal
+}
+  class RecepcionCompra {
+  +id: Long
+  +folio: String
+  +fechaRecepcion: DateTime
+  +claveIdempotencia: String
+  +estado: EstadoRecepcion
+  +confirmar()
+}
+  class DetalleRecepcion {
+  +id: Long
+  +cantidadRecibida: Decimal
+  +cantidadAceptada: Decimal
+  +cantidadRechazada: Decimal
+  +precioUnitarioRecibido: Decimal
+}
+  class FacturaProveedor {
+  +id: Long
+  +folioInterno: String
+  +numeroFacturaProveedor: String
+  +fechaEmision: Date
+  +fechaVencimiento: Date
+  +subtotal: Decimal
+  +impuestos: Decimal
+  +total: Decimal
+  +estado: EstadoFacturaProveedor
+  +validarContraCompra()
+}
+  class DetalleFacturaProveedor {
+  +id: Long
+  +cantidadFacturada: Decimal
+  +precioUnitario: Decimal
+  +descuentoPct: Decimal
+  +tasaImpuesto: Decimal
+  +subtotal: Decimal
+  +impuestos: Decimal
+  +total: Decimal
+}
+  class DevolucionProveedor {
+  +id: Long
+  +folio: String
+  +fecha: DateTime
+  +motivo: String
+  +claveIdempotencia: String
+  +estado: EstadoDevolucion
+  +confirmar()
+}
+  class DetalleDevolucionProveedor {
+  +id: Long
+  +cantidad: Decimal
+  +costoUnitario: Decimal
+}
+ }
+ package "Inventario" {
+  class Existencia {
+  +id: Long
+  +cantidadFisica: Decimal
+  +cantidadReservada: Decimal
+  +costoPromedio: Decimal
+  +version: Integer
+  +consultarDisponible(): Decimal
+}
+  class MovimientoInventario {
+  +id: Long
+  +fechaHora: DateTime
+  +tipo: TipoMovimiento
+  +motivo: String
+  +cantidad: Decimal
+  +costoUnitario: Decimal
+  +claveOperacion: String
+  +revertir()
+}
+  class ConteoInventario {
+  +id: Long
+  +folio: String
+  +fechaProgramada: Date
+  +estado: EstadoConteo
+}
+  class DetalleConteo {
+  +id: Long
+  +cantidadSistema: Decimal
+  +cantidadContada: Decimal
+  +diferencia: Decimal
+  +calcularDiferencia(): Decimal
+}
+  class AlertaInventario {
+    +id: Long
+    +tipo: TipoAlerta
+    +estado: EstadoAlerta
+    +generadaEn: DateTime
+    +resueltaEn: DateTime
+  }
+  class AjusteInventario {
+  +id: Long
+  +folio: String
+  +motivo: String
+  +claveIdempotencia: String
+  +estado: EstadoAjuste
+  +aprobar()
+  +aplicar()
+}
+  class DetalleAjusteInventario {
+  +id: Long
+  +tipo: TipoAjuste
+  +cantidad: Decimal
+  +costoUnitario: Decimal
+}
+ }
+ package "Referencias de otros modulos" {
+  class Producto <<GestionMaestra>>
+  class Proveedor <<GestionMaestra>>
+  class Usuario <<Seguridad>>
+  class Departamento <<GestionMaestra>>
+  class Almacen <<GestionMaestra>>
+  class DetallePedido <<Ventas>>
+  class DetalleDespacho <<Ventas>>
+  class DetalleDevolucionCliente <<Ventas>>
+ }
+ enum EstadoRequisicion {
+  BORRADOR
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CONVERTIDA
+  CANCELADA
+}
+ enum EstadoOrdenCompra {
+  BORRADOR
+  PENDIENTE_APROBACION
+  APROBADA
+  ENVIADA
+  PARCIALMENTE_RECIBIDA
+  RECIBIDA
+  CANCELADA
+}
+ enum EstadoFacturaProveedor {
+  REGISTRADA
+  VALIDADA
+  PARCIALMENTE_PAGADA
+  PAGADA
+  VENCIDA
+  CANCELADA
+ }
+ enum EstadoRecepcion {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+}
+ enum EstadoDevolucion {
+  BORRADOR
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+}
+ enum EstadoConteo {
+  PROGRAMADO
+  EN_CAPTURA
+  CERRADO
+  CANCELADO
+}
+ enum EstadoAjuste {
+  BORRADOR
+  PENDIENTE
+  APROBADO
+  APLICADO
+  RECHAZADO
+  CANCELADO
+}
+ enum TipoAjuste {
+  POSITIVO
+  NEGATIVO
+}
+ enum TipoAlerta {
+  STOCK_BAJO
+  SIN_EXISTENCIA
+  OBSOLESCENCIA
+ }
+ enum EstadoAlerta {
+  ACTIVA
+  RESUELTA
+ }
+ enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  RESERVA
+  LIBERACION
+  REVERSA
+}
+
+ RequisicionCompra "1" *-- "1..*" DetalleRequisicion
+ DetalleRequisicion "0..*" --> "1" Producto
+ RequisicionCompra "0..*" --> "1" Usuario : solicitante
+ RequisicionCompra "0..*" --> "1" Departamento : departamento
+ RequisicionCompra "0..*" --> "0..1" Usuario : aprobador
+ RequisicionCompra "0..1" <-- "0..*" OrdenCompra : origen opcional
+ OrdenCompra "0..*" --> "1" Proveedor
+ OrdenCompra "0..*" --> "1" Usuario : creada por
+ OrdenCompra "0..*" --> "0..1" Usuario : aprobada por
+ OrdenCompra "1" *-- "1..*" DetalleOrdenCompra
+ DetalleOrdenCompra "0..*" --> "1" Producto
+ OrdenCompra "1" -- "0..*" RecepcionCompra
+ RecepcionCompra "0..*" --> "1" Almacen
+ RecepcionCompra "0..*" --> "1" Usuario : registrada por
+ RecepcionCompra "1" *-- "1..*" DetalleRecepcion
+ DetalleRecepcion "0..*" --> "1" DetalleOrdenCompra
+ OrdenCompra "1" -- "0..1" FacturaProveedor : maximo una factura en MVP
+ FacturaProveedor "0..*" --> "1" Proveedor
+ FacturaProveedor "1" *-- "1..*" DetalleFacturaProveedor
+ DetalleFacturaProveedor "0..*" --> "1" DetalleOrdenCompra
+ DevolucionProveedor "1" *-- "1..*" DetalleDevolucionProveedor
+ DevolucionProveedor "0..*" --> "1" Proveedor
+ DevolucionProveedor "0..*" --> "1" OrdenCompra
+ DevolucionProveedor "0..*" --> "1" Usuario : registrada por
+ DevolucionProveedor "0..*" --> "0..1" Usuario : autorizada por
+ DetalleDevolucionProveedor "0..*" --> "1" DetalleRecepcion : unidades recibidas aceptadas
+
+ Producto "1" -- "0..*" Existencia
+ Almacen "1" -- "0..*" Existencia
+ Almacen "1" -- "0..*" ConteoInventario
+ ConteoInventario "0..*" --> "1" Usuario : creado por
+ Producto "1" -- "0..*" AlertaInventario
+ Almacen "0..1" <-- "0..*" AlertaInventario
+ ConteoInventario "1" *-- "1..*" DetalleConteo
+ DetalleConteo "0..*" --> "1" Producto
+ AjusteInventario "0..*" --> "1" Almacen
+ AjusteInventario "0..*" --> "1" Usuario : solicitante
+ AjusteInventario "0..*" --> "0..1" Usuario : autorizador
+ AjusteInventario "1" *-- "1..*" DetalleAjusteInventario
+ DetalleAjusteInventario "0..*" --> "1" Producto
+ DetalleAjusteInventario "0..*" --> "0..1" DetalleConteo
+ MovimientoInventario "0..*" --> "1" Producto
+ MovimientoInventario "0..*" --> "1" Almacen
+ MovimientoInventario "0..*" --> "1" Usuario : autor
+ MovimientoInventario "0..*" --> "0..1" DetalleRecepcion : origen entrada
+ MovimientoInventario "0..*" --> "0..1" DetalleDespacho : origen salida
+ MovimientoInventario "0..*" --> "0..1" DetalleAjusteInventario : origen ajuste
+ MovimientoInventario "0..*" --> "0..1" DetalleDevolucionProveedor : origen devolucion proveedor
+ MovimientoInventario "0..*" --> "0..1" DetalleDevolucionCliente : origen devolucion cliente
+ MovimientoInventario "0..*" --> "0..1" DetallePedido : origen reserva/liberacion
+ MovimientoInventario "0..*" --> "0..1" MovimientoInventario : movimiento revertido
+
+ note right of Existencia
+  Unica por (producto, almacen).
+  Disponible = fisica - reservada.
+  Reservada no puede superar fisica.
+ end note
+ note bottom of DetalleRecepcion
+  Aceptadas + rechazadas = recibidas.
+  Solo aceptadas aumentan stock al confirmar.
+ end note
+ note bottom of MovimientoInventario
+  Cada movimiento ordinario referencia exactamente una linea fuente.
+  Una REVERSA referencia al movimiento original.
+  Kardex inmutable, idempotente y transaccional con Existencia.
+ end note
+ note bottom of DetalleDevolucionProveedor
+  La cantidad acumulada devuelta no supera las unidades aceptadas
+  en recepciones originales menos devoluciones previas.
+ end note
+@enduml

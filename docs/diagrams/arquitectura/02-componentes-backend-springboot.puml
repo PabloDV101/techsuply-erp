@@ -1,0 +1,67 @@
+@startuml TSS_Componentes_Backend
+!include ../_estilo.iuml
+caption VISTA MIXTA · Seguridad implementada; ERP, auditoría e integraciones pendientes según etiquetas y notas.
+ title TechSupply Solutions - Componentes internos del backend
+top to bottom direction
+
+package "Entrada HTTP" as Web {
+  component "AuthController / AdminUsuariosController\nDTO de seguridad" as Controllers <<implementado>>
+  component "Spring Security\nAutenticación y autorización" as Security <<implementado>>
+}
+package "Aplicación" as Application {
+  component "Casos de uso" as UseCases <<implementado>>
+  component "Coordinación transaccional\n@Transactional" as Tx <<implementado>>
+}
+package "Módulos de dominio (una aplicación Spring Boot)" as Domain {
+  component "Seguridad: Usuario, Rol, Permiso, TokenSesion" as Auth <<implementado>>
+  component "Gestión maestra" as Masters <<objetivo>>
+  component "Compras" as Purchasing <<objetivo>>
+  component "Inventario" as Inventory <<objetivo>>
+  component "Ventas y despachos" as Sales <<objetivo>>
+  component "Contabilidad y finanzas" as Accounting <<objetivo>>
+  component "RR. HH. y nómina" as Payroll <<objetivo>>
+}
+package "Servicios compartidos" as Shared {
+  component "Validación de negocio" as Validation <<objetivo>>
+  component "Auditoría" as Audit <<objetivo>>
+  component "Reportería" as Reporting <<objetivo>>
+  component "Notificaciones post-commit" as Notifications <<objetivo>>
+}
+package "Persistencia e infraestructura" as Infra {
+  component "Repositorios JPA / Hibernate" as Repositories <<implementado>>
+  component "Migraciones Flyway" as Flyway <<implementado>>
+  database "PostgreSQL" as DB
+}
+
+Controllers --> UseCases
+Security ..> Controllers : protege endpoints
+UseCases --> Tx
+Tx --> Auth : persistencia actual
+Tx ..> Domain : integración objetivo
+Domain ..> Shared : utiliza capacidades comunes
+Auth --> Repositories : Spring Data JPA directo
+Domain ..> Repositories : contratos propuestos para módulos futuros
+Shared --> Repositories : eventos / consultas autorizadas
+Repositories --> DB
+Flyway --> DB : esquema versionado
+UseCases ..> Notifications : después del commit
+
+note right of Domain
+  Dependencias de negocio relevantes:
+  - Compras solicita recepción / devolución a Inventario.
+  - Ventas solicita reserva / despacho a Inventario.
+  - Compras, Ventas y Nómina entregan documentos validados
+    a Contabilidad mediante contratos de aplicación.
+  Ver diagramas de secuencia para operaciones críticas.
+end note
+note bottom of Tx
+  Los cambios relacionados de documento, stock, movimiento,
+  auditoría y saldos se confirman o revierten como unidad
+  cuando la operación lo requiere.
+end note
+note as EstadoActual
+  Azul: implementación actual de seguridad. Gris: módulos y contratos propuestos.
+  El cliente React no consume aún el API. Auditoría, reportería, búsqueda y notificaciones
+  son objetivos; dibujar sus contratos no acredita que existan o estén probados.
+end note
+@enduml
