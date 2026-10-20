@@ -1,0 +1,422 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP - Reportería (contrato propuesto)
+  version: 0.1.0-design
+  description: >-
+    Diseño de RF-INV-07, RF-CON-07 y RF-REP-01 a RF-REP-05. Ninguna ruta de este
+    archivo está implementada. Las fuentes transaccionales tampoco existen en las
+    migraciones V1-V5. Fórmulas y permisos específicos abiertos se documentan en
+    docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md. No define exportaciones.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+x-implementation-status: design-only
+paths:
+  /reports/dashboard:
+    get:
+      operationId: getReportingDashboard
+      summary: Indicadores autorizados de compras, ventas, inventario y finanzas
+      description: >-
+        RF-REP-01. Solo devuelve indicadores con fórmula y fuente aprobadas y acceso
+        del actor; los indicadores pendientes se identifican como NO_DISPONIBLE.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200': { description: Indicadores y periodo, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/inventory/low-stock:
+    get:
+      operationId: getLowStockReport
+      summary: Existencias bajo el mínimo configurado
+      description: >-
+        RF-INV-07. Fotografía del estado actual; no reconstruye existencias históricas.
+        Disponible = física - reservada. El DBML propone productos.punto_reorden
+        como umbral global, pendiente de confirmar frente al stock mínimo del SRS.
+      parameters:
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [productId, warehouseId, available], default: productId } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página de existencias bajas, content: { application/json: { schema: { $ref: '#/components/schemas/LowStockPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/inventory/inactive-products:
+    get:
+      operationId: getInactiveProductsReport
+      summary: Productos sin movimiento según umbral
+      description: >-
+        RF-INV-07. La interpretación de obsoleto, de productos nunca movidos y de
+        tipos de movimiento válidos sigue pendiente; no llamar obsoleto al resultado
+        hasta aprobarla.
+      parameters:
+        - $ref: '#/components/parameters/AsOf'
+        - { name: days, in: query, required: true, description: Umbral positivo de días sin movimiento., schema: { type: integer, minimum: 1 } }
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [productId, lastMovementAt], default: productId } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página de productos sin movimiento, content: { application/json: { schema: { $ref: '#/components/schemas/InactiveProductPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/inventory/turnover:
+    get:
+      operationId: getInventoryTurnoverReport
+      summary: Rotación de inventario
+      description: RF-INV-07 y RF-REP-03. Fórmula y exclusiones pendientes de aprobación.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [productId, value], default: productId } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página de indicadores, content: { application/json: { schema: { $ref: '#/components/schemas/ProductIndicatorPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/inventory/abc:
+    get:
+      operationId: getInventoryAbcReport
+      summary: Clasificación ABC
+      description: RF-REP-03. Base de valoración, umbrales y exclusiones pendientes.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [productId, basisAmount, cumulativePercent], default: productId } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página de clasificación, content: { application/json: { schema: { $ref: '#/components/schemas/AbcPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/sales/customer-profitability:
+    get:
+      operationId: getCustomerProfitabilityReport
+      summary: Rentabilidad por cliente
+      description: RF-REP-03. Fórmula de ingresos, costos y exclusiones pendiente.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [customerId, result], default: customerId } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página por cliente, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerProfitPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/finance/operating-margin:
+    get:
+      operationId: getOperatingMarginReport
+      summary: Margen operativo
+      description: RF-REP-03. Fórmula y clasificación de cuentas pendientes.
+      parameters:
+        - $ref: '#/components/parameters/AccountingPeriodId'
+      responses:
+        '200': { description: Indicador financiero, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialIndicator' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/finance/trial-balance:
+    get:
+      operationId: getTrialBalanceReport
+      summary: Balance de prueba
+      description: RF-CON-07. Solo asientos contabilizados y efecto de contraasientos válidos.
+      parameters:
+        - $ref: '#/components/parameters/AccountingPeriodId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [accountCode, accountId], default: accountCode } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página de cuentas y totales del periodo, content: { application/json: { schema: { $ref: '#/components/schemas/TrialBalance' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/finance/income-statement:
+    get:
+      operationId: getIncomeStatementReport
+      summary: Estado de resultados
+      description: RF-CON-07. Mapeo de cuentas y subtotales pendiente de validación.
+      parameters:
+        - $ref: '#/components/parameters/AccountingPeriodId'
+      responses:
+        '200': { description: Estado financiero, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialStatement' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/finance/balance-sheet:
+    get:
+      operationId: getBalanceSheetReport
+      summary: Balance general
+      description: RF-CON-07. Fecha de corte y cierre contable pendientes de validación.
+      parameters:
+        - $ref: '#/components/parameters/AccountingPeriodId'
+      responses:
+        '200': { description: Estado financiero, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialStatement' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/finance/cash-flow:
+    get:
+      operationId: getCashFlowReport
+      summary: Flujo de efectivo
+      description: RF-CON-07. Método y origen fiable de flujos pendientes; puede quedar NO_DISPONIBLE.
+      parameters:
+        - $ref: '#/components/parameters/AccountingPeriodId'
+      responses:
+        '200': { description: Estado financiero o no disponible, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialStatement' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/payroll/department-costs:
+    get:
+      operationId: getDepartmentPersonnelCostsReport
+      summary: Costos de personal por departamento
+      description: RF-REP-05. Importes de nómina; definición de costo y estados válidos pendientes.
+      parameters:
+        - $ref: '#/components/parameters/PayrollPeriodId'
+        - $ref: '#/components/parameters/DepartmentId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, schema: { type: string, enum: [departmentId, cost], default: departmentId } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200': { description: Página por departamento, content: { application/json: { schema: { $ref: '#/components/schemas/DepartmentCostPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    From: { name: from, in: query, required: true, description: Primera fecha incluida; debe ser menor o igual a to., schema: { type: string, format: date } }
+    To: { name: to, in: query, required: true, description: Última fecha incluida., schema: { type: string, format: date } }
+    AsOf: { name: asOf, in: query, required: true, description: Fecha de corte incluida., schema: { type: string, format: date } }
+    WarehouseId: { name: warehouseId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+    ProductId: { name: productId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+    CustomerId: { name: customerId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+    DepartmentId: { name: departmentId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+    AccountingPeriodId: { name: periodId, in: query, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+    PayrollPeriodId: { name: payrollPeriodId, in: query, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    Direction: { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
+  schemas:
+    Availability: { type: string, enum: [DISPONIBLE, NO_DISPONIBLE] }
+    Decimal: { type: number, description: Importe o cantidad decimal; serializar sin pérdida de precisión. }
+    NullableDecimal: { type: number, nullable: true, description: Decimal o nulo cuando la métrica no está disponible. }
+    Metric:
+      type: object
+      required: [code, source, from, to, availability]
+      properties:
+        code: { type: string }
+        source: { type: string, description: Documento o conjunto de tablas origen y estado admitido. }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        availability: { $ref: '#/components/schemas/Availability' }
+        value: { $ref: '#/components/schemas/NullableDecimal' }
+        unit: { type: string, nullable: true }
+        unavailabilityReason: { type: string, nullable: true }
+    Dashboard:
+      type: object
+      required: [from, to, indicators]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        indicators: { type: array, items: { $ref: '#/components/schemas/Metric' } }
+    PageMeta:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    LowStockRow:
+      type: object
+      required: [productId, warehouseId, physical, reserved, available, reorderPoint]
+      properties:
+        productId: { type: integer, format: int64 }
+        warehouseId: { type: integer, format: int64 }
+        physical: { $ref: '#/components/schemas/Decimal' }
+        reserved: { $ref: '#/components/schemas/Decimal' }
+        available: { $ref: '#/components/schemas/Decimal' }
+        reorderPoint: { $ref: '#/components/schemas/Decimal' }
+    LowStockPage:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [consultedAt, content]
+          properties:
+            consultedAt: { type: string, format: date-time }
+            content: { type: array, items: { $ref: '#/components/schemas/LowStockRow' } }
+    InactiveProductRow:
+      type: object
+      required: [productId, warehouseId, asOf, thresholdDays]
+      properties:
+        productId: { type: integer, format: int64 }
+        warehouseId: { type: integer, format: int64 }
+        asOf: { type: string, format: date }
+        thresholdDays: { type: integer }
+        lastMovementAt: { type: string, format: date-time, nullable: true }
+    InactiveProductPage:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [content]
+          properties:
+            content: { type: array, items: { $ref: '#/components/schemas/InactiveProductRow' } }
+    ProductIndicatorRow:
+      type: object
+      required: [productId, from, to, availability, source]
+      properties:
+        productId: { type: integer, format: int64 }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        source: { type: string }
+        availability: { $ref: '#/components/schemas/Availability' }
+        value: { $ref: '#/components/schemas/NullableDecimal' }
+        numerator: { $ref: '#/components/schemas/NullableDecimal' }
+        denominator: { $ref: '#/components/schemas/NullableDecimal' }
+        unavailabilityReason: { type: string, nullable: true }
+    ProductIndicatorPage:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [content]
+          properties:
+            content: { type: array, items: { $ref: '#/components/schemas/ProductIndicatorRow' } }
+    AbcRow:
+      type: object
+      required: [productId, from, to, availability]
+      properties:
+        productId: { type: integer, format: int64 }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        availability: { $ref: '#/components/schemas/Availability' }
+        basisAmount: { $ref: '#/components/schemas/NullableDecimal' }
+        cumulativePercent: { $ref: '#/components/schemas/NullableDecimal' }
+        classification: { type: string, enum: [A, B, C], nullable: true }
+        unavailabilityReason: { type: string, nullable: true }
+    AbcPage:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [content]
+          properties:
+            content: { type: array, items: { $ref: '#/components/schemas/AbcRow' } }
+    CustomerProfitRow:
+      type: object
+      required: [customerId, from, to, availability, source]
+      properties:
+        customerId: { type: integer, format: int64 }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        source: { type: string }
+        availability: { $ref: '#/components/schemas/Availability' }
+        revenue: { $ref: '#/components/schemas/NullableDecimal' }
+        cost: { $ref: '#/components/schemas/NullableDecimal' }
+        result: { $ref: '#/components/schemas/NullableDecimal' }
+        unavailabilityReason: { type: string, nullable: true }
+    CustomerProfitPage:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [content]
+          properties:
+            content: { type: array, items: { $ref: '#/components/schemas/CustomerProfitRow' } }
+    FinancialIndicator:
+      type: object
+      required: [periodId, source, availability]
+      properties:
+        periodId: { type: integer, format: int64 }
+        source: { type: string }
+        availability: { $ref: '#/components/schemas/Availability' }
+        components: { type: array, items: { $ref: '#/components/schemas/AmountLine' } }
+        value: { $ref: '#/components/schemas/NullableDecimal' }
+        unavailabilityReason: { type: string, nullable: true }
+    AmountLine:
+      type: object
+      required: [code, label, amount]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        amount: { $ref: '#/components/schemas/Decimal' }
+    TrialBalanceRow:
+      type: object
+      required: [accountId, accountCode, debit, credit, balance]
+      properties:
+        accountId: { type: integer, format: int64 }
+        accountCode: { type: string }
+        debit: { $ref: '#/components/schemas/Decimal' }
+        credit: { $ref: '#/components/schemas/Decimal' }
+        balance: { $ref: '#/components/schemas/Decimal' }
+    TrialBalance:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [periodId, content, totalDebit, totalCredit]
+          properties:
+            periodId: { type: integer, format: int64 }
+            content: { type: array, items: { $ref: '#/components/schemas/TrialBalanceRow' } }
+            totalDebit: { $ref: '#/components/schemas/Decimal', description: Total del periodo completo, no solo de la página. }
+            totalCredit: { $ref: '#/components/schemas/Decimal', description: Total del periodo completo, no solo de la página. }
+    FinancialStatement:
+      type: object
+      required: [periodId, source, availability, lines]
+      properties:
+        periodId: { type: integer, format: int64 }
+        source: { type: string }
+        availability: { $ref: '#/components/schemas/Availability' }
+        lines: { type: array, items: { $ref: '#/components/schemas/AmountLine' } }
+        total: { $ref: '#/components/schemas/NullableDecimal' }
+        unavailabilityReason: { type: string, nullable: true }
+    DepartmentCostRow:
+      type: object
+      required: [departmentId, payrollPeriodId, source, availability]
+      properties:
+        departmentId: { type: integer, format: int64 }
+        payrollPeriodId: { type: integer, format: int64 }
+        source: { type: string }
+        availability: { $ref: '#/components/schemas/Availability' }
+        earnings: { $ref: '#/components/schemas/NullableDecimal' }
+        deductions: { $ref: '#/components/schemas/NullableDecimal' }
+        cost: { $ref: '#/components/schemas/NullableDecimal' }
+        unavailabilityReason: { type: string, nullable: true }
+    DepartmentCostPage:
+      allOf:
+        - { $ref: '#/components/schemas/PageMeta' }
+        - type: object
+          required: [content]
+          properties:
+            content: { type: array, items: { $ref: '#/components/schemas/DepartmentCostRow' } }
+    ApiError:
+      type: object
+      required: [status, code, message]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+  responses:
+    BadRequest: { description: Parámetros inválidos, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Falta autenticación, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Permiso o alcance insuficiente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }

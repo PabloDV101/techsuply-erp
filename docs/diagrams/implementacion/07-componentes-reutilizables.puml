@@ -12,7 +12,7 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
    component "AuditTrail / AuditQueryService" as Audit <<implementado>>
    component "Búsqueda de categorías\nPageRequests + JPA Specification" as Search <<implementado>>
    component "NotificationPublisher / InboxService\nAPP después del commit" as Notify <<implementado>>
-   component "Reporting query services" as Reports <<objetivo>>
+   component "Reportería: consultas agregadas\nDTO y filtros por reporte" as Reports <<objetivo>>
    component "AuthExceptionHandler / AuthErrorWriter\n(específico de seguridad)" as Errors <<implementado>>
  }
 
@@ -21,7 +21,7 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
  IdentityAdapter ..|> Identity
  interface "AuditTrail" as IAudit <<implementado>>
  interface "NotificationPublisher" as INotify <<implementado>>
- interface "ReportQueryPort" as IReports <<objetivo>>
+ interface "Consultas de lectura\npor dominio" as IReports <<objetivo>>
 
  package "Módulos consumidores" as Consumers {
    component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
@@ -54,7 +54,9 @@ caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; produc
  Sales ..> INotify
  Payroll ..> INotify
 
- Reports ..> IReports
+ Reports ..> Security : permiso y alcance de filas
+ Reports ..> CrudPaging : página acotada
+ Reports ..> IReports : proyecciones de lectura
  InputValidation ..> CommonErrors : errores de entrada
  Masters ..> CrudPaging : listado paginado real
  Masters ..> CommonErrors : validación / errores reales
@@ -88,5 +90,11 @@ note as EstadoActual
   Azul: seguridad, validación, auditoría, búsqueda de categorías y bandeja APP.
   El cliente React no consume aún el API. Reportería y productores de avisos
   siguen pendientes. Búsqueda en otros módulos no está probada.
+end note
+note right of Reports
+  Contrato documental: docs/api/openapi-reporteria.yaml.
+  Las tablas transaccionales no existen aún en Flyway.
+  Fórmulas no definidas producen NO_DISPONIBLE,
+  nunca un cero inventado. Sin exportación en esta etapa.
 end note
 @enduml

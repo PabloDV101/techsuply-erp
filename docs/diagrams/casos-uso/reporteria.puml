@@ -1,67 +1,61 @@
 @startuml CU_Reporteria
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Casos de uso de reporteria (modelo objetivo)
- left to right direction
+caption DISEÑO APROBADO · Contratos propuestos; ninguna consulta de reportería está implementada.
+title TechSupply Solutions - Reportería de solo lectura
+left to right direction
 
- actor "Gerente general" as Gerente
- actor "Responsable de compras" as Compras
- actor "Responsable de almacén" as Almacen
- actor "Responsable de ventas" as Ventas
- actor "Contador" as Contador
- actor "Responsable de RR. HH." as RRHH
+actor "Usuario con permiso de datos" as Usuario
+actor "Responsable de almacén" as Almacen
+actor "Contador" as Contador
+actor "Responsable de RR. HH." as RRHH
 
- rectangle "ERP - Reporteria y Business Intelligence" {
-  usecase "Consultar dashboard gerencial" as Dashboard
-  usecase "Generar reporte de compras" as ReporteCompras
-  usecase "Generar reporte de inventario" as ReporteInventario
-  usecase "Generar reporte de ventas" as ReporteVentas
-  usecase "Generar reporte financiero" as ReporteFinanciero
-  usecase "Generar reporte de recursos humanos" as ReporteRRHH
-  usecase "Consultar rotación de inventario" as Rotacion
-  usecase "Consultar rentabilidad por cliente" as Rentabilidad
-  usecase "Consultar indicadores operativos" as Indicadores
-  usecase "Filtrar y ordenar resultados" as Filtros
-  usecase "Exportar reporte" as Exportar
-  usecase "Aplicar permisos de datos" as PermisosDatos
- }
- Gerente -- Dashboard
- Gerente -- ReporteCompras
- Gerente -- ReporteInventario
- Gerente -- ReporteVentas
- Gerente -- ReporteFinanciero
- Gerente -- Rentabilidad
- Gerente -- Indicadores
- Compras -- ReporteCompras
- Almacen -- ReporteInventario
- Almacen -- Rotacion
- Ventas -- ReporteVentas
- Contador -- ReporteFinanciero
- RRHH -- ReporteRRHH
- Dashboard ..> Indicadores : <<include>>
- ReporteCompras ..> Filtros : <<include>>
- ReporteInventario ..> Filtros : <<include>>
- ReporteVentas ..> Filtros : <<include>>
- ReporteFinanciero ..> Filtros : <<include>>
- ReporteRRHH ..> Filtros : <<include>>
- Dashboard ..> PermisosDatos : <<include>>
- Rotacion ..> PermisosDatos : <<include>>
- Rentabilidad ..> PermisosDatos : <<include>>
- Indicadores ..> PermisosDatos : <<include>>
- Exportar ..> PermisosDatos : <<include>>
- ReporteCompras ..> PermisosDatos : <<include>>
- ReporteInventario ..> PermisosDatos : <<include>>
- ReporteVentas ..> PermisosDatos : <<include>>
- ReporteFinanciero ..> PermisosDatos : <<include>>
- ReporteRRHH ..> PermisosDatos : <<include>>
- Exportar ..> ReporteCompras : <<extend>>
- Exportar ..> ReporteInventario : <<extend>>
- Exportar ..> ReporteVentas : <<extend>>
- Exportar ..> ReporteFinanciero : <<extend>>
- Exportar ..> ReporteRRHH : <<extend>>
- Exportar ..> Dashboard : <<extend>>
- note bottom of PermisosDatos
-  La API valida permisos y alcance de datos. Ocultar botones en React
-  no es control de seguridad suficiente.
- end note
+rectangle "ERP - Reportería objetivo" {
+  usecase "Consultar dashboard\ncompras / ventas / inventario / finanzas" as Dashboard
+  usecase "Consultar stock bajo y\nsin movimiento" as Stock
+  usecase "Consultar rotación y ABC" as InventoryAnalysis
+  usecase "Consultar rentabilidad\npor cliente" as Profit
+  usecase "Consultar margen operativo" as Margin
+  usecase "Consultar cuatro\nestados financieros" as Finance
+  usecase "Consultar costos de personal\npor departamento" as Personnel
+  usecase "Aplicar periodo, filtros,\norden y página" as Filters
+  usecase "Validar permiso y\nalcance de filas" as Access
+  usecase "Identificar métrica\nno disponible" as Unavailable
+}
+
+Usuario -- Dashboard
+Usuario -- Stock
+Usuario -- InventoryAnalysis
+Usuario -- Profit
+Usuario -- Margin
+Contador -- Finance
+RRHH -- Personnel
+Almacen -- Stock
+Almacen -- InventoryAnalysis
+
+Dashboard ..> Access : <<include>>
+Stock ..> Access : <<include>>
+InventoryAnalysis ..> Access : <<include>>
+Profit ..> Access : <<include>>
+Margin ..> Access : <<include>>
+Finance ..> Access : <<include>>
+Personnel ..> Access : <<include>>
+InventoryAnalysis ..> Filters : <<include>>
+Profit ..> Filters : <<include>>
+Finance ..> Filters : <<include>>
+Personnel ..> Filters : <<include>>
+Unavailable ..> Dashboard : <<extend>>
+Unavailable ..> InventoryAnalysis : <<extend>>
+Unavailable ..> Profit : <<extend>>
+Unavailable ..> Margin : <<extend>>
+Unavailable ..> Finance : <<extend>>
+Unavailable ..> Personnel : <<extend>>
+
+note bottom of Access
+  La API aplica permiso por reporte y restricciones de filas
+  antes de agregar, contar o paginar. No se asumen permisos por rol.
+end note
+note bottom of Unavailable
+  Fórmulas y fuentes pendientes no se sustituyen por cero.
+  Exportación PDF/CSV/XLSX queda fuera de esta etapa.
+end note
 @enduml

@@ -64,6 +64,11 @@ filtros combinables con JPA; la búsqueda de otros módulos sigue pendiente.
 
 Las demás vistas conservan los procesos de compras, inventario, ventas, finanzas, RR. HH. y
 reportería. Son objetivos funcionales, sin clases de producción que los implementen todavía.
+El diseño aprobado de reportería se documenta en `docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md`
+y `docs/api/openapi-reporteria.yaml`; ambos son contratos propuestos, no endpoints activos.
+Las vistas `casos-uso/reporteria.puml`, `procesos/08-proceso-reporteria.puml` y
+`clases/06-reporteria-auditoria-integracion.puml` distinguen consultas de lectura,
+permisos, datos no disponibles y exportación diferida.
 La autenticación es Bearer opaco con estado en PostgreSQL; no se supone JWT. El escalado
 futuro comparte `tokens_sesion`, requiere medición y no elimina el punto único de fallo de BD.
 

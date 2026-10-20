@@ -32,7 +32,21 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
 }
  }
  package "Reporteria" {
-  class DefinicionReporte {
+  class "Criterios por reporte (DTO)" as ReportCriteria <<objetivo>> {
+    +periodo: DateRange
+    +filtros: criterios validados
+    +pagina: Pageable
+  }
+  class "Resultado por reporte (DTO)" as ReportResult <<objetivo>> {
+    +fuente: String
+    +periodo: DateRange
+    +disponibilidad: DISPONIBLE | NO_DISPONIBLE
+    +filas: proyecciones
+  }
+  class "Servicio de consulta por reporte" as ReportQueryService <<objetivo>> {
+    +consultar(criteria): ReportResult
+  }
+  class DefinicionReporte <<objetivo>> {
   +id: Long
   +codigo: String
   +nombre: String
@@ -42,7 +56,7 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
   +permisoRequerido: String
   +activo: Boolean
 }
-  class EjecucionReporte {
+  class EjecucionReporte <<objetivo>> {
   +id: Long
   +fechaHora: DateTime
   +parametros: JSON
@@ -51,7 +65,7 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
   +filasGeneradas: Long
   +duracionMs: Long
 }
-  class Indicador {
+  class Indicador <<objetivo>> {
   +id: Long
   +codigo: String
   +nombre: String
@@ -84,7 +98,7 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
     +valor: String
     +actualizadoEn: DateTime
   }
-  class ValorIndicador {
+  class ValorIndicador <<objetivo>> {
   +id: Long
   +fechaCalculo: DateTime
   +periodoInicio: Date
@@ -124,6 +138,9 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
 }
 
  Usuario "0..1" <-- "0..*" EventoAuditoria : actor opcional
+ ReportQueryService ..> ReportCriteria : valida
+ ReportQueryService ..> ReportResult : proyecta
+ ReportQueryService ..> Permiso : verifica acceso
  Usuario "1" <-- "0..*" EjecucionReporte : solicitante
  DefinicionReporte "1" -- "0..*" EjecucionReporte
  Permiso "1" <-- "0..*" DefinicionReporte : permiso requerido
@@ -151,6 +168,12 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
  end note
  note bottom of Indicador
   Fórmula, fuente, unidad y periodo deben estar definidos antes de
-  presentar un KPI como cifra oficial.
+  presentar un KPI como cifra oficial. Valores precalculados y
+  definiciones persistidas son objetivo, no requisito de lectura inicial.
+ end note
+ note bottom of ReportQueryService
+  Solo lectura: agrega datos confirmados en PostgreSQL,
+  aplica alcance de filas antes de contar o sumar.
+  No llama operaciones de modificación ni expone entidades JPA.
  end note
 @enduml

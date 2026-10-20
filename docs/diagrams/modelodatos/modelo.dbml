@@ -93,7 +93,7 @@ Table productos [headercolor: #2E86C1] {
   precio_lista numeric(14,2) [not null, default: 0]
   costo_referencia numeric(14,2) [not null, default: 0]
   tasa_impuesto numeric(5,2) [not null, default: 16]
-  punto_reorden numeric(14,3) [not null, default: 0]
+  punto_reorden numeric(14,3) [not null, default: 0, note: 'Umbral global por producto; confirmar si equivale al stock mínimo de RF-MAE-01 y RF-INV-07.']
   cantidad_reorden numeric(14,3) [not null, default: 1]
   activo boolean [not null, default: true]
   Note: 'OBJETIVO: tabla aún no implementada.'
@@ -775,7 +775,7 @@ Table definiciones_reporte [headercolor: #7F8C8D] {
   formato_salida varchar(20) [not null, note: 'PANTALLA, CSV, XLSX, PDF']
   permiso_codigo varchar(60) [not null]
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'OBJETIVO: catálogo persistido opcional para una fase posterior. La primera consulta de solo lectura puede definir contratos en código; consulta_clave nunca contiene SQL arbitrario.'
 }
 
 Table ejecuciones_reporte [headercolor: #7F8C8D] {
@@ -790,7 +790,7 @@ Table ejecuciones_reporte [headercolor: #7F8C8D] {
   filas_generadas bigint
   duracion_ms bigint
   mensaje_error text
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'OBJETIVO: registro persistido opcional para una fase posterior; no implica exportación habilitada. Si se implementa, parametros no debe conservar salarios ni datos sensibles y la escritura de bitácora se separa de la consulta transaccional.'
 }
 
 Table notificaciones [headercolor: #2E86C1] {
@@ -903,7 +903,7 @@ Table indicadores [headercolor: #7F8C8D] {
   fuente_datos varchar(250) [not null]
   frecuencia_actualizacion varchar(40)
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada. Cada KPI documenta fórmula, fuente, unidad y periodo; los permisos se validan al consultarlo.'
+  Note: 'OBJETIVO: catálogo persistido opcional. Cada KPI requiere fórmula, fuente, unidad y periodo aprobados; los permisos se validan al consultarlo. Sin fórmula aprobada se informa NO_DISPONIBLE, no cero.'
 }
 
 Table valores_indicador [headercolor: #7F8C8D] {
@@ -914,7 +914,7 @@ Table valores_indicador [headercolor: #7F8C8D] {
   periodo_fin date [not null]
   valor numeric(18,4) [not null]
   indexes { (indicador_id, periodo_inicio, periodo_fin) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'OBJETIVO: materialización opcional, no usada por consultas iniciales bajo demanda. Solo guarda indicadores disponibles; valor no nulo nunca representa falta de fórmula o fuente. Definir invalidación antes de usarla.'
 }
 
 Table eventos_integracion [headercolor: #7F8C8D] {

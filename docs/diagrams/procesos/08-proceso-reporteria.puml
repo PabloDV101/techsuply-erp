@@ -1,45 +1,34 @@
 @startuml TS08_Proceso_Reporteria
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
-title ERP TechSupply Solutions - Consulta y Generacion de Reportes
+caption DISEÑO APROBADO · Flujo propuesto; fuentes transaccionales y endpoints pendientes.
+title ERP TechSupply Solutions - Consulta de reportes
 
-|Usuario autorizado|
+|Usuario autenticado|
 start
-:Seleccionar reporte o indicador;
-:Indicar filtros y periodo;
+:Solicitar reporte con periodo y filtros aplicables;
 |API Spring Boot / Seguridad|
-:Validar token y permisos del usuario;
-if (¿Tiene acceso al reporte y sus datos?) then (Si)
-  |Servicio de reporteria|
-  :Validar parametros y rango de fechas;
-  :Consultar fuentes autorizadas;
-  :Aplicar filtros y calculos definidos;
-  :Registrar solicitud de reporte;
-  if (¿Mostrar en pantalla?) then (Si)
-    :Preparar resultado paginado;
-  elseif (¿Exportar archivo?) then (Si)
-    :Generar archivo con datos autorizados;
-    :Validar formato permitido;
-  else (Dashboard)
-    :Calcular indicadores y periodo;
-  endif
-  if (¿Generacion correcta?) then (Si)
-    :Registrar resultado y duracion;
-    |Servicio de auditoria|
-    :Registrar ejecucion relevante;
-    |Usuario autorizado|
-    :Consultar resultado o descargar archivo;
-    stop
+:Validar token y permiso del reporte;
+if (¿Autorizado?) then (Sí)
+  |Servicio de consulta|
+  :Validar rango, filtros, página y orden;
+  :Imponer alcance de filas del actor;
+  if (¿Fuente y fórmula aprobadas?) then (Sí)
+    |Persistencia de lectura|
+    :Ejecutar consulta parametrizada y agregada;
+    :Obtener totales y página en instantánea coherente;
+    |Servicio de consulta|
+    :Proyectar DTO con periodo y fuente;
   else (No)
-    |Servicio de reporteria|
-    :Registrar ejecucion fallida;
-    :Devolver mensaje sin datos sensibles;
-    stop
+    |Servicio de consulta|
+    :Identificar métrica NO_DISPONIBLE;
   endif
+  |API Spring Boot / Seguridad|
+  :Responder sin entidades JPA ni datos ajenos;
+  stop
 else (No)
   |API Spring Boot / Seguridad|
-  :Denegar acceso;
-  :Registrar evento de seguridad;
+  :Responder 401 o 403;
+  :Auditar denegación según política existente;
   stop
 endif
 @enduml
