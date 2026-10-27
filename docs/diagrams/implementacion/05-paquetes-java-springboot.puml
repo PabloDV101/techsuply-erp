@@ -10,7 +10,7 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
   }
   package "security" {
     package "api" as API {
-      component "AuthController\nAdminUsuariosController\nAuthError / AuthErrorWriter\nAuthExceptionHandler" as ApiClasses <<implementado>>
+      component "AuthController\nAdminUsuariosController\nAuthErrorWriter / AuthExceptionHandler" as ApiClasses <<implementado>>
     }
     package "application" as App {
       component "AuthService / UserManagementService\nAuthenticatedActor / AuthenticatedUserProvider\ndto / validation" as AppClasses <<implementado>>
@@ -74,10 +74,10 @@ AppClasses ..> AuditModule : seguridad
 AppClasses ..> Models
 AppClasses ..> Repos
 SecurityClasses ..> Repos
-V1 --> V2 : orden de migración
-V2 --> V3 : orden de migración
-V3 --> V4 : orden de migración
-V4 --> V5 : orden de migración
+note bottom of V5
+  Flyway ejecuta V1, V2, V3, V4 y V5 en orden de versión.
+  El orden de ejecución no es una asociación estructural UML.
+end note
 Integration ..> V1
 Unit ..> AppClasses
 note bottom of V2

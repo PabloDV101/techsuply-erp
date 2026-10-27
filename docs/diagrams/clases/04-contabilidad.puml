@@ -6,97 +6,97 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  package "Catalogos contables" {
   class CuentaContable {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +tipo: TipoCuenta
-  +naturaleza: NaturalezaCuenta
-  +nivel: Integer
-  +aceptaMovimientos: Boolean
-  +activa: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -tipo: TipoCuenta
+  -naturaleza: NaturalezaCuenta
+  -nivel: Integer
+  -aceptaMovimientos: Boolean
+  -activa: Boolean
 }
   class PeriodoContable {
-  +id: Long
-  +fechaInicio: Date
-  +fechaFin: Date
-  +estado: EstadoPeriodo
+  -id: Long
+  -fechaInicio: Date
+  -fechaFin: Date
+  -estado: EstadoPeriodo
   +cerrar()
 }
  }
  package "Libro diario y mayor" {
   class AsientoContable {
-  +id: Long
-  +folio: String
-  +fechaContable: Date
-  +descripcion: String
-  +estado: EstadoAsiento
-  +origenTipo: String
-  +origenId: Long
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fechaContable: Date
+  -descripcion: String
+  -estado: EstadoAsiento
+  -origenTipo: String
+  -origenId: Long
+  -claveIdempotencia: String
   +validarBalance(): Boolean
   +contabilizar()
   +revertir()
 }
   class DetalleAsiento {
-  +id: Long
-  +numeroLinea: Integer
-  +debe: Decimal
-  +haber: Decimal
-  +descripcion: String
+  -id: Long
+  -numeroLinea: Integer
+  -debe: Decimal
+  -haber: Decimal
+  -descripcion: String
 }
  }
  package "Control presupuestario (futuro)" {
   class Presupuesto <<Futura>> {
-    +id: Long
-    +anio: Integer
-    +mes: Integer
-    +monto: Decimal
+    -id: Long
+    -anio: Integer
+    -mes: Integer
+    -monto: Decimal
   }
  }
  package "Cuentas auxiliares" {
   class CuentaPorCobrar {
-  +id: Long
-  +montoOriginal: Decimal
+  -id: Long
+  -montoOriginal: Decimal
   +/saldoPendiente: Decimal
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +estado: EstadoCuentaAuxiliar
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -estado: EstadoCuentaAuxiliar
 }
   class AplicacionCobro {
-  +id: Long
-  +montoAplicado: Decimal
-  +fechaAplicacion: DateTime
+  -id: Long
+  -montoAplicado: Decimal
+  -fechaAplicacion: DateTime
 }
   class CobroCliente {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +monto: Decimal
-  +medio: MedioPago
-  +estado: EstadoPago
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -monto: Decimal
+  -medio: MedioPago
+  -estado: EstadoPago
+  -claveIdempotencia: String
 }
   class CuentaPorPagar {
-  +id: Long
-  +montoOriginal: Decimal
+  -id: Long
+  -montoOriginal: Decimal
   +/saldoPendiente: Decimal
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +estado: EstadoCuentaAuxiliar
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -estado: EstadoCuentaAuxiliar
 }
   class AplicacionPagoProveedor {
-  +id: Long
-  +montoAplicado: Decimal
-  +fechaAplicacion: DateTime
+  -id: Long
+  -montoAplicado: Decimal
+  -fechaAplicacion: DateTime
 }
   class PagoProveedor {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +monto: Decimal
-  +medio: MedioPago
-  +estado: EstadoPago
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -monto: Decimal
+  -medio: MedioPago
+  -estado: EstadoPago
+  -claveIdempotencia: String
 }
  }
  package "Referencias a otros modulos" {

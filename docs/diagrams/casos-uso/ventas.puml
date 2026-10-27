@@ -47,10 +47,9 @@ Almacen -- Despachar
 Contador -- Factura
 
 Cotizacion ..> Catalogo : <<include>>
-Pedido ..> Disponibilidad : <<include>>
-Pedido ..> Condiciones : <<include>>
-Confirmar ..> Credito : <<include>>
+Confirmar ..> Condiciones : <<include>>
 Confirmar ..> Disponibilidad : <<include>>
+Credito ..> Confirmar : <<extend>> [venta a crédito]
 
 note bottom of Despachar
   Precondición: pedido confirmado con reserva.

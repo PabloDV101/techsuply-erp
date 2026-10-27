@@ -41,15 +41,15 @@ package "Servicios transversales" as Transversales {
   [Notificaciones opcionales]
 }
 
-Maestros --> Compras : maestros y permisos
-Maestros --> Inventario : productos / almacenes / usuarios
-Maestros --> Ventas : clientes / productos / empleados
-Maestros --> Nomina : empleados / usuarios
-Compras --> Inventario : recepcion / devolucion
-Ventas --> Inventario : reserva / despacho
-Compras --> Contabilidad : factura proveedor / CxP
-Ventas --> Contabilidad : factura venta / CxC
-Nomina --> Contabilidad : nomina aprobada
+Compras ..> Maestros : consulta maestros y permisos
+Inventario ..> Maestros : consulta productos / almacenes / usuarios
+Ventas ..> Maestros : consulta clientes / productos / empleados
+Nomina ..> Maestros : consulta empleados / usuarios
+Compras ..> Inventario : solicita recepción / devolución
+Ventas ..> Inventario : solicita reserva / despacho
+Compras ..> Contabilidad : entrega factura proveedor validada
+Ventas ..> Contabilidad : entrega factura venta validada
+Nomina ..> Contabilidad : entrega nómina aprobada
 Maestros ..> Transversales
 Compras ..> Transversales
 Inventario ..> Transversales

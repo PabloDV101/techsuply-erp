@@ -13,7 +13,7 @@ actor "Auditor" as Auditor
 rectangle "ERP - Contabilidad y Finanzas" {
   usecase "Gestionar plan de cuentas" as PlanCuentas
   usecase "Consultar documentos de origen" as Documentos
-  usecase "Registrar asiento contable" as Asiento
+  usecase "Contabilizar asiento" as Asiento
   usecase "Validar partida doble" as Validar
   usecase "Consultar mayor general" as Mayor
   usecase "Generar balance de prueba" as Balance
@@ -48,7 +48,6 @@ Gerente -- BalanceGeneral
 Gerente -- FlujoEfectivo
 Auditor -- Trazabilidad
 
-Asiento ..> Documentos : <<include>>
 Asiento ..> Validar : <<include>>
 Conciliar ..> Documentos : <<include>>
 Trazabilidad ..> Documentos : <<include>>

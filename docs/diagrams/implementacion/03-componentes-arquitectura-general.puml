@@ -36,12 +36,12 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
 
  database "PostgreSQL\nuna base de datos, módulos con propiedad de sus tablas" as DB
 
- Employee --> React
- Customer --> React
+ Employee -- React
+ Customer -- React
  React ..> HttpClient
- HttpClient --> Security : HTTPS /api
- Security --> Controllers : solicitud autenticada
- Controllers --> AppServices : ejecutar caso de uso
+ HttpClient ..> Security : consume HTTPS /api
+ Controllers ..> Security : requiere autorización
+ Controllers ..> AppServices : ejecutar caso de uso
  AppServices ..> Masters
  AppServices ..> Purchasing
  AppServices ..> Inventory
@@ -55,14 +55,14 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
  Payroll ..> Accounting : datos de nómina aprobada
  AppServices ..> Audit : registrar cambios relevantes
  AppServices ..> Notifications : productores futuros
- Masters --> Persistence
- Purchasing --> Persistence
- Inventory --> Persistence
- Sales --> Persistence
- Accounting --> Persistence
- Payroll --> Persistence
- Reporting --> Persistence : consultas autorizadas
- Persistence --> DB : JDBC / transacciones
+ Masters ..> Persistence
+ Purchasing ..> Persistence
+ Inventory ..> Persistence
+ Sales ..> Persistence
+ Accounting ..> Persistence
+ Payroll ..> Persistence
+ Reporting ..> Persistence : consultas autorizadas
+ Persistence ..> DB : JDBC / transacciones
  Controllers ..> ErrorHandler : errores uniformes
 
  note bottom of Modules

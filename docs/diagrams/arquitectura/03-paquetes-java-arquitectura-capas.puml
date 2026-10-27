@@ -51,7 +51,7 @@ GlobalErrors ..> DenialPort : anota 403
 Audit ..|> DenialPort : implementa vía AuditTrail
 Audit ..> GlobalErrors : paginación de consulta
 Categories ..> GlobalErrors : paginación / errores
-Categories --> DB : repositorio JPA actual
+Categories ..> DB : repositorio JPA actual
 note right of Errors
   Advice de seguridad con mayor prioridad;
   conserva mensajes del contrato auth.
@@ -63,14 +63,14 @@ Services ..> Identity
 Adapter ..|> Identity : implementa
 Adapter ..> Repo : consulta sesión y permisos
 Configuration ..> Adapter : configura cadena
-Repo --> DB : JPA / SQL
+Repo ..> DB : JPA / SQL
 Buy ..> Inv : recepción / devolución (objetivo)
 Sales ..> Inv : reserva / despacho (objetivo)
 Buy ..> Acc : origen validado (objetivo)
 Sales ..> Acc : factura validada (objetivo)
 Pay ..> Acc : nómina aprobada (objetivo)
 Masters ..> Shared
-Masters --> Audit : categorías
+Masters ..> Audit : categorías
 Buy ..> Shared
 Inv ..> Shared
 Sales ..> Shared

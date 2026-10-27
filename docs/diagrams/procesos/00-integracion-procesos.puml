@@ -12,15 +12,15 @@ component "Nomina\nCalculo, aprobacion y pago" as Payroll
 component "Auditoria\nRegistro de acciones relevantes" as Audit
 component "Reporteria\nIndicadores y consultas" as Reports
 
-Master --> Purchase : catalogos
-Master --> Inventory : productos y almacenes
-Master --> Sales : productos y clientes
-Master --> Payroll : empleados
-Purchase --> Inventory : recepcion confirmada
-Sales --> Inventory : reserva y despacho
-Purchase --> Accounting : factura proveedor validada
-Sales --> Accounting : factura venta y cobro
-Payroll --> Accounting : nomina aprobada
+Purchase ..> Master : consulta catálogos
+Inventory ..> Master : consulta productos y almacenes
+Sales ..> Master : consulta productos y clientes
+Payroll ..> Master : consulta empleados
+Purchase ..> Inventory : solicita entrada por recepción
+Sales ..> Inventory : solicita reserva y despacho
+Purchase ..> Accounting : entrega factura proveedor validada
+Sales ..> Accounting : entrega factura venta y cobro
+Payroll ..> Accounting : entrega nómina aprobada
 
 note right of Audit
   Todos los modulos registran acciones

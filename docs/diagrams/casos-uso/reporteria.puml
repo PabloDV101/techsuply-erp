@@ -17,9 +17,6 @@ rectangle "ERP - Reportería objetivo" {
   usecase "Consultar margen operativo" as Margin
   usecase "Consultar cuatro\nestados financieros" as Finance
   usecase "Consultar costos de personal\npor departamento" as Personnel
-  usecase "Aplicar periodo, filtros,\norden y página" as Filters
-  usecase "Validar permiso y\nalcance de filas" as Access
-  usecase "Identificar métrica\nno disponible" as Unavailable
 }
 
 Usuario -- Dashboard
@@ -32,30 +29,17 @@ RRHH -- Personnel
 Almacen -- Stock
 Almacen -- InventoryAnalysis
 
-Dashboard ..> Access : <<include>>
-Stock ..> Access : <<include>>
-InventoryAnalysis ..> Access : <<include>>
-Profit ..> Access : <<include>>
-Margin ..> Access : <<include>>
-Finance ..> Access : <<include>>
-Personnel ..> Access : <<include>>
-InventoryAnalysis ..> Filters : <<include>>
-Profit ..> Filters : <<include>>
-Finance ..> Filters : <<include>>
-Personnel ..> Filters : <<include>>
-Unavailable ..> Dashboard : <<extend>>
-Unavailable ..> InventoryAnalysis : <<extend>>
-Unavailable ..> Profit : <<extend>>
-Unavailable ..> Margin : <<extend>>
-Unavailable ..> Finance : <<extend>>
-Unavailable ..> Personnel : <<extend>>
-
-note bottom of Access
+note bottom of Dashboard
   La API aplica permiso por reporte y restricciones de filas
   antes de agregar, contar o paginar. No se asumen permisos por rol.
 end note
-note bottom of Unavailable
+note bottom of Finance
+  Periodo, filtros, orden y página son parámetros de consulta,
+  no casos de uso autónomos del actor.
+end note
+note bottom of Profit
   Fórmulas y fuentes pendientes no se sustituyen por cero.
+  La respuesta distingue una métrica no disponible de un cero real.
   Exportación PDF/CSV/XLSX queda fuera de esta etapa.
 end note
 @enduml

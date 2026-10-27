@@ -5,39 +5,40 @@ caption IMPLEMENTADO · Entornos alternativos; sin Nginx, TLS ni integración Re
 left to right direction
 actor "Desarrollador" as User
 package "Desarrollo local · configuración existente" {
-  node "JVM local · Java 21" {
+  node "JVM local · Java 21" as LocalJvm {
     artifact "erp-backend-0.0.1-SNAPSHOT.jar\nSpring Boot 4.1.1\nSERVER_PORT (8080 por defecto)" as API
-    artifact "Flyway al arrancar\nV1–V5 + Hibernate validate" as Flyway
   }
-  node "Docker Compose · deploy/docker-compose.yml" {
+  node "Contenedor PostgreSQL 17\nDocker Compose" as ComposeHost {
     database "postgres:17-alpine\n5432:5432 (publicación actual en todas las interfaces)" as DB
-    artifact "techsupply_postgres_data\nvolumen persistente" as Volume
   }
-  component "React / Vite\nPlantilla sin cliente API ni proxy" as React <<objetivo>>
+  node "Volumen Docker persistente" as Volume
 }
 package "Pruebas · entorno desechable independiente" {
-  node "Testcontainers / verify-auth-http.py" {
-    database "PostgreSQL 17\npuerto dinámico / datos temporales" as TestDB
-    artifact "Spring Test + MockMvc\no JAR/Tomcat HTTP en loopback" as TestAPI
+  node "JVM de pruebas" as TestHost {
+    artifact "JUnit / Spring Test / MockMvc\no script HTTP en loopback" as TestAPI
+  }
+  node "Contenedor PostgreSQL 17\nTestcontainers" as TestDBHost {
+    database "Puerto dinámico / datos temporales" as TestDB
   }
 }
-User --> API : HTTP local /api/v1
-API --> DB : DB_URL / DB_USERNAME / DB_PASSWORD
-Flyway --> DB : migrar base vacía; validar
-DB -- Volume
-User --> TestAPI : ./mvnw verify o script HTTP
-TestAPI --> TestDB : credenciales aleatorias
-note bottom of React
-  La UI todavía no consume autenticación.
-  No se configura CORS ni HTTPS en este repositorio.
+User -- LocalJvm : HTTP local /api/v1
+LocalJvm -- ComposeHost : JDBC / DB_URL
+ComposeHost -- Volume : montaje de datos
+User -- TestHost : ./mvnw verify o script HTTP
+TestHost -- TestDBHost : JDBC / credenciales de prueba
+note bottom of LocalJvm
+  Flyway migra al arrancar; Hibernate valida el esquema.
+  La plantilla React no consume el API. No hay CORS ni HTTPS configurados.
 end note
 note bottom of TestDB
   No usa el volumen de desarrollo ni bases compartidas.
   No hay cuenta administradora predeterminada.
   El script habilita bootstrap explícito en su proceso aislado.
 end note
-note bottom of Flyway
-  DB_PASSWORD es obligatorio. clean y baseline automáticos desactivados.
+note bottom of API
+  Flyway V1–V5 corre dentro de Spring Boot al arrancar.
+  Revisar la configuración local de DB_PASSWORD antes de entregar.
+  clean y baseline automáticos desactivados.
   No aplicar el esquema inicial a una base existente sin plan de adopción.
   Las vistas MVP/escalable representan despliegues objetivo.
 end note

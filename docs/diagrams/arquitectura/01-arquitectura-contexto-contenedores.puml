@@ -33,11 +33,11 @@ node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
 database "PostgreSQL\nDatos relacionales normalizados" as DB
 cloud "SMTP opcional\nNotificaciones" as SMTP
 
-Interno --> Web : utiliza
-Cliente --> Web : utiliza portal
-Web --> API : HTTPS / JSON\n(vía proxy en despliegue)
-API --> App : invoca casos de uso
-App --> Auth
+Interno -- Web : utiliza
+Cliente -- Web : utiliza portal
+Web ..> API : consume REST / JSON\n(HTTPS en despliegue objetivo)
+API ..> App : invoca casos de uso
+App ..> Auth
 App ..> Maestros
 App ..> Compras
 App ..> Inventario
@@ -45,24 +45,24 @@ App ..> Ventas
 App ..> Contabilidad
 App ..> Nomina
 App ..> Transversal
-App --> Audit
+App ..> Audit
 App ..> Notifications : publicación disponible; uso futuro
 Compras ..> Inventario : recepción / devolución
 Ventas ..> Inventario : reserva / despacho
 Compras ..> Contabilidad : factura proveedor validada
 Ventas ..> Contabilidad : factura comercial validada
 Nomina ..> Contabilidad : nómina aprobada
-Auth --> Persistence
+Auth ..> Persistence
 Maestros ..> Persistence
-Compras --> Persistence
-Inventario --> Persistence
-Ventas --> Persistence
-Contabilidad --> Persistence
-Nomina --> Persistence
-Transversal --> Persistence
-Audit --> Persistence
-Notifications --> Persistence
-Persistence --> DB : JDBC / SQL
+Compras ..> Persistence
+Inventario ..> Persistence
+Ventas ..> Persistence
+Contabilidad ..> Persistence
+Nomina ..> Persistence
+Transversal ..> Persistence
+Audit ..> Persistence
+Notifications ..> Persistence
+Persistence ..> DB : JDBC / SQL
 Transversal ..> SMTP : después del commit
 
 note bottom of Backend

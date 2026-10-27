@@ -45,11 +45,14 @@ Contador -- ReporteNomina
 Gerente -- ReporteNomina
 
 Nomina ..> Incidencias : <<include>>
-Nomina ..> Revisar : <<include>>
 
 note bottom of Integracion
   Integración contable usa una nómina aprobada.
   Autorizar vacaciones requiere solicitud previa; consultar asistencia no la registra.
   Actualizar expediente requiere empleado existente; no vuelve a registrarlo.
+end note
+note bottom of Revisar
+  Revisar y aprobar es un caso posterior al cálculo de nómina.
+  No se ejecuta obligatoriamente dentro de Procesar nómina.
 end note
 @enduml

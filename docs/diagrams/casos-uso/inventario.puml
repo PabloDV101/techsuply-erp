@@ -12,7 +12,6 @@ actor "Aprobador autorizado" as Aprobador
 
 rectangle "ERP - Gestión de Inventario" {
   usecase "Consultar existencias" as Existencias
-  usecase "Consultar existencias por almacén" as PorAlmacen
   usecase "Registrar entrada de productos" as Entrada
   usecase "Registrar salida de productos" as Salida
   usecase "Registrar otros movimientos" as Movimientos
@@ -46,12 +45,14 @@ Aprobador -- AutorizarAjuste
 Almacen -- Rotacion
 Almacen -- Obsoletos
 
-PorAlmacen ..> Existencias : <<extend>>
 Conteo ..> Comparar : <<include>>
-SolicitarAjuste ..> Comparar : <<include>>
 
 note bottom of AutorizarAjuste
   Precondición: solicitud de ajuste pendiente y actor autorizado.
   Las entradas y salidas registran movimientos; consultar historial es independiente.
+end note
+note bottom of Existencias
+  El almacén es un criterio de consulta, no una extensión
+  opcional de otro caso de uso.
 end note
 @enduml

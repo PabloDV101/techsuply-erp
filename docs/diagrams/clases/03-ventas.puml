@@ -6,91 +6,91 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  package "Ventas" {
   class Cotizacion {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +vigenciaHasta: Date
-  +estado: EstadoCotizacion
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -vigenciaHasta: Date
+  -estado: EstadoCotizacion
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
   +convertirAPedido()
 }
   class DetalleCotizacion {
-  +id: Long
-  +cantidad: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
 }
   class PedidoVenta {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +canal: CanalVenta
-  +estado: EstadoPedido
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -canal: CanalVenta
+  -estado: EstadoPedido
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
   +confirmar()
   +cancelar()
 }
   class DetallePedido {
-  +id: Long
-  +cantidad: Decimal
-  +cantidadReservada: Decimal
-  +cantidadDespachada: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -cantidadReservada: Decimal
+  -cantidadDespachada: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
 }
   class Despacho {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +estado: EstadoDespacho
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -estado: EstadoDespacho
+  -claveIdempotencia: String
   +confirmar()
 }
   class DetalleDespacho {
-  +id: Long
-  +cantidad: Decimal
-  +costoUnitario: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -costoUnitario: Decimal
 }
   class FacturaVenta {
-  +id: Long
-  +folio: String
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
-  +estado: EstadoFactura
+  -id: Long
+  -folio: String
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
+  -estado: EstadoFactura
 }
   class DetalleFacturaVenta {
-  +id: Long
-  +cantidad: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
 }
   class DevolucionCliente {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +motivo: String
-  +claveIdempotencia: String
-  +estado: EstadoDevolucionCliente
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -motivo: String
+  -claveIdempotencia: String
+  -estado: EstadoDevolucionCliente
   +confirmarInspeccion()
 }
   class DetalleDevolucionCliente {
-  +id: Long
-  +cantidadRecibida: Decimal
-  +cantidadAceptada: Decimal
-  +cantidadRechazada: Decimal
+  -id: Long
+  -cantidadRecibida: Decimal
+  -cantidadAceptada: Decimal
+  -cantidadRechazada: Decimal
 }
  }
  package "Referencias a otros modulos" {

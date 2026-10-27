@@ -28,19 +28,19 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  database "PostgreSQL" as DB
 
- Controller --> DTO
- DTO --> CreateOrder
- Controller --> ConfirmReceipt
- CreateOrder --> AppService
- ConfirmReceipt --> AppService
- AppService --> Entities
- Entities --> Rules
+ Controller ..> DTO
+ Controller ..> CreateOrder
+ Controller ..> ConfirmReceipt
+ CreateOrder ..> AppService
+ ConfirmReceipt ..> AppService
+ AppService ..> Entities
+ AppService ..> Rules
  AppService ..> OrderPort
  AppService ..> ReceiptPort
  JPAAdapter ..|> OrderPort : implementa
  JPAAdapter ..|> ReceiptPort : implementa
- JPAAdapter --> JpaEntities
- JpaEntities --> DB : JPA / SQL
+ JPAAdapter ..> JpaEntities
+ JPAAdapter ..> DB : JPA / SQL
 
  note bottom of Domain
    El dominio contiene reglas y contratos,

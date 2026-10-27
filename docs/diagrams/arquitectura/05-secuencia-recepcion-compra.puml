@@ -12,13 +12,12 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  entity "Existencia" as Stock
  entity "MovimientoInventario" as Movement
  entity "EventoAuditoria" as Audit
- database "PostgreSQL" as DB
 
  User -> API : confirmarRecepcion(id, claveIdempotencia)
  API -> Service : confirmar(id, usuario, clave)
  Service -> Service : validar permiso, estado e idempotencia
  alt validacion y escrituras exitosas
-  Service -> DB : BEGIN (transaccion)
+  group Unidad transaccional: recepción, stock, movimiento y auditoría
   Service -> Documents : validar orden y lineas pendientes
   Documents --> Service : recibidas, aceptadas, rechazadas
   Service -> Service : validar aceptadas + rechazadas = recibidas
@@ -29,18 +28,17 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   Inventory -> Movement : insertar movimiento con detalle_recepcion_id
   Service -> Documents : marcar detalle y recepcion confirmados
   Service -> Audit : registrar actor, referencia y resultado
-  Service -> DB : COMMIT
-  DB --> Service : confirmacion
+  end
   Service --> API : resultado confirmado
   API --> User : HTTP 200 / recepcion confirmada
  else validacion/escritura falla
-  Service -> DB : ROLLBACK
   Service --> API : error funcional sin cambios parciales
   API --> User : HTTP 4xx/5xx segun la causa
  end
- note over Service,DB
+ note over Service,Inventory
   Existencia, movimiento de kardex, estado documental y auditoria
   forman una sola transaccion. Solo las cantidades aceptadas suman
   stock; un reintento con la misma clave no duplica la entrada.
+  Spring confirma al salir sin error o revierte ante una excepción.
  end note
 @enduml

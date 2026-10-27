@@ -10,14 +10,14 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  node "Servidor web / zona perimetral" as WebHost {
    artifact "Frontend compilado\nReact + TypeScript\nHTML / CSS / JavaScript" as SPA
-   component "Nginx\nservir SPA + proxy inverso" as Nginx
+   node "Nginx" as Nginx <<executionEnvironment>>
  }
 
  node "Servidor privado de aplicaciones" as AppHost {
    artifact "erp-backend-0.0.1-SNAPSHOT.jar\nJava 21 + Spring Boot" as API
  }
 
- node "Red privada de datos" as DataNetwork {
+ node "Servidor PostgreSQL en red privada" as DataNetwork {
    database "PostgreSQL\nBase de datos ERP\nPuerto 5432 privado" as DB
  }
 
@@ -32,21 +32,23 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  cloud "Almacenamiento de respaldos\nrestringido y cifrado" as BackupStorage
  cloud "Servidor SMTP (opcional)" as SMTP
 
- User --> Network
- Network --> Nginx : HTTPS / TLS :443
- Nginx --> SPA : entrega archivos estáticos
- Nginx --> API : proxy /api/*\nTLS privado recomendado
- API --> DB : JDBC / TLS\n5432
- Flyway --> DB : ejecutar migraciones\nantes de liberar la versión
- BackupTool --> DB : conexión de solo lectura\nsegún permisos del respaldo
- BackupTool --> BackupStorage : copia cifrada
- API --> SMTP : SMTP/TLS\nsolo para avisos opcionales
+ User -- Network
+ Network -- WebHost : HTTPS / TLS :443
+ WebHost -- AppHost : proxy /api/*\nTLS privado recomendado
+ AppHost -- DataNetwork : JDBC / TLS :5432
+ MigrationJob -- DataNetwork : migraciones antes de liberar versión
+ BackupJob -- DataNetwork : acceso restringido para respaldo
+ BackupJob -- BackupStorage : copia cifrada
+ AppHost -- SMTP : SMTP/TLS opcional
 
  note right of API
    Una única instancia backend.
    No se requiere balanceador para el MVP.
    Reglas de negocio y permisos se validan
    en Spring Boot, no en React.
+ end note
+ note bottom of Nginx
+   Sirve el artefacto SPA y actúa como proxy inverso.
  end note
 
  note right of DB

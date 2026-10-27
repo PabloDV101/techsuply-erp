@@ -34,19 +34,19 @@ package "Persistencia e infraestructura" as Infra {
   database "PostgreSQL" as DB
 }
 
-Controllers --> UseCases
+Controllers ..> UseCases
 Controllers ..> InputErrors : validación / respuesta de error
-Security ..> Controllers : protege endpoints
-UseCases --> Tx
-Tx --> Auth : persistencia actual
+Controllers ..> Security : requiere autorización
+UseCases ..> Tx
+Tx ..> Auth : coordina casos actuales
 Tx ..> Domain : integración objetivo
 Domain ..> Shared : utiliza capacidades comunes
-Auth --> Repositories : Spring Data JPA directo
-Masters --> Repositories : Spring Data JPA directo
+Auth ..> Repositories : Spring Data JPA directo
+Masters ..> Repositories : Spring Data JPA directo
 Domain ..> Repositories : contratos propuestos para otros módulos
-Shared --> Repositories : eventos / consultas autorizadas
-Repositories --> DB
-Flyway --> DB : esquema versionado
+Shared ..> Repositories : eventos / consultas autorizadas
+Repositories ..> DB
+Flyway ..> DB : esquema versionado
 UseCases ..> Notifications : productores futuros
 
 note right of Domain

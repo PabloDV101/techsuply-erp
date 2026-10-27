@@ -12,13 +12,12 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  entity "Existencia" as Stock
  entity "MovimientoInventario" as Movement
  entity "EventoAuditoria" as Audit
- database "PostgreSQL" as DB
 
  User -> API : confirmarDespacho(id, claveIdempotencia)
  API -> Service : confirmar(id, usuario, clave)
  Service -> Service : validar permiso, estado e idempotencia
  alt validaciones y escrituras exitosas
-  Service -> DB : BEGIN (transaccion)
+  group Unidad transaccional: pedido, stock, movimiento y auditoría
   Service -> Documents : validar reserva y cantidad pendiente por linea
   Documents --> Service : cantidades autorizadas a despachar
   Service -> Inventory : despachar por DetalleDespacho
@@ -28,18 +27,17 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   Inventory -> Movement : insertar salida con detalle_despacho_id
   Service -> Documents : actualizar cantidades y estado del pedido
   Service -> Audit : registrar despacho confirmado
-  Service -> DB : COMMIT
-  DB --> Service : confirmacion
+  end
   Service --> API : resultado confirmado
   API --> User : HTTP 200 / despacho confirmado
  else falla validacion o escritura
-  Service -> DB : ROLLBACK
   Service --> API : error sin salida parcial
   API --> User : HTTP 4xx/5xx segun la causa
  end
- note over Service,DB
+ note over Service,Inventory
   La cantidad no supera la reserva ni el pendiente de la linea.
   Stock fisico y reservado se reducen en una sola transaccion;
   la clave idempotente impide registrar dos veces una misma salida.
+  Spring confirma al salir sin error o revierte ante una excepción.
  end note
 @enduml

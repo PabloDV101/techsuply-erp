@@ -32,7 +32,7 @@ else cuenta disponible
     Errors --> Client : JSON AuthError
   else correcta
     Auth -> DB : reiniciar intentos; actualizar acceso\nINSERT tokens_sesion(hash SHA-256, vencimiento)
-    DB --> Auth : commit
+    DB --> Auth : sesión persistida
     Auth --> API : LoginResponse
     API --> Client : 200 · accessToken, tokenType, expiresAt, usuario
   end
@@ -51,7 +51,8 @@ else válido
     API -> Auth : me()
     Auth -> DB : consultar usuario, roles y permisos
     DB --> Auth : identidad actual
-    Auth --> Client : 200 UsuarioResponse
+    Auth --> API : UsuarioResponse
+    API --> Client : 200 UsuarioResponse
   else endpoint administrativo
     Filter -> Access : continuar cadena
     Access -> Access : comprobar autoridad requerida
@@ -62,7 +63,8 @@ else válido
       Access -> Users : caso de uso
       Users -> DB : transacción / restricciones / bloqueo de administración
       DB --> Users : resultado
-      Users --> Client : 200 DTO (o error funcional)
+      Users --> API : DTO (o error funcional)
+      API --> Client : 200 DTO
     end
   end
   Filter -> Filter : limpiar contexto al salir de la cadena
@@ -73,7 +75,8 @@ Filter -> DB : revalidar sesión
 Filter -> API : continuar autenticado
 API -> Auth : logout(token)
 Auth -> DB : UPDATE tokens_sesion SET revocado_en\ncommit
-Auth --> Client : 204 sin cuerpo
+Auth --> API : revocación confirmada
+API --> Client : 204 sin cuerpo
 Client -> Filter : GET /me con el token anterior
 Filter -> DB : sesión vigente no revocada
 DB --> Filter : ninguna
@@ -83,5 +86,6 @@ note over Filter,DB
   Cada petición valida estado compartido en BD; no se usa JWT ni caché de sesión.
   Un fallo de acceso a datos se traduce a 503. Los tokens nunca se registran en logs.
   La limpieza del contexto ocurre en finally, también en solicitudes rechazadas.
+  El commit de login/logout lo gestiona el límite @Transactional del servicio.
 end note
 @enduml

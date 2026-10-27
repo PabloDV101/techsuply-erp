@@ -11,7 +11,6 @@ skinparam dpi 120
 skinparam linetype polyline
 skinparam nodesep 35
 skinparam ranksep 45
-skinparam padding 8
 skinparam packageStyle rectangle
 skinparam componentStyle uml2
 skinparam classAttributeIconSize 0

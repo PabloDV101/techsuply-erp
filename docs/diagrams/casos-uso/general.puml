@@ -63,7 +63,7 @@ rectangle "Sistema ERP - TechSupply Solutions" {
   package "Seguridad" {
     usecase "Autenticarse" as UC_Login <<implementado>>
     usecase "Gestionar usuarios y permisos" as UC_Usuarios <<implementado>>
-    usecase "Consultar auditoría" as UC_Auditoria
+    usecase "Consultar auditoría" as UC_Auditoria <<implementado>>
   }
 }
 

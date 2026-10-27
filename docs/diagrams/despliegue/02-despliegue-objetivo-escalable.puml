@@ -8,7 +8,7 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  cloud "Internet / red corporativa" as Network
 
  node "Zona perimetral" as Edge {
-   component "Nginx\nHTTPS :443\nSPA + reverse proxy" as Nginx
+   node "Nginx · HTTPS :443" as Nginx <<executionEnvironment>>
    artifact "Frontend React + TypeScript\narchivos estáticos" as SPA
  }
 
@@ -21,7 +21,7 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
    }
  }
 
- node "Red privada de datos" as DataNet {
+ node "Servidor PostgreSQL en red privada" as DataNet {
    database "PostgreSQL\nBase de datos ERP\nPuerto 5432" as DB
  }
 
@@ -35,18 +35,17 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  cloud "Almacenamiento de respaldos\nseparado y cifrado" as BackupStorage
  cloud "Servidor SMTP (opcional)" as SMTP
 
- User --> Network
- Network --> Nginx : HTTPS / TLS :443
- Nginx --> SPA : sirve archivos
- Nginx --> APIA : proxy /api/*\nTLS en red privada
- Nginx --> APIB : proxy /api/*\nTLS en red privada
- APIA --> DB : JDBC / TLS :5432
- APIB --> DB : JDBC / TLS :5432
- Flyway --> DB : ejecutar una vez\nantes del despliegue compatible
- BackupTool --> DB : acceso restringido
- BackupTool --> BackupStorage : copia cifrada
- APIA --> SMTP : SMTP/TLS
- APIB --> SMTP : SMTP/TLS
+ User -- Network
+ Network -- Edge : HTTPS / TLS :443
+ Edge -- AppHostA : proxy /api/*\nTLS en red privada
+ Edge -- AppHostB : proxy /api/*\nTLS en red privada
+ AppHostA -- DataNet : JDBC / TLS :5432
+ AppHostB -- DataNet : JDBC / TLS :5432
+ Release -- DataNet : migración única por versión
+ BackupJob -- DataNet : acceso restringido
+ BackupJob -- BackupStorage : copia cifrada
+ AppHostA -- SMTP : SMTP/TLS
+ AppHostB -- SMTP : SMTP/TLS
 
  note bottom of AppNet
    Ambas instancias ejecutan el mismo monolito modular.
@@ -54,6 +53,9 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
    Sesión HTTP stateless; Bearer opaco validado en PostgreSQL.
    tokens_sesion es estado compartido y permite revocación.
    Medir carga antes de añadir instancias; no usar JWT como supuesto.
+ end note
+ note bottom of Nginx
+   Sirve el artefacto SPA y distribuye las solicitudes API.
  end note
 
  note right of DB

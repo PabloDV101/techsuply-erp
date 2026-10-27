@@ -6,143 +6,143 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  package "Compras" {
   class RequisicionCompra {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +estado: EstadoRequisicion
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -estado: EstadoRequisicion
   +solicitar()
   +aprobar()
   +rechazar()
 }
   class DetalleRequisicion {
-  +id: Long
-  +cantidadSolicitada: Decimal
-  +cantidadAprobada: Decimal
+  -id: Long
+  -cantidadSolicitada: Decimal
+  -cantidadAprobada: Decimal
 }
   class OrdenCompra {
-  +id: Long
-  +folio: String
-  +fechaEmision: DateTime
-  +estado: EstadoOrdenCompra
-  +aprobadaEn: DateTime
-  +motivoRechazo: String
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -folio: String
+  -fechaEmision: DateTime
+  -estado: EstadoOrdenCompra
+  -aprobadaEn: DateTime
+  -motivoRechazo: String
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
 }
   class DetalleOrdenCompra {
-  +id: Long
-  +cantidad: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
   +calcularPendiente(): Decimal
 }
   class RecepcionCompra {
-  +id: Long
-  +folio: String
-  +fechaRecepcion: DateTime
-  +claveIdempotencia: String
-  +estado: EstadoRecepcion
+  -id: Long
+  -folio: String
+  -fechaRecepcion: DateTime
+  -claveIdempotencia: String
+  -estado: EstadoRecepcion
   +confirmar()
 }
   class DetalleRecepcion {
-  +id: Long
-  +cantidadRecibida: Decimal
-  +cantidadAceptada: Decimal
-  +cantidadRechazada: Decimal
-  +precioUnitarioRecibido: Decimal
+  -id: Long
+  -cantidadRecibida: Decimal
+  -cantidadAceptada: Decimal
+  -cantidadRechazada: Decimal
+  -precioUnitarioRecibido: Decimal
 }
   class FacturaProveedor {
-  +id: Long
-  +folioInterno: String
-  +numeroFacturaProveedor: String
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
-  +estado: EstadoFacturaProveedor
+  -id: Long
+  -folioInterno: String
+  -numeroFacturaProveedor: String
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
+  -estado: EstadoFacturaProveedor
   +validarContraCompra()
 }
   class DetalleFacturaProveedor {
-  +id: Long
-  +cantidadFacturada: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -cantidadFacturada: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
 }
   class DevolucionProveedor {
-  +id: Long
-  +folio: String
-  +fecha: DateTime
-  +motivo: String
-  +claveIdempotencia: String
-  +estado: EstadoDevolucion
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -motivo: String
+  -claveIdempotencia: String
+  -estado: EstadoDevolucion
   +confirmar()
 }
   class DetalleDevolucionProveedor {
-  +id: Long
-  +cantidad: Decimal
-  +costoUnitario: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -costoUnitario: Decimal
 }
  }
  package "Inventario" {
   class Existencia {
-  +id: Long
-  +cantidadFisica: Decimal
-  +cantidadReservada: Decimal
-  +costoPromedio: Decimal
-  +version: Integer
+  -id: Long
+  -cantidadFisica: Decimal
+  -cantidadReservada: Decimal
+  -costoPromedio: Decimal
+  -version: Integer
   +consultarDisponible(): Decimal
 }
   class MovimientoInventario {
-  +id: Long
-  +fechaHora: DateTime
-  +tipo: TipoMovimiento
-  +motivo: String
-  +cantidad: Decimal
-  +costoUnitario: Decimal
-  +claveOperacion: String
+  -id: Long
+  -fechaHora: DateTime
+  -tipo: TipoMovimiento
+  -motivo: String
+  -cantidad: Decimal
+  -costoUnitario: Decimal
+  -claveOperacion: String
   +revertir()
 }
   class ConteoInventario {
-  +id: Long
-  +folio: String
-  +fechaProgramada: Date
-  +estado: EstadoConteo
+  -id: Long
+  -folio: String
+  -fechaProgramada: Date
+  -estado: EstadoConteo
 }
   class DetalleConteo {
-  +id: Long
-  +cantidadSistema: Decimal
-  +cantidadContada: Decimal
-  +diferencia: Decimal
+  -id: Long
+  -cantidadSistema: Decimal
+  -cantidadContada: Decimal
+  -diferencia: Decimal
   +calcularDiferencia(): Decimal
 }
   class AlertaInventario {
-    +id: Long
-    +tipo: TipoAlerta
-    +estado: EstadoAlerta
-    +generadaEn: DateTime
-    +resueltaEn: DateTime
+    -id: Long
+    -tipo: TipoAlerta
+    -estado: EstadoAlerta
+    -generadaEn: DateTime
+    -resueltaEn: DateTime
   }
   class AjusteInventario {
-  +id: Long
-  +folio: String
-  +motivo: String
-  +claveIdempotencia: String
-  +estado: EstadoAjuste
+  -id: Long
+  -folio: String
+  -motivo: String
+  -claveIdempotencia: String
+  -estado: EstadoAjuste
   +aprobar()
   +aplicar()
 }
   class DetalleAjusteInventario {
-  +id: Long
-  +tipo: TipoAjuste
-  +cantidad: Decimal
-  +costoUnitario: Decimal
+  -id: Long
+  -tipo: TipoAjuste
+  -cantidad: Decimal
+  -costoUnitario: Decimal
 }
  }
  package "Referencias de otros modulos" {

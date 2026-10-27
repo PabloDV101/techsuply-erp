@@ -48,11 +48,14 @@ Admin -- Empleados
 Admin -- Almacenes
 
 ConsultarProductos ..> Catalogos : <<include>>
-ClasificarProductos ..> Productos : <<extend>>
 
 note bottom of HistorialProveedores
   Los historiales consultan registros existentes.
   No requieren ejecutar el mantenimiento del catálogo.
+end note
+note bottom of ClasificarProductos
+  Clasificar asigna una categoría a un producto existente.
+  Es un caso independiente de mantener el catálogo de productos.
 end note
 note right of Categorias
   API actual: crear, consultar, listar con paginación,

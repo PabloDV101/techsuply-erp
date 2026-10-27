@@ -40,9 +40,9 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
 
  database "PostgreSQL" as DB
 
- Security --> Controllers : si autenticación válida
- Controllers --> DTO : validar / mapear entrada
- DTO --> UseCases : comandos validados
+ Controllers ..> Security : requiere autenticación
+ Controllers ..> DTO : validar / mapear entrada
+ Controllers ..> UseCases : invoca casos de uso con DTO
  UseCases ..> Masters
  UseCases ..> Purchasing
  UseCases ..> Inventory
@@ -50,7 +50,7 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
  UseCases ..> Accounting
  UseCases ..> Payroll
 
- Masters --> JPAAdapters : categoría actual
+ Masters ..> JPAAdapters : categoría actual
  Purchasing ..> RepositoryPorts
  Inventory ..> RepositoryPorts
  Sales ..> RepositoryPorts
@@ -59,14 +59,14 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
  Audit ..> RepositoryPorts
  Reporting ..> RepositoryPorts
  JPAAdapters ..> RepositoryPorts : separación propuesta para otros módulos
- UseCases --> JPAAdapters : dependencia directa actual
- JPAAdapters --> DB : JDBC / TLS en producción
- Flyway --> DB : V1–V5 al arrancar; job de release es objetivo
+ UseCases ..> JPAAdapters : dependencia directa actual
+ JPAAdapters ..> DB : JDBC / TLS en producción
+ Flyway ..> DB : V1–V5 al arrancar; job de release es objetivo
 
  UseCases ..> Audit : cambios relevantes
  UseCases ..> AppEvents : publicar tras validar
  AppEvents ..> Notifications : productores futuros
- Notifications --> DB : inserción idempotente posterior al commit
+ Notifications ..> DB : inserción idempotente posterior al commit
  Controllers ..> Errors : errores auth (advice prioritario)
  Controllers ..> GlobalErrors : validación / errores HTTP restantes
 

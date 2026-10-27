@@ -1,6 +1,6 @@
 # Diagramas y modelo de datos — TechSupply Solutions ERP
 
-Revisión documental: 19 de octubre de 2026. Estos archivos distinguen el estado implementado
+Revisión documental: 27 de octubre de 2026. Estos archivos distinguen el estado implementado
 de la arquitectura objetivo. La existencia de una clase, caso de uso o flujo dibujado no
 acredita su implementación ni el cierre de una fase.
 
@@ -29,6 +29,20 @@ Se usan SVG para poder ampliar los diagramas detallados sin perder texto.
   expediente son precondiciones. Las vistas de actividad/secuencia muestran el orden temporal.
 - Las clases actuales muestran atributos Java `Long`/`Instant`; las clases futuras son conceptuales.
   `AsignacionRol` e `IdentificadorUsuario` son vistas de tablas SQL, no nuevas entidades Java.
+
+## Convenciones UML aplicadas
+
+| Vista | Notación | Regla de lectura |
+|---|---|---|
+| Casos de uso | Actor fuera del rectángulo del sistema; asociación continua sin flecha | Representa un objetivo observable del actor. Filtros, validación de permisos y avisos internos se expresan como parámetros, reglas o notas cuando no son objetivos autónomos. |
+| Casos de uso | Dependencia discontinua `<<include>>` del caso base al incluido | El comportamiento incluido es obligatorio. `<<extend>>` apunta del caso condicional al caso base y declara la condición. Un requisito previo o un paso posterior no justifica `<<extend>>`. |
+| Clases | Atributos `-` privados y operaciones `+` públicas; asociación continua con multiplicidad en cada extremo; rombo de composición solo para partes con ciclo de vida ligado al todo | Las flechas en asociaciones indican navegabilidad cuando se conoce; dependencia discontinua indica uso sin propiedad estructural. Las tablas `<<SQL>>` omiten visibilidad de Java. Las clases objetivo no se confunden con entidades JPA existentes. |
+| Componentes y paquetes | Dependencia discontinua del consumidor al proveedor; realización discontinua con triángulo hueco hacia la interfaz implementada | Muestra dependencia estructural, no orden temporal de llamadas. El orden de Flyway queda en una nota; las llamadas y transacciones se detallan en secuencias y actividades. |
+| Secuencia | Mensaje continuo para solicitud, discontinuo para respuesta; fragmentos `alt` y `group` | La transacción se agrupa como unidad lógica. `BEGIN`, `COMMIT` y `ROLLBACK` no se dibujan como mensajes del servicio a PostgreSQL cuando los gestiona Spring. |
+| Actividad | Nodo inicial/final, decisiones con guardas y particiones por responsable | Describe flujo temporal y estados alternativos; no sustituye las dependencias estáticas entre módulos. |
+| Despliegue | Nodos y entornos de ejecución contienen artefactos; línea sin flecha entre nodos | La línea es una ruta de comunicación y la etiqueta indica protocolo. Que un artefacto esté dentro de un nodo significa despliegue, no llamada entre archivos. |
+
+`<<implementado>>`, `<<objetivo>>` y `<<SQL>>` son estereotipos de estado propios de esta documentación, no estereotipos estándar que impliquen comportamiento UML adicional. Cada vista conserva además una leyenda textual para no depender del color.
 
 ## Inventario
 
@@ -147,10 +161,12 @@ unicidad y diez FK de las tablas actuales; además exige que las otras tablas es
 como objetivo. No ejecuta SQL ni conecta a PostgreSQL. Los CHECK, triggers e índices parciales
 se documentan en notas; su ejecución sigue correspondiendo a las pruebas Flyway/PostgreSQL.
 
-## Resultado de esta revisión
+## Resultados de validación
 
-- 42 fuentes PlantUML validadas y renderizadas a SVG sin errores de sintaxis tras
-  actualizar las vistas de notificaciones y mantener los productores futuros diferenciados.
+- En la revisión del 27 de octubre se corrigieron relaciones de casos de uso, dependencias
+  entre componentes y paquetes, representación de transacciones en secuencia y rutas de
+  comunicación en despliegue. Las 42 fuentes se validaron y renderizaron a SVG con PlantUML
+  1.2026.7; la validación sintáctica no sustituye la revisión semántica de cada regla de negocio.
 - Ambas copias DBML validadas contra V1/V3/V4/V5: 10 tablas físicas, 10 FK y 61 tablas objetivo.
 - Se conservan las vistas de procesos de los módulos pendientes y se distingue
   `CategoriaProducto` implementada del resto de Gestión Maestra propuesto.

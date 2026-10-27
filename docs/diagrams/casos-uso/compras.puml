@@ -6,7 +6,6 @@ left to right direction
 
 actor "Responsable de compras" as Comprador
 actor "Responsable de almacén" as Almacen
-actor "Contador" as Contador
 actor "Proveedor" as Proveedor
 
 rectangle "ERP - Gestión de Compras" {
@@ -21,7 +20,6 @@ rectangle "ERP - Gestión de Compras" {
   usecase "Verificar mercancía recibida" as Verificar
   usecase "Registrar discrepancias" as Discrepancias
   usecase "Registrar devolución a proveedor" as Devolucion
-  usecase "Notificar recepción a contabilidad" as Notificar
 }
 
 Comprador -- Necesidad
@@ -35,17 +33,19 @@ Comprador -- EstadoOrden
 Proveedor -- EstadoOrden
 Almacen -- Recepcion
 Almacen -- Devolucion
-Contador -- Notificar
 
-Requisicion ..> Necesidad : <<include>>
 Orden ..> ConsultarProveedores : <<include>>
 Orden ..> Comparar : <<include>>
 Recepcion ..> Verificar : <<include>>
-Discrepancias ..> Verificar : <<extend>>
-Notificar ..> Recepcion : <<extend>>
+Discrepancias ..> Recepcion : <<extend>> [si hay diferencias]
 
 note bottom of Devolucion
   Precondición: recepción confirmada y cantidades aceptadas no devueltas.
   Devolver es otro caso de uso, no una extensión temporal de registrar recepción.
+end note
+note bottom of Recepcion
+  La verificación de mercancía es obligatoria.
+  La discrepancia amplía la recepción solo si se detectan diferencias.
+  El aviso contable es una integración interna, no un objetivo de actor.
 end note
 @enduml

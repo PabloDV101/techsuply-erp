@@ -15,28 +15,27 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  User -> API : contabilizar(documentoId, claveIdempotencia)
  API -> Service : contabilizar(request, usuario)
- Service -> DB : BEGIN (transaccion)
+ group Unidad transaccional de contabilización
  Service -> Source : validar factura, aplicacion o nomina
  Source --> Service : importes, origen y estado
  Service -> Period : verificar fecha dentro de periodo abierto
  Service -> Entry : buscar por clave y origen idempotente
  alt ya contabilizado
   Entry --> Service : asiento existente
-  Service -> DB : COMMIT sin duplicar
-  Service --> API : devolver asiento existente
  else nuevo asiento
   Service -> Entry : construir encabezado
   Service -> Lines : crear partidas contables
   Service -> Service : validar >= 2 partidas y suma debe = haber
   Service -> Entry : marcar CONTABILIZADO y registrar autor
   Service -> DB : guardar asiento, partidas y referencia al origen
-  Service -> DB : COMMIT
-  Service --> API : asiento contabilizado
  end
+ end
+ Service --> API : asiento existente o contabilizado
  API --> User : resultado
  note over Service,DB
   Solo se contabiliza en periodo abierto. Cualquier fallo produce
   rollback. Un asiento contabilizado no se edita: se revierte mediante
   contraasiento y las acciones quedan auditadas.
+  La transacción confirma al salir sin error; una excepción la revierte.
  end note
 @enduml

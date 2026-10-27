@@ -21,14 +21,14 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
     +reiniciarIntentosFallidos()
   }
   class IdentificadorUsuario <<SQL>> {
-    +identificador: String {PK, unique}
-    +usuarioId: Long {FK}
+    identificador: String {PK, unique}
+    usuarioId: Long {FK}
   }
   class AsignacionRol <<SQL>> {
-    +usuarioId: Long
-    +rolId: Long
-    +asignadoPorUsuarioId: Long [0..1]
-    +asignadoEn: Instant
+    usuarioId: Long
+    rolId: Long
+    asignadoPorUsuarioId: Long [0..1]
+    asignadoEn: Instant
   }
   class Rol <<implementado>> {
     -id: Long
@@ -45,14 +45,14 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
     -descripcion: String [0..1]
   }
   class SolicitudAutorizacion <<objetivo>> {
-    +id: Long
-    +tipo: String
-    +entidadTipo: String
-    +entidadId: Long
-    +estado: EstadoAutorizacion
-    +motivo: String
-    +solicitadaEn: DateTime
-    +resueltaEn: DateTime
+    -id: Long
+    -tipo: String
+    -entidadTipo: String
+    -entidadId: Long
+    -estado: EstadoAutorizacion
+    -motivo: String
+    -solicitadaEn: DateTime
+    -resueltaEn: DateTime
   }
   class TokenSesion <<implementado>> {
     -id: Long
@@ -62,82 +62,82 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
     -revocadoEn: Instant [0..1]
   }
   class EventoAuditoria <<implementado>> {
-  +id: Long
-  +fecha: Instant
-  +usuarioId: Long
-  +actorTipo: AuditActorType
-  +modulo: String
-  +accion: String
-  +entidad: String
-  +entidadId: Long
-  +resultado: AuditResult
-  +motivoCodigo: String
-  +detalle: JSON
+  -id: Long
+  -fecha: Instant
+  -usuarioId: Long
+  -actorTipo: AuditActorType
+  -modulo: String
+  -accion: String
+  -entidad: String
+  -entidadId: Long
+  -resultado: AuditResult
+  -motivoCodigo: String
+  -detalle: JSON
 }
  }
  package "Estructura organizacional" {
   class Empleado {
-  +id: Long
-  +numeroEmpleado: String
-  +nombres: String
-  +apellidos: String
-  +fechaIngreso: Date
-  +activo: Boolean
+  -id: Long
+  -numeroEmpleado: String
+  -nombres: String
+  -apellidos: String
+  -fechaIngreso: Date
+  -activo: Boolean
 }
   class Departamento {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -activo: Boolean
 }
   class Puesto {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -activo: Boolean
 }
  }
  package "Catalogos comerciales" {
   class Cliente {
-  +id: Long
-  +codigo: String
-  +nombreRazonSocial: String
-  +identificadorFiscal: String
-  +limiteCredito: Decimal
-  +plazoCreditoDias: Integer
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombreRazonSocial: String
+  -identificadorFiscal: String
+  -limiteCredito: Decimal
+  -plazoCreditoDias: Integer
+  -activo: Boolean
 }
   class Proveedor {
-  +id: Long
-  +codigo: String
-  +nombreRazonSocial: String
-  +identificadorFiscal: String
-  +plazoCreditoDias: Integer
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombreRazonSocial: String
+  -identificadorFiscal: String
+  -plazoCreditoDias: Integer
+  -activo: Boolean
 }
   class CategoriaProducto <<implementado>> {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +descripcion: String [0..1]
-  +activa: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -descripcion: String [0..1]
+  -activa: Boolean
 }
   class Producto {
-  +id: Long
-  +sku: String
-  +nombre: String
-  +unidadMedida: String
-  +precioLista: Decimal
-  +costoReferencia: Decimal
-  +puntoReorden: Decimal
-  +activo: Boolean
+  -id: Long
+  -sku: String
+  -nombre: String
+  -unidadMedida: String
+  -precioLista: Decimal
+  -costoReferencia: Decimal
+  -puntoReorden: Decimal
+  -activo: Boolean
 }
   class Almacen {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +sede: String
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -sede: String
+  -activo: Boolean
 }
  }
  enum EstadoAutorizacion {

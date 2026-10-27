@@ -6,104 +6,104 @@ caption VISTA MIXTA · Auditoría V4 y bandeja APP V5 implementadas; reportería
 
  package "Auditoria e integracion" {
   class EventoAuditoria <<implementado>> {
-  +id: Long
-  +fecha: Instant
-  +usuarioId: Long
-  +actorTipo: AuditActorType
-  +modulo: String
-  +accion: String
-  +entidad: String
-  +entidadId: Long
-  +resultado: AuditResult
-  +motivoCodigo: String
-  +detalle: JSON
+  -id: Long
+  -fecha: Instant
+  -usuarioId: Long
+  -actorTipo: AuditActorType
+  -modulo: String
+  -accion: String
+  -entidad: String
+  -entidadId: Long
+  -resultado: AuditResult
+  -motivoCodigo: String
+  -detalle: JSON
 }
   class EventoIntegracion <<OpcionalMVP>> {
-  +id: Long
-  +tipoEvento: String
-  +entidadOrigen: String
-  +entidadOrigenId: Long
-  +claveIdempotencia: String
-  +fechaCreacion: DateTime
-  +fechaProcesamiento: DateTime
-  +estado: EstadoEvento
-  +intentos: Integer
-  +mensajeError: String
+  -id: Long
+  -tipoEvento: String
+  -entidadOrigen: String
+  -entidadOrigenId: Long
+  -claveIdempotencia: String
+  -fechaCreacion: DateTime
+  -fechaProcesamiento: DateTime
+  -estado: EstadoEvento
+  -intentos: Integer
+  -mensajeError: String
 }
  }
  package "Reporteria" {
   class "Criterios por reporte (DTO)" as ReportCriteria <<objetivo>> {
-    +periodo: DateRange
-    +filtros: criterios validados
-    +pagina: Pageable
+    -periodo: DateRange
+    -filtros: criterios validados
+    -pagina: Pageable
   }
   class "Resultado por reporte (DTO)" as ReportResult <<objetivo>> {
-    +fuente: String
-    +periodo: DateRange
-    +disponibilidad: DISPONIBLE | NO_DISPONIBLE
-    +filas: proyecciones
+    -fuente: String
+    -periodo: DateRange
+    -disponibilidad: DISPONIBLE | NO_DISPONIBLE
+    -filas: proyecciones
   }
   class "Servicio de consulta por reporte" as ReportQueryService <<objetivo>> {
     +consultar(criteria): ReportResult
   }
   class DefinicionReporte <<objetivo>> {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +descripcion: String
-  +modulo: String
-  +consultaClave: String
-  +permisoRequerido: String
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -descripcion: String
+  -modulo: String
+  -consultaClave: String
+  -permisoRequerido: String
+  -activo: Boolean
 }
   class EjecucionReporte <<objetivo>> {
-  +id: Long
-  +fechaHora: DateTime
-  +parametros: JSON
-  +formato: FormatoReporte
-  +estado: EstadoReporte
-  +filasGeneradas: Long
-  +duracionMs: Long
+  -id: Long
+  -fechaHora: DateTime
+  -parametros: JSON
+  -formato: FormatoReporte
+  -estado: EstadoReporte
+  -filasGeneradas: Long
+  -duracionMs: Long
 }
   class Indicador <<objetivo>> {
-  +id: Long
-  +codigo: String
-  +nombre: String
-  +descripcion: String
-  +unidad: String
-  +formula: String
-  +fuenteDatos: String
-  +frecuenciaActualizacion: String
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -descripcion: String
+  -unidad: String
+  -formula: String
+  -fuenteDatos: String
+  -frecuenciaActualizacion: String
+  -activo: Boolean
 }
   class "InternalNotification" as Notificacion <<implementado>> {
-    +id: Long
-    +usuarioId: Long
-    +tipoEvento: NotificationType
-    +modulo: String
-    +entidad: String
-    +entidadId: Long
-    +claveOperacion: String
-    +canal: String
-    +asunto: String
-    +cuerpo: String
-    +estado: NotificationStatus
-    +creadaEn: Instant
-    +leidaEn: Instant
+    -id: Long
+    -usuarioId: Long
+    -tipoEvento: NotificationType
+    -modulo: String
+    -entidad: String
+    -entidadId: Long
+    -claveOperacion: String
+    -canal: String
+    -asunto: String
+    -cuerpo: String
+    -estado: NotificationStatus
+    -creadaEn: Instant
+    -leidaEn: Instant
   }
   class ParametroSistema {
-    +id: Long
-    +modulo: String
-    +clave: String
-    +valor: String
-    +actualizadoEn: DateTime
+    -id: Long
+    -modulo: String
+    -clave: String
+    -valor: String
+    -actualizadoEn: DateTime
   }
   class ValorIndicador <<objetivo>> {
-  +id: Long
-  +fechaCalculo: DateTime
-  +periodoInicio: Date
-  +periodoFin: Date
-  +valor: Decimal
+  -id: Long
+  -fechaCalculo: DateTime
+  -periodoInicio: Date
+  -periodoFin: Date
+  -valor: Decimal
 }
  }
  package "Referencia transversal" {

@@ -21,3 +21,8 @@ Las pruebas `AuthOpenApiContractTest`, `CategoriaOpenApiContractTest`,
 parámetros y DTO principales con los controladores. Las pruebas HTTP de integración
 complementan esa comprobación sobre Spring Security, Flyway y PostgreSQL desechable.
 Ver la [matriz de integración](../fase-2/integracion/COMPONENTES_FASE_2.md).
+
+Para recorrer manualmente las rutas activas en una base local de prueba, usar
+[`pruebas-manuales-fase-2.http`](pruebas-manuales-fase-2.http). Ejecutar las
+peticiones en orden con un cliente compatible con archivos `.http`, reemplazando
+las contraseñas de ejemplo en una copia privada del archivo.
