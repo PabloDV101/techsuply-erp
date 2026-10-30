@@ -378,8 +378,8 @@ components:
           properties:
             periodId: { type: integer, format: int64 }
             content: { type: array, items: { $ref: '#/components/schemas/TrialBalanceRow' } }
-            totalDebit: { $ref: '#/components/schemas/Decimal', description: Total del periodo completo, no solo de la página. }
-            totalCredit: { $ref: '#/components/schemas/Decimal', description: Total del periodo completo, no solo de la página. }
+            totalDebit: { allOf: [ { $ref: '#/components/schemas/Decimal' } ], description: 'Total del periodo completo, no solo de la página.' }
+            totalCredit: { allOf: [ { $ref: '#/components/schemas/Decimal' } ], description: 'Total del periodo completo, no solo de la página.' }
     FinancialStatement:
       type: object
       required: [periodId, source, availability, lines]

@@ -1,0 +1,615 @@
+openapi: 3.0.3
+x-implementation-status: implemented
+info:
+  title: TechSupply ERP - Sprint 1 Gestión Maestra y Compras
+  version: 0.1.0
+  description: >-
+    Contrato del sprint 1. Departamentos, proveedores, almacenes, productos, órdenes de compra,
+    registro y confirmación de recepciones y consulta de existencias están implementados. Las reglas abiertas se registran en
+    docs/fase-3/SPRINT_1_MODULOS.md. La base actual es /api/v1 y el token Bearer es opaco.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - { name: Departamentos }
+  - { name: Proveedores }
+  - { name: Almacenes }
+  - { name: Productos }
+  - { name: OrdenesCompra }
+  - { name: RecepcionesCompra }
+  - { name: Existencias }
+paths:
+  /departments:
+    x-implementation-status: implemented
+    get:
+      tags: [Departamentos]
+      summary: Listar departamentos
+      description: Requiere MAESTROS_DEPARTAMENTOS_LEER.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/CatalogSort' }, { $ref: '#/components/parameters/Direction' }, { $ref: '#/components/parameters/Code' }, { $ref: '#/components/parameters/Active' } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/DepartmentPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Departamentos]
+      summary: Crear departamento
+      description: Requiere MAESTROS_DEPARTAMENTOS_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/DepartmentWrite' }
+      responses:
+        '201': { description: Creado, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Department' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /departments/{id}:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Departamentos]
+      summary: Consultar departamento
+      description: Requiere MAESTROS_DEPARTAMENTOS_LEER.
+      responses:
+        '200': { description: Departamento, content: { application/json: { schema: { $ref: '#/components/schemas/Department' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Departamentos]
+      summary: Actualizar departamento
+      description: Requiere MAESTROS_DEPARTAMENTOS_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/DepartmentWrite' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Department' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /departments/{id}/status:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [Departamentos]
+      summary: Activar o desactivar departamento
+      description: Requiere MAESTROS_DEPARTAMENTOS_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/ActiveStatus' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Department' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /suppliers:
+    x-implementation-status: implemented
+    get:
+      tags: [Proveedores]
+      summary: Buscar proveedores
+      description: Requiere MAESTROS_PROVEEDORES_LEER.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/SupplierSort' }, { $ref: '#/components/parameters/Direction' }, { $ref: '#/components/parameters/Code' }, { $ref: '#/components/parameters/Active' } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/SupplierPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Proveedores]
+      summary: Crear proveedor
+      description: Requiere MAESTROS_PROVEEDORES_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/SupplierWrite' }
+      responses:
+        '201': { description: Creado, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /suppliers/{id}:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Proveedores]
+      summary: Consultar proveedor
+      description: Requiere MAESTROS_PROVEEDORES_LEER.
+      responses:
+        '200': { description: Proveedor, content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Proveedores]
+      summary: Actualizar proveedor
+      description: Requiere MAESTROS_PROVEEDORES_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/SupplierWrite' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /suppliers/{id}/status:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [Proveedores]
+      summary: Activar o desactivar proveedor
+      description: Requiere MAESTROS_PROVEEDORES_ADMIN; conserva órdenes históricas.
+      requestBody: { $ref: '#/components/requestBodies/ActiveStatus' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Supplier' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /warehouses:
+    x-implementation-status: implemented
+    get:
+      tags: [Almacenes]
+      summary: Listar almacenes
+      description: Requiere MAESTROS_ALMACENES_LEER.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/CatalogSort' }, { $ref: '#/components/parameters/Direction' }, { $ref: '#/components/parameters/Code' }, { $ref: '#/components/parameters/Active' } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/WarehousePage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Almacenes]
+      summary: Crear almacén
+      description: Requiere MAESTROS_ALMACENES_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/WarehouseWrite' }
+      responses:
+        '201': { description: Creado, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Warehouse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /warehouses/{id}:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Almacenes]
+      summary: Consultar almacén
+      description: Requiere MAESTROS_ALMACENES_LEER.
+      responses:
+        '200': { description: Almacén, content: { application/json: { schema: { $ref: '#/components/schemas/Warehouse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Almacenes]
+      summary: Actualizar almacén
+      description: Requiere MAESTROS_ALMACENES_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/WarehouseWrite' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Warehouse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /warehouses/{id}/status:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [Almacenes]
+      summary: Activar o desactivar almacén
+      description: Requiere MAESTROS_ALMACENES_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/ActiveStatus' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Warehouse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /products:
+    x-implementation-status: implemented
+    get:
+      tags: [Productos]
+      summary: Buscar productos, incluidos los de una categoría
+      description: Requiere MAESTROS_PRODUCTOS_LEER. categoriaId filtra por categoría exacta.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/ProductSort' }, { $ref: '#/components/parameters/Direction' }, { name: sku, in: query, schema: { type: string, minLength: 1, maxLength: 30 } }, { name: categoriaId, in: query, schema: { type: integer, format: int64, minimum: 1 } }, { $ref: '#/components/parameters/Active' } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/ProductPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Productos]
+      summary: Crear producto
+      description: Requiere MAESTROS_PRODUCTOS_ADMIN; categoría existente.
+      requestBody: { $ref: '#/components/requestBodies/ProductWrite' }
+      responses:
+        '201': { description: Creado, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /products/{id}:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Productos]
+      summary: Consultar producto
+      description: Requiere MAESTROS_PRODUCTOS_LEER.
+      responses:
+        '200': { description: Producto, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Productos]
+      summary: Actualizar producto
+      description: Requiere MAESTROS_PRODUCTOS_ADMIN; no modifica valores pactados en órdenes previas.
+      requestBody: { $ref: '#/components/requestBodies/ProductWrite' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /products/{id}/status:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [Productos]
+      summary: Activar o desactivar producto
+      description: Requiere MAESTROS_PRODUCTOS_ADMIN.
+      requestBody: { $ref: '#/components/requestBodies/ActiveStatus' }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /purchase-orders:
+    x-implementation-status: implemented
+    get:
+      tags: [OrdenesCompra]
+      summary: Listar órdenes de compra
+      description: Requiere COMPRAS_ORDENES_LEER.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/OrderSort' }, { $ref: '#/components/parameters/OrderDirection' }, { name: proveedorId, in: query, schema: { type: integer, format: int64, minimum: 1 } }, { name: estado, in: query, schema: { $ref: '#/components/schemas/PurchaseOrderStatus' } } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrderPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [OrdenesCompra]
+      summary: Crear orden en BORRADOR
+      description: Requiere COMPRAS_ORDENES_ADMIN. No cambia existencias; el servidor asigna folio y actor.
+      requestBody: { $ref: '#/components/requestBodies/PurchaseOrderCreate' }
+      responses:
+        '201': { description: Creada, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrder' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /purchase-orders/{id}:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [OrdenesCompra]
+      summary: Consultar orden y saldo aceptado por línea
+      description: Requiere COMPRAS_ORDENES_LEER.
+      responses:
+        '200': { description: Orden, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrder' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /purchase-orders/{id}/submit:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [OrdenesCompra]
+      summary: Enviar borrador a aprobación
+      description: Requiere COMPRAS_ORDENES_ADMIN; transición BORRADOR a PENDIENTE_APROBACION.
+      responses:
+        '200': { description: Orden, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrder' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /purchase-orders/{id}/approve:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [OrdenesCompra]
+      summary: Aprobar orden
+      description: >-
+        Requiere COMPRAS_ORDENES_APROBAR; transición PENDIENTE_APROBACION a
+        APROBADA. El aprobador debe ser distinto del creador de la orden.
+      responses:
+        '200': { description: Orden, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrder' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /purchase-orders/{id}/send:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [OrdenesCompra]
+      summary: Registrar envío de orden al proveedor
+      description: Requiere COMPRAS_ORDENES_ADMIN; transición APROBADA a ENVIADA. No implica integración externa de correo.
+      responses:
+        '200': { description: Orden, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrder' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /purchase-receipts:
+    x-implementation-status: implemented
+    get:
+      tags: [RecepcionesCompra]
+      summary: Listar recepciones
+      description: Requiere COMPRAS_RECEPCIONES_LEER.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/OrderSort' }, { $ref: '#/components/parameters/OrderDirection' }, { name: ordenCompraId, in: query, schema: { type: integer, format: int64, minimum: 1 } } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseReceiptPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [RecepcionesCompra]
+      summary: Registrar recepción pendiente
+      description: Requiere COMPRAS_RECEPCIONES_REGISTRAR. La clave de idempotencia identifica el documento y sus reintentos.
+      requestBody: { $ref: '#/components/requestBodies/PurchaseReceiptCreate' }
+      responses:
+        '200': { description: Reintento con igual clave y contenido; devuelve el documento existente, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseReceipt' } } } }
+        '201': { description: Registrada, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseReceipt' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /purchase-receipts/{id}:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [RecepcionesCompra]
+      summary: Consultar recepción y cantidades por línea
+      description: Requiere COMPRAS_RECEPCIONES_LEER.
+      responses:
+        '200': { description: Recepción, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /purchase-receipts/{id}/confirm:
+    x-implementation-status: implemented
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [RecepcionesCompra]
+      summary: Confirmar recepción de forma transaccional e idempotente
+      description: >-
+        Requiere COMPRAS_RECEPCIONES_CONFIRMAR. Repetir la confirmación de la misma
+        recepción devuelve su estado confirmado sin duplicar existencias ni movimientos.
+        Si la clave original se reutiliza con otro contenido, la creación devuelve 409.
+      responses:
+        '200': { description: Confirmada, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseReceipt' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /inventory/stock:
+    x-implementation-status: implemented
+    get:
+      tags: [Existencias]
+      summary: Consultar existencias por producto y almacén
+      description: Requiere INVENTARIO_EXISTENCIAS_LEER. Disponible = física - reservada.
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/Size' }, { $ref: '#/components/parameters/StockSort' }, { $ref: '#/components/parameters/Direction' }, { name: productoId, in: query, schema: { type: integer, format: int64, minimum: 1 } }, { name: almacenId, in: query, schema: { type: integer, format: int64, minimum: 1 } } ]
+      responses:
+        '200': { description: Página, content: { application/json: { schema: { $ref: '#/components/schemas/StockPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: opaque }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    CatalogSort: { name: sort, in: query, schema: { type: string, enum: [id, codigo, nombre], default: codigo } }
+    SupplierSort: { name: sort, in: query, schema: { type: string, enum: [id, codigo, nombreRazonSocial], default: codigo } }
+    ProductSort: { name: sort, in: query, schema: { type: string, enum: [id, sku, nombre], default: sku } }
+    OrderSort: { name: sort, in: query, schema: { type: string, enum: [id, folio, fecha], default: fecha } }
+    OrderDirection: { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+    StockSort: { name: sort, in: query, schema: { type: string, enum: [id, productoId, almacenId], default: id } }
+    Direction: { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
+    Code: { name: codigo, in: query, schema: { type: string, minLength: 1, maxLength: 20 } }
+    Active: { name: activo, in: query, schema: { type: boolean } }
+  responses:
+    BadRequest: { description: Solicitud inválida, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Token ausente o inválido, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Permiso insuficiente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: Recurso o referencia inexistente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Conflict: { description: 'Duplicado, estado incompatible o saldo excedido', content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+  requestBodies:
+    ActiveStatus: { required: true, content: { application/json: { schema: { type: object, description: 'Actualmente se ignoran propiedades adicionales.', required: [activo], properties: { activo: { type: boolean } } } } } }
+    DepartmentWrite: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DepartmentWrite' } } } }
+    SupplierWrite: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SupplierWrite' } } } }
+    WarehouseWrite: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WarehouseWrite' } } } }
+    ProductWrite: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProductWrite' } } } }
+    PurchaseOrderCreate: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseOrderCreate' } } } }
+    PurchaseReceiptCreate: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PurchaseReceiptCreate' } } } }
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [status, code, message]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+    DepartmentWrite:
+      type: object
+      required: [codigo, nombre]
+      properties:
+        codigo: { type: string, minLength: 1, maxLength: 20, description: Se recortan espacios extremos y se normaliza a mayúsculas; el resultado no puede estar vacío. }
+        nombre: { type: string, minLength: 1, maxLength: 100 }
+    Department:
+      allOf:
+        - { $ref: '#/components/schemas/DepartmentWrite' }
+        - { type: object, required: [id, activo], properties: { id: { type: integer, format: int64 }, activo: { type: boolean } } }
+    SupplierWrite:
+      type: object
+      required: [codigo, nombreRazonSocial]
+      properties:
+        codigo: { type: string, minLength: 1, maxLength: 20, description: Se recortan espacios extremos y se normaliza a mayúsculas; el resultado no puede estar vacío. }
+        nombreRazonSocial: { type: string, minLength: 1, maxLength: 160 }
+        identificadorFiscal: { type: string, maxLength: 20, nullable: true }
+        contacto: { type: string, maxLength: 100, nullable: true }
+        correo: { type: string, format: email, maxLength: 150, nullable: true }
+        telefono: { type: string, maxLength: 30, nullable: true }
+        direccion: { type: string, nullable: true }
+        plazoCreditoDias: { type: integer, minimum: 0, maximum: 32767, default: 0, nullable: true, description: 'Omitido o null se guarda como 0.' }
+    Supplier:
+      allOf:
+        - { $ref: '#/components/schemas/SupplierWrite' }
+        - { type: object, required: [id, activo], properties: { id: { type: integer, format: int64 }, activo: { type: boolean } } }
+    WarehouseWrite:
+      type: object
+      required: [codigo, nombre]
+      properties:
+        codigo: { type: string, minLength: 1, maxLength: 20, description: Se recortan espacios extremos y se normaliza a mayúsculas; el resultado no puede estar vacío. }
+        nombre: { type: string, minLength: 1, maxLength: 100 }
+        sede: { type: string, maxLength: 120, nullable: true }
+        ubicacion: { type: string, maxLength: 200, nullable: true }
+    Warehouse:
+      allOf:
+        - { $ref: '#/components/schemas/WarehouseWrite' }
+        - { type: object, required: [id, activo], properties: { id: { type: integer, format: int64 }, activo: { type: boolean } } }
+    ProductWrite:
+      type: object
+      description: 'En valores numéricos el backend valida también el número de decimales enviados, incluidos ceros finales: dos para importes y tasa, tres para cantidades.'
+      required: [sku, nombre, unidadMedida, categoriaId, precioLista, costoReferencia, tasaImpuesto, puntoReorden, cantidadReorden]
+      properties:
+        sku: { type: string, minLength: 1, maxLength: 30, description: Se recortan espacios extremos y se normaliza a mayúsculas; el resultado no puede estar vacío. }
+        nombre: { type: string, minLength: 1, maxLength: 160 }
+        descripcion: { type: string, nullable: true }
+        unidadMedida: { type: string, minLength: 1, maxLength: 20 }
+        categoriaId: { type: integer, format: int64, minimum: 1 }
+        proveedorPrincipalId: { type: integer, format: int64, minimum: 1, nullable: true }
+        precioLista: { type: number, multipleOf: 0.01, minimum: 0, maximum: 999999999999.99 }
+        costoReferencia: { type: number, multipleOf: 0.01, minimum: 0, maximum: 999999999999.99 }
+        tasaImpuesto: { type: number, multipleOf: 0.01, minimum: 0, maximum: 100 }
+        puntoReorden: { type: number, multipleOf: 0.001, minimum: 0, maximum: 99999999999.999 }
+        cantidadReorden: { type: number, multipleOf: 0.001, minimum: 0, maximum: 99999999999.999 }
+    Product:
+      allOf:
+        - { $ref: '#/components/schemas/ProductWrite' }
+        - { type: object, required: [id, activo], properties: { id: { type: integer, format: int64 }, activo: { type: boolean } } }
+    PurchaseOrderStatus: { type: string, enum: [BORRADOR, PENDIENTE_APROBACION, APROBADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA, CANCELADA] }
+    PurchaseOrderCreate:
+      type: object
+      required: [proveedorId, departamentoId, detalles]
+      properties:
+        proveedorId: { type: integer, format: int64, minimum: 1 }
+        departamentoId: { type: integer, format: int64, minimum: 1 }
+        observaciones: { type: string, nullable: true }
+        detalles: { type: array, minItems: 1, items: { $ref: '#/components/schemas/PurchaseOrderLineCreate' } }
+    PurchaseOrderLineCreate:
+      type: object
+      description: 'El backend valida también el número de decimales enviados, incluidos ceros finales: tres para cantidad y dos para precios y porcentajes.'
+      required: [productoId, cantidad, precioUnitario, descuentoPct, tasaImpuesto]
+      properties:
+        productoId: { type: integer, format: int64, minimum: 1 }
+        cantidad: { type: number, multipleOf: 0.001, exclusiveMinimum: true, minimum: 0, maximum: 99999999999.999 }
+        precioUnitario: { type: number, multipleOf: 0.01, minimum: 0, maximum: 999999999999.99 }
+        descuentoPct: { type: number, multipleOf: 0.01, minimum: 0, maximum: 100 }
+        tasaImpuesto: { type: number, multipleOf: 0.01, minimum: 0, maximum: 100 }
+    PurchaseOrderLine:
+      allOf:
+        - { $ref: '#/components/schemas/PurchaseOrderLineCreate' }
+        - { type: object, required: [id, cantidadAceptada, cantidadPendiente], properties: { id: { type: integer, format: int64 }, cantidadAceptada: { type: number }, cantidadPendiente: { type: number } } }
+    PurchaseOrder:
+      type: object
+      additionalProperties: false
+      required: [id, folio, proveedorId, departamentoId, creadaPorUsuarioId, fecha, estado, subtotal, impuestos, total, detalles]
+      properties:
+        id: { type: integer, format: int64 }
+        folio: { type: string, maxLength: 30, description: 'Generado por el servidor: OC- y 12 dígitos de una secuencia PostgreSQL.' }
+        proveedorId: { type: integer, format: int64 }
+        departamentoId: { type: integer, format: int64 }
+        creadaPorUsuarioId: { type: integer, format: int64 }
+        aprobadaPorUsuarioId: { type: integer, format: int64, nullable: true }
+        aprobadaEn: { type: string, format: date-time, nullable: true }
+        motivoRechazo: { type: string, nullable: true }
+        fecha: { type: string, format: date-time }
+        estado: { $ref: '#/components/schemas/PurchaseOrderStatus' }
+        subtotal: { type: number }
+        impuestos: { type: number }
+        total: { type: number }
+        observaciones: { type: string, nullable: true }
+        detalles: { type: array, items: { $ref: '#/components/schemas/PurchaseOrderLine' } }
+    PurchaseReceiptCreate:
+      type: object
+      required: [ordenCompraId, almacenId, claveIdempotencia, detalles]
+      properties:
+        ordenCompraId: { type: integer, format: int64, minimum: 1 }
+        almacenId: { type: integer, format: int64, minimum: 1 }
+        claveIdempotencia: { type: string, minLength: 1, maxLength: 120 }
+        referenciaExterna: { type: string, maxLength: 80, nullable: true }
+        detalles: { type: array, minItems: 1, items: { $ref: '#/components/schemas/PurchaseReceiptLineCreate' } }
+    PurchaseReceiptLineCreate:
+      type: object
+      description: 'El backend valida también el número de decimales enviados, incluidos ceros finales: tres para cantidades y dos para precio.'
+      required: [detalleOrdenCompraId, cantidadRecibida, cantidadAceptada, cantidadRechazada, precioUnitarioRecibido]
+      properties:
+        detalleOrdenCompraId: { type: integer, format: int64, minimum: 1 }
+        cantidadRecibida: { type: number, multipleOf: 0.001, exclusiveMinimum: true, minimum: 0, maximum: 99999999999.999 }
+        cantidadAceptada: { type: number, multipleOf: 0.001, minimum: 0, maximum: 99999999999.999 }
+        cantidadRechazada: { type: number, multipleOf: 0.001, minimum: 0, maximum: 99999999999.999 }
+        precioUnitarioRecibido: { type: number, multipleOf: 0.01, minimum: 0, maximum: 999999999999.99 }
+        motivoRechazo: { type: string, nullable: true }
+    PurchaseReceiptLine:
+      allOf:
+        - { $ref: '#/components/schemas/PurchaseReceiptLineCreate' }
+        - { type: object, required: [id], properties: { id: { type: integer, format: int64 } } }
+    PurchaseReceipt:
+      type: object
+      additionalProperties: false
+      required: [id, folio, ordenCompraId, almacenId, registradaPorUsuarioId, claveIdempotencia, fecha, estado, detalles]
+      properties:
+        id: { type: integer, format: int64 }
+        folio: { type: string, maxLength: 30, description: 'Generado por el servidor: RC- y 12 dígitos de una secuencia PostgreSQL.' }
+        ordenCompraId: { type: integer, format: int64 }
+        almacenId: { type: integer, format: int64 }
+        registradaPorUsuarioId: { type: integer, format: int64 }
+        claveIdempotencia: { type: string }
+        fecha: { type: string, format: date-time }
+        estado: { type: string, enum: [PENDIENTE, CONFIRMADA, CANCELADA] }
+        referenciaExterna: { type: string, nullable: true }
+        confirmadaEn: { type: string, format: date-time, nullable: true }
+        detalles: { type: array, items: { $ref: '#/components/schemas/PurchaseReceiptLine' } }
+    Stock:
+      type: object
+      additionalProperties: false
+      required: [productoId, almacenId, cantidadFisica, cantidadReservada, cantidadDisponible]
+      properties:
+        productoId: { type: integer, format: int64 }
+        almacenId: { type: integer, format: int64 }
+        cantidadFisica: { type: number }
+        cantidadReservada: { type: number }
+        cantidadDisponible: { type: number }
+    DepartmentPage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/Department' } } } } ] }
+    SupplierPage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/Supplier' } } } } ] }
+    WarehousePage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/Warehouse' } } } } ] }
+    ProductPage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/Product' } } } } ] }
+    PurchaseOrderPage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/PurchaseOrder' } } } } ] }
+    PurchaseReceiptPage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/PurchaseReceipt' } } } } ] }
+    StockPage: { allOf: [ { $ref: '#/components/schemas/PageMetadata' }, { type: object, required: [content], properties: { content: { type: array, items: { $ref: '#/components/schemas/Stock' } } } } ] }
+    PageMetadata:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }

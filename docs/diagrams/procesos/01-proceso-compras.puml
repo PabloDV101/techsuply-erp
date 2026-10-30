@@ -55,6 +55,7 @@ if (¿Aprueba requisicion?) then (Si)
   :Registrar cantidades recibidas;
   :Separar cantidades aceptadas y rechazadas;
   |Sistema ERP|
+  :Crear recepcion PENDIENTE con clave de idempotencia;
   :Validar cantidades contra saldo pendiente;
   if (¿Recepcion valida?) then (Si)
     :Iniciar transaccion;
@@ -63,12 +64,16 @@ if (¿Aprueba requisicion?) then (Si)
     :Registrar movimiento de entrada;
     :Calcular pendiente con unidades aceptadas;
     :Registrar auditoria;
-    :Confirmar transaccion;
     if (¿Orden totalmente recibida?) then (Si)
       :Marcar orden como RECIBIDA;
     else (No)
-      :Marcar orden como PARCIALMENTE_RECIBIDA;
+      if (¿Hay unidades aceptadas acumuladas?) then (Si)
+        :Marcar orden como PARCIALMENTE_RECIBIDA;
+      else (No)
+        :Mantener orden ENVIADA;
+      endif
     endif
+    :Confirmar transaccion;
     |Contabilidad|
     :Registrar factura del proveedor;
     |Sistema ERP|
@@ -83,7 +88,7 @@ if (¿Aprueba requisicion?) then (Si)
     :Registrar evento de auditoria;
     stop
   else (No)
-    :Mantener recepcion en BORRADOR;
+    :Mantener recepcion en PENDIENTE;
     :Registrar discrepancia para revision;
     stop
   endif

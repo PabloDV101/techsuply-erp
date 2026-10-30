@@ -27,8 +27,9 @@ la auditoría de un flujo que todavía no existe.
   manejador HTTP común para anotar un 403. La dependencia queda en dirección
   `audit → common`; `common` no importa clases de `audit`. El manejador de seguridad
   conserva su ruta específica de denegación y ambos devuelven el mismo `ApiError`.
-- El detalle es una lista cerrada de **nombres de campos modificados** y etiquetas
-  `ACTIVO`/`INACTIVO`. No guarda valores previos/nuevos, contraseña, hash, token, nombre de
+- El detalle es una lista cerrada de **nombres de campos modificados** y etiquetas de estado
+  de activación y de recepción/orden (`ACTIVO`, `INACTIVO`, `PENDIENTE`, `CONFIRMADA`,
+  `ENVIADA`, `PARCIALMENTE_RECIBIDA` y `RECIBIDA`). No guarda otros valores previos/nuevos, contraseña, hash, token, nombre de
   usuario intentado, IP ni cuerpo de solicitud. Los IDs de recurso son los ya públicos del
   dominio. `motivo_codigo` admite los códigos constantes `CREDENTIALS_REJECTED` y
   `PERMISSION_DENIED` para rechazos.

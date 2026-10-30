@@ -1,6 +1,6 @@
 @startuml ERP_02_Compras_Inventario
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+caption VISTA MIXTA · Órdenes y confirmación de recepción implementadas; facturas y otros movimientos son objetivo.
  title TechSupply Solutions - Vista logica: Compras e inventario (modelo objetivo)
  hide circle
 
@@ -19,34 +19,41 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   -cantidadSolicitada: Decimal
   -cantidadAprobada: Decimal
 }
-  class OrdenCompra {
+  class OrdenCompra <<implementado>> {
   -id: Long
   -folio: String
-  -fechaEmision: DateTime
+  -fecha: Instant
   -estado: EstadoOrdenCompra
   -aprobadaEn: DateTime
   -motivoRechazo: String
   -subtotal: Decimal
   -impuestos: Decimal
   -total: Decimal
+  +agregarDetalle(detalle)
+  +enviarAprobacion()
+  +aprobar(actor, instante)
+  +registrarEnvio()
 }
-  class DetalleOrdenCompra {
+  class DetalleOrdenCompra <<implementado>> {
   -id: Long
   -cantidad: Decimal
   -precioUnitario: Decimal
   -descuentoPct: Decimal
   -tasaImpuesto: Decimal
-  +calcularPendiente(): Decimal
 }
-  class RecepcionCompra {
+  class CalculoOrden <<implementado>> {
+  +calcular(lineas): Totales
+  +pendiente(ordenada, aceptada): BigDecimal
+  }
+  class RecepcionCompra <<implementado>> {
   -id: Long
   -folio: String
-  -fechaRecepcion: DateTime
+  -fecha: Instant
   -claveIdempotencia: String
   -estado: EstadoRecepcion
-  +confirmar()
+  +confirmar(instante)
 }
-  class DetalleRecepcion {
+  class DetalleRecepcion <<implementado>> {
   -id: Long
   -cantidadRecibida: Decimal
   -cantidadAceptada: Decimal
@@ -91,24 +98,26 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 }
  }
  package "Inventario" {
-  class Existencia {
+  class Existencia <<implementado>> {
   -id: Long
   -cantidadFisica: Decimal
   -cantidadReservada: Decimal
   -costoPromedio: Decimal
   -version: Integer
-  +consultarDisponible(): Decimal
 }
-  class MovimientoInventario {
+  class MovimientoInventario <<implementado>> {
   -id: Long
-  -fechaHora: DateTime
-  -tipo: TipoMovimiento
+  -fecha: Instant
+  -tipo: String
   -motivo: String
   -cantidad: Decimal
   -costoUnitario: Decimal
   -claveOperacion: String
-  +revertir()
 }
+  note right of MovimientoInventario
+    V7 solo admite entradas por recepción;
+    relaciones de producto y almacén se almacenan como IDs.
+  end note
   class ConteoInventario {
   -id: Long
   -folio: String
@@ -163,7 +172,7 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   CONVERTIDA
   CANCELADA
 }
- enum EstadoOrdenCompra {
+ enum EstadoOrdenCompra <<implementado>> {
   BORRADOR
   PENDIENTE_APROBACION
   APROBADA
@@ -233,9 +242,11 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  RequisicionCompra "0..*" --> "0..1" Usuario : aprobador
  RequisicionCompra "0..1" <-- "0..*" OrdenCompra : origen opcional
  OrdenCompra "0..*" --> "1" Proveedor
+ OrdenCompra "0..*" --> "1" Departamento
  OrdenCompra "0..*" --> "1" Usuario : creada por
  OrdenCompra "0..*" --> "0..1" Usuario : aprobada por
- OrdenCompra "1" *-- "1..*" DetalleOrdenCompra
+ OrdenCompra "1" *-- "0..*" DetalleOrdenCompra : borrador puede estar vacío
+ OrdenCompra ..> CalculoOrden
  DetalleOrdenCompra "0..*" --> "1" Producto
  OrdenCompra "1" -- "0..*" RecepcionCompra
  RecepcionCompra "0..*" --> "1" Almacen

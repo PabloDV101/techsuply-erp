@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.5 — seguridad, categorías, auditoría y bandeja interna actuales; resto modelo objetivo; SRS-TSS-ERP-001.
+// Versión 1.7 — V1–V6 físicos y V7 parcial; los cuatro catálogos maestros tienen API; resto modelo objetivo; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'v1.5. seguridad_implementada (V1/V2), categorias_implementadas (V3), auditoria_implementada (V4) y notificaciones_implementadas (V5) existen hoy. Las demás tablas son OBJETIVO. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; órdenes, registro de recepción y consulta de existencias tienen API. Los campos y tablas futuros permanecen como objetivo. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -16,7 +16,7 @@ Table departamentos [headercolor: #2E86C1] {
   codigo varchar(20) [not null, unique]
   nombre varchar(100) [not null]
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V6, JPA, servicio y API implementados. Código canónico en mayúsculas sin espacios extremos; CHECK de nombre no vacío.'
 }
 
 Table puestos [headercolor: #2E86C1] {
@@ -69,7 +69,7 @@ Table proveedores [headercolor: #2E86C1] {
   direccion text
   plazo_credito_dias smallint [not null, default: 0]
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V6, JPA, servicio y API implementados. Código canónico; plazo no negativo; identificador fiscal único si existe.'
 }
 
 Table categorias_producto [headercolor: #2E86C1] {
@@ -79,7 +79,7 @@ Table categorias_producto [headercolor: #2E86C1] {
   descripcion varchar(250)
   categoria_padre_id bigint
   activa boolean [not null, default: true]
-  Note: 'IMPLEMENTADO en V3. La FK a categoría padre, CHECK de autopadre, unicidad de código e índice de padre existen en PostgreSQL; el servicio evita ciclos con bloqueo transaccional. La API activa/desactiva sin borrado físico. Productos y su FK a esta tabla aún son objetivo.'
+  Note: 'IMPLEMENTADO en V3. La FK a categoría padre, CHECK de autopadre, unicidad de código e índice de padre existen en PostgreSQL; el servicio evita ciclos con bloqueo transaccional. La API activa/desactiva sin borrado físico. La FK desde productos existe desde V6; API de productos pendiente.'
 }
 
 Table productos [headercolor: #2E86C1] {
@@ -96,7 +96,7 @@ Table productos [headercolor: #2E86C1] {
   punto_reorden numeric(14,3) [not null, default: 0, note: 'Umbral global por producto; confirmar si equivale al stock mínimo de RF-MAE-01 y RF-INV-07.']
   cantidad_reorden numeric(14,3) [not null, default: 1]
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V6, JPA, servicio y API implementados. CHECK de SKU canónico, nombre/unidad no vacíos, importes y umbrales no negativos, tasa 0–100; índices de categoría/estado y proveedor principal.'
 }
 
 Table almacenes [headercolor: #2E86C1] {
@@ -106,7 +106,7 @@ Table almacenes [headercolor: #2E86C1] {
   sede varchar(120)
   ubicacion varchar(200)
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V6, JPA, servicio y API implementados. Código canónico y CHECK de nombre no vacío.'
 }
 
 // ==================== SEGURIDAD ====================
@@ -246,7 +246,7 @@ Table ordenes_compra [headercolor: #28B463] {
   impuestos numeric(14,2) [not null, default: 0]
   total numeric(14,2) [not null, default: 0]
   observaciones text
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'OBJETIVO con SQL parcial V7, JPA y API de órdenes; requisicion_id aún no existe.'
 }
 
 Table detalles_orden_compra [headercolor: #28B463] {
@@ -258,7 +258,7 @@ Table detalles_orden_compra [headercolor: #28B463] {
   descuento_pct numeric(5,2) [not null, default: 0]
   tasa_impuesto numeric(5,2) [not null]
   indexes { (orden_compra_id, producto_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Conserva cantidad, precio, descuento e impuesto acordados aunque cambie el catálogo. Lo recibido se deriva de detalles_recepcion.'
+  Note: 'OBJETIVO con SQL V7, JPA y API de órdenes. Conserva cantidad, precio, descuento e impuesto acordados aunque cambie el catálogo. Lo recibido se deriva de detalles_recepcion.'
 }
 
 Table recepciones_compra [headercolor: #28B463] {
@@ -272,7 +272,7 @@ Table recepciones_compra [headercolor: #28B463] {
   estado varchar(20) [not null, note: 'PENDIENTE, CONFIRMADA, CANCELADA']
   referencia_externa varchar(80)
   confirmada_en timestamptz
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'OBJETIVO con SQL V7, JPA y API de registro, consulta y confirmación implementadas.'
 }
 
 Table detalles_recepcion [headercolor: #28B463] {
@@ -285,7 +285,7 @@ Table detalles_recepcion [headercolor: #28B463] {
   precio_unitario_recibido numeric(14,2) [not null]
   motivo_rechazo text
   indexes { (recepcion_id, detalle_orden_compra_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Al confirmar: cantidad_aceptada + cantidad_rechazada = cantidad_recibida. Solo aceptadas incrementan existencias en la misma transacción.'
+  Note: 'OBJETIVO con SQL V7, JPA y confirmación implementados. Al confirmar: cantidad_aceptada + cantidad_rechazada = cantidad_recibida. Solo aceptadas incrementan existencias en la misma transacción.'
 }
 
 Table facturas_proveedor [headercolor: #28B463] {
@@ -344,7 +344,7 @@ Table existencias [headercolor: #D68910] {
   costo_promedio numeric(14,4) [not null, default: 0]
   version int [not null, default: 0, note: 'Control optimista; usar bloqueo/actualización condicional para operaciones críticas.']
   indexes { (producto_id, almacen_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Disponible = cantidad_fisica - cantidad_reservada. CHECKs de no negatividad y reservada <= física deben estar en PostgreSQL.'
+  Note: 'OBJETIVO con SQL V7, JPA y API de lectura. Disponible = cantidad_fisica - cantidad_reservada. CHECKs de no negatividad y reservada <= física deben estar en PostgreSQL.'
 }
 
 Table movimientos_inventario [headercolor: #D68910] {
@@ -366,7 +366,7 @@ Table movimientos_inventario [headercolor: #D68910] {
   movimiento_reversado_de_id bigint [unique]
   clave_operacion varchar(120) [not null, unique, note: 'Clave idempotente de cada movimiento; evita duplicados por reintentos.']
   referencia text
-  Note: 'OBJETIVO: tabla aún no implementada. Kardex inmutable. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
+  Note: 'OBJETIVO con SQL parcial V7 y JPA; solo entradas por recepción implementadas, fuentes futuras pendientes. Kardex inmutable objetivo. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
 }
 
 Table conteos_inventario [headercolor: #D68910] {
@@ -939,8 +939,8 @@ Ref: empleados.jefe_id > empleados.id
 Ref fk_futura_usuarios_cliente: usuarios.cliente_id - clientes.id
 Ref fk_futura_usuarios_empleado: usuarios.empleado_id - empleados.id
 Ref: categorias_producto.categoria_padre_id > categorias_producto.id // V3: FK actual
-Ref: productos.categoria_id > categorias_producto.id // OBJETIVO: productos aún no existe
-Ref: productos.proveedor_principal_id > proveedores.id
+Ref: productos.categoria_id > categorias_producto.id // V6: FK actual
+Ref: productos.proveedor_principal_id > proveedores.id // V6: FK actual
 
 // Seguridad: las siete FK siguientes existen en V1; las demás son diseño objetivo.
 Ref: usuarios_roles.usuario_id > usuarios.id
@@ -1111,14 +1111,17 @@ TableGroup notificaciones_implementadas {
   notificaciones
 }
 
-TableGroup erp_objetivo {
+TableGroup maestros_jpa_v6 {
   departamentos
-  puestos
-  empleados
-  clientes
   proveedores
   productos
   almacenes
+}
+
+TableGroup erp_objetivo {
+  puestos
+  empleados
+  clientes
   solicitudes_autorizacion
   requisiciones_compra
   detalles_requisicion

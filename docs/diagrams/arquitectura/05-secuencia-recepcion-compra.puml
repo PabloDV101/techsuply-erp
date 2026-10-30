@@ -1,7 +1,7 @@
 @startuml TSS_Secuencia_Recepcion
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title Confirmacion transaccional de recepcion - modelo objetivo
+caption IMPLEMENTADO · Registro, confirmación transaccional e idempotencia de recepción.
+ title Confirmacion transaccional de recepcion
  hide footbox
 
  actor "Almacen" as User
@@ -13,20 +13,31 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  entity "MovimientoInventario" as Movement
  entity "EventoAuditoria" as Audit
 
- User -> API : confirmarRecepcion(id, claveIdempotencia)
- API -> Service : confirmar(id, usuario, clave)
+ User -> API : registrarRecepcion(datos, claveIdempotencia)
+ API -> Service : registrar(datos, usuario, clave)
+ Service -> Documents : guardar recepcion PENDIENTE
+ Service --> API : recepcion registrada
+ API --> User : HTTP 201 / recepcion pendiente
+ User -> API : confirmarRecepcion(id)
+ API -> Service : confirmar(id, usuario)
+ Service -> Documents : bloquear orden, recepción y líneas
  Service -> Service : validar permiso, estado e idempotencia
- alt validacion y escrituras exitosas
+ alt recepción ya confirmada
+  Service --> API : recepción existente
+  API --> User : HTTP 200 sin cambios
+ else validacion y escrituras exitosas
   group Unidad transaccional: recepción, stock, movimiento y auditoría
   Service -> Documents : validar orden y lineas pendientes
   Documents --> Service : recibidas, aceptadas, rechazadas
   Service -> Service : validar aceptadas + rechazadas = recibidas
-  Service -> Inventory : registrarEntrada por DetalleRecepcion aceptado
+  loop por línea con cantidad aceptada positiva
+  Service -> Inventory : registrarEntradaRecepcion(detalleId)
   Inventory -> Stock : bloquear/leer existencia producto-almacen
   Stock --> Inventory : cantidad fisica y reservada
   Inventory -> Stock : incrementar fisica por cantidad aceptada
   Inventory -> Movement : insertar movimiento con detalle_recepcion_id
-  Service -> Documents : marcar detalle y recepcion confirmados
+  end
+  Service -> Documents : actualizar orden y recepcion confirmada
   Service -> Audit : registrar actor, referencia y resultado
   end
   Service --> API : resultado confirmado

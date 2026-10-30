@@ -30,15 +30,25 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
   }
   package "maestros" {
     component "CategoriaProductoController / Service\nDTO / Entity / Repository / Specifications" as Categories <<implementado>>
+    component "Departamento / Proveedor / Almacen\nController / Service / DTO / Entity / Repository\nCatalogoParaCompras" as MasterCatalogs <<implementado>>
+    component "Producto\nController / Service / DTO / Entity / Repository" as MasterPersistence <<implementado>>
   }
   package "audit" {
     component "AuditController / AuditTrail / AuditQueryService\nAuditEvent / AuditEventRepository" as AuditModule <<implementado>>
+  }
+  package "compras" {
+    component "OrdenCompra / DetalleOrdenCompra\nEstadoOrdenCompra / CalculoOrden / repositorios" as PurchaseDomain <<implementado>>
+    component "OrdenCompraController / OrdenCompraService\nDTO / validación" as PurchaseApi <<implementado>>
+    component "RecepcionCompraController / Service\nRecepcionCompra / DetalleRecepcion / DTO / repositorios" as ReceiptApi <<implementado>>
+  }
+  package "inventario" {
+    component "ExistenciaController / InventarioService\nExistencia / MovimientoInventario / ValoracionInventario\nrepositorios / DTO" as Inventory <<implementado>>
   }
   package "notifications" {
     component "NotificationController / NotificationPublisher\nInboxService / InternalNotification / Writer" as NotificationModule <<implementado>>
   }
   package "Paquetes de negocio previstos · aún no existen" {
-    component "resto de maestros / compras / inventario / ventas\ncontabilidad / rrhh / reportería / productores de avisos" as Future <<objetivo>>
+    component "ventas / contabilidad / rrhh\nreportería / productores de avisos" as Future <<objetivo>>
   }
 }
 package "src/main/resources" {
@@ -49,6 +59,8 @@ package "src/main/resources" {
     artifact "V3__product_categories.sql" as V3
     artifact "V4__audit_events.sql" as V4
     artifact "V5__internal_notifications.sql" as V5
+    artifact "V6__master_purchase_catalogs.sql" as V6
+    artifact "V7__purchase_receipt_inventory_core.sql" as V7
   }
 }
 package "src/test/java/com/techsupply/erp_backend" {
@@ -58,6 +70,15 @@ package "src/test/java/com/techsupply/erp_backend" {
   artifact "CategoriaProductoIntegrationIT" as CategoryIT <<implementado>>
   artifact "AuditIntegrationIT" as AuditIT <<implementado>>
   artifact "NotificationRequestTest / NotificationOpenApiContractTest\nNotificationIntegrationIT" as NotificationIT <<implementado>>
+  artifact "MasterCatalogMigrationIT" as CatalogMigrationIT <<implementado>>
+  artifact "MasterCatalogPersistenceIT" as CatalogPersistenceIT <<implementado>>
+  artifact "MasterCatalogApiIT / MasterCatalogOpenApiContractTest" as CatalogApiIT <<implementado>>
+  artifact "PurchaseCoreMigrationIT" as PurchaseMigrationIT <<implementado>>
+  artifact "CalculoOrdenTest / OrdenCompraPersistenceIT" as PurchaseTests <<implementado>>
+  artifact "OrdenCompraApiIT / OrdenCompraOpenApiContractTest" as PurchaseApiTests <<implementado>>
+  artifact "ValoracionInventarioTest / InventarioIntegrationIT\nInventarioOpenApiContractTest" as InventoryTests <<implementado>>
+  artifact "RecepcionCompraApiIT / RecepcionCompraOpenApiContractTest" as ReceiptTests <<implementado>>
+  artifact "ConfirmarRecepcionIT" as ConfirmationTests <<implementado>>
 }
 Main ..> Config
 ApiClasses ..> AppClasses
@@ -69,14 +90,49 @@ AuditIT ..> V4
 AuditModule ..> V4
 NotificationModule ..> V5
 NotificationIT ..> V5
+CatalogMigrationIT ..> V6
+PurchaseMigrationIT ..> V7
+PurchaseDomain ..> V7 : mapeo JPA
+PurchaseTests ..> PurchaseDomain
+PurchaseApi ..> PurchaseDomain
+PurchaseApi ..> MasterCatalogs : catálogo para compras
+PurchaseApi ..> MasterPersistence : productos
+PurchaseApi ..> AuditModule : auditoría
+PurchaseApi ..> GlobalErrors : paginación / errores
+PurchaseApiTests ..> PurchaseApi
+ReceiptApi ..> PurchaseDomain : orden y líneas
+ReceiptApi ..> MasterCatalogs : almacén activo
+ReceiptApi ..> AuditModule : auditoría
+ReceiptApi ..> V7 : JPA y secuencia
+ReceiptTests ..> ReceiptApi
+ReceiptApi ..> Inventory : entrada transaccional
+ConfirmationTests ..> ReceiptApi
+Inventory ..> V7 : JPA / SQL transaccional
+Inventory ..> GlobalErrors : paginación / errores
+InventoryTests ..> Inventory
+CatalogPersistenceIT ..> MasterPersistence
+CatalogPersistenceIT ..> V6
+MasterPersistence ..> V6 : mapeo JPA
+MasterCatalogs ..> V6 : mapeo JPA
+MasterCatalogs ..> AuditModule : cambios
+MasterCatalogs ..> GlobalErrors : paginación / errores
+CatalogApiIT ..> MasterCatalogs
+MasterPersistence ..> Categories : categoria V3
 Categories ..> AuditModule : cambios relevantes
 AppClasses ..> AuditModule : seguridad
 AppClasses ..> Models
 AppClasses ..> Repos
 SecurityClasses ..> Repos
-note bottom of V5
-  Flyway ejecuta V1, V2, V3, V4 y V5 en orden de versión.
+note bottom of V6
+  Flyway ejecuta V1–V7 en orden de versión.
+  V6 crea cuatro tablas y permisos. Los cuatro catálogos tienen API.
   El orden de ejecución no es una asociación estructural UML.
+end note
+note bottom of V7
+  SQL parcial de compras e inventario; entidades de orden implementadas,
+  Órdenes, recepción y consulta de existencias implementadas;
+  fuentes adicionales de inventario permanecen pendientes.
+  El modelo objetivo incluye fuentes adicionales aún no creadas.
 end note
 Integration ..> V1
 Unit ..> AppClasses

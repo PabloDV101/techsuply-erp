@@ -23,8 +23,8 @@ paths:
         - { name: sort, in: query, schema: { type: string, enum: [fecha, id], default: fecha } }
         - { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
         - { name: usuarioId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
-        - { name: modulo, in: query, description: Código exacto; mayúsculas, números y guion bajo., schema: { type: string, minLength: 1, maxLength: 40 } }
-        - { name: entidad, in: query, description: Código exacto; mayúsculas, números y guion bajo., schema: { type: string, minLength: 1, maxLength: 80 } }
+        - { name: modulo, in: query, description: 'Código exacto; mayúsculas, números y guion bajo.', schema: { type: string, minLength: 1, maxLength: 40 } }
+        - { name: entidad, in: query, description: 'Código exacto; mayúsculas, números y guion bajo.', schema: { type: string, minLength: 1, maxLength: 80 } }
         - { name: entidadId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
         - { name: desde, in: query, description: Inicio inclusivo en UTC/RFC 3339., schema: { type: string, format: date-time } }
         - { name: hasta, in: query, description: Fin inclusivo en UTC/RFC 3339; debe ser mayor o igual a desde., schema: { type: string, format: date-time } }
@@ -66,8 +66,8 @@ components:
         motivoCodigo: { type: string, nullable: true }
         fecha: { type: string, format: date-time }
         camposModificados: { type: array, items: { type: string } }
-        estadoAnterior: { type: string, nullable: true, enum: [ACTIVO, INACTIVO] }
-        estadoNuevo: { type: string, nullable: true, enum: [ACTIVO, INACTIVO] }
+        estadoAnterior: { type: string, nullable: true, enum: [ACTIVO, INACTIVO, PENDIENTE, CONFIRMADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA] }
+        estadoNuevo: { type: string, nullable: true, enum: [ACTIVO, INACTIVO, PENDIENTE, CONFIRMADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA] }
     ApiError:
       type: object
       required: [status, code, message]

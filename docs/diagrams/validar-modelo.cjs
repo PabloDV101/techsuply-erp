@@ -13,6 +13,7 @@ const migrations = [
   ['V3__product_categories.sql', 'categorias_implementadas', 1],
   ['V4__audit_events.sql', 'auditoria_implementada', 1],
   ['V5__internal_notifications.sql', 'notificaciones_implementadas', 1],
+  ['V6__master_purchase_catalogs.sql', 'maestros_jpa_v6', 4],
 ];
 const tables = [];
 const implementationGroups = new Map();
@@ -57,6 +58,39 @@ for (const [, name, body] of tables) {
 const actualRefs = schema.refs.filter(r => r.endpoints.every(e => implemented.has(e.tableName)))
   .map(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>'));
 assert.deepEqual(actualRefs.sort(), expectedRefs.sort(), 'Implemented foreign keys differ');
+// V7 implements a subset of the target model: future document references remain in DBML.
+const v7 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V7__purchase_receipt_inventory_core.sql'), 'utf8');
+const v7Tables = [...v7.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.equal(v7Tables.length, 6, 'Review V7 table count');
+const futureFields = {
+  ordenes_compra: ['requisicion_id'],
+  movimientos_inventario: ['detalle_despacho_id', 'detalle_ajuste_id', 'detalle_devolucion_proveedor_id',
+    'detalle_devolucion_cliente_id', 'detalle_pedido_id', 'movimiento_reversado_de_id'],
+};
+for (const [, name, body] of v7Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target, `Missing V7 table ${name}`);
+  const columns = [...body.matchAll(/^    (\w+) (\w+(?:\(\d+(?:,\d+)?\))?)([^\n]*)/gm)]
+    .filter(c => !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(),
+    columns.map(c => c[1]).concat(futureFields[name] || []).sort(), `${name}: V7/target columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: missing primary key`);
+    // V7 supports reception entries only; the target allows other sources.
+    if (!(name === 'movimientos_inventario' && column === 'detalle_recepcion_id')) {
+      assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: nullability differs`);
+      if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: missing uniqueness`);
+    }
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: missing FK`);
+  }
+  for (const unique of body.matchAll(/UNIQUE\s*\(([^)]+)\)/g)) {
+    const fields = unique[1].split(',').map(x => x.trim()).sort();
+    assert.ok(target.indexes.some(i => i.unique && JSON.stringify(i.columns.map(c => c.value).sort()) === JSON.stringify(fields)), `${name}: missing composite uniqueness`);
+  }
+}
 for (const groupName of new Set(implementationGroups.values())) {
   assert.equal(schema.tables.filter(t => t.group?.name === groupName).length,
     [...implementationGroups.values()].filter(g => g === groupName).length);
@@ -66,5 +100,6 @@ for (const table of schema.tables) {
 }
 assert.ok(!/\buuid\b|gen_random_uuid/i.test(primary), 'Stale UUID policy');
 console.log(`DBML OK: ${schema.tables.length} tables, ${schema.refs.length} relationships; both copies identical.`);
-console.log(`Implemented schema matches V1/V3/V4/V5: ${tables.length} tables, column types/nullability, PK/unique constraints and ${expectedRefs.length} foreign keys.`);
+console.log(`Implemented schema matches V1/V3/V4/V5/V6: ${tables.length} tables, column types/nullability, PK/unique constraints and ${expectedRefs.length} foreign keys.`);
+console.log('V7 partial target comparison: 6 tables, columns/types, nullability, declared uniqueness and SQL foreign keys. Future fields remain in DBML.');
 console.log('CHECK, triggers and partial indexes are described in notes; executable authority remains Flyway SQL.');

@@ -105,7 +105,7 @@ components:
     Unauthorized: { description: Token ausente o no válido, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
     Forbidden: { description: Permiso insuficiente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
     NotFound: { description: Categoría o padre inexistente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
-    Conflict: { description: Código duplicado, ciclo o restricción de integridad, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Conflict: { description: 'Código duplicado, ciclo o restricción de integridad', content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
   schemas:
     CrearCategoriaRequest:
       type: object

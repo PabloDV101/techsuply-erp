@@ -224,7 +224,7 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-MAE-02 — Categorías (Media).** El sistema deberá gestionar categorías jerárquicas y asociarlas a productos.  
 *Criterio:* cada producto activo puede consultarse por su categoría; una categoría no puede ser padre de sí misma ni formar ciclos.
 
-*Estado de implementación (Fase 2):* crear, consultar, listar, actualizar y activar/desactivar categorías, con control de ciclos y permisos, está implementado y probado. La asociación y consulta de productos por categoría sigue pendiente porque `productos` aún no existe en las migraciones; por ello RF-MAE-02 no está cerrado en su totalidad.
+*Estado de implementación (Fase 2):* crear, consultar, listar, actualizar y activar/desactivar categorías, con control de ciclos y permisos, está implementado y probado. En Fase 2 `productos` no existía en las migraciones. V6 añadió su tabla y FK; la parte 4 de Fase 3 implementó y probó la asociación y consulta por categoría mediante API.
 
 **RF-MAE-03 — Proveedores (Alta).** El sistema deberá gestionar datos y estado de proveedores, incluyendo contacto, dirección y condiciones de pago.  
 *Criterio:* una orden nueva requiere proveedor activo; las órdenes históricas mantienen la referencia a su proveedor.
@@ -246,11 +246,17 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-COM-03 — Orden de compra (Alta).** El sistema deberá generar órdenes de compra vinculadas a un proveedor y con folio único, detalles, cantidades, costos, descuentos, impuestos y estados definidos.  
 *Criterio:* cada orden contiene al menos un detalle y conserva precios del momento de emisión.
 
+*Estado de implementación (Fase 3, parte 7):* la API crea órdenes con líneas y folio, consulta y permite las transiciones hasta envío con autorización y auditoría. La vinculación a requisiciones, cancelación y recepciones permanecen pendientes; no se declara completo el proceso de compras.
+
 **RF-COM-04 — Seguimiento y recepción parcial (Alta).** El sistema deberá consultar el estado de la orden y permitir múltiples recepciones parciales.  
 *Criterio:* una orden cambia a parcialmente recibida mientras queden cantidades pendientes y a recibida al completar las cantidades aplicables.
 
+*Estado de implementación (Fase 3, parte 10):* las recepciones confirmadas actualizan la orden según sus cantidades aceptadas; se comprobaron una recepción parcial y otra que completa la orden en `ConfirmarRecepcionIT`.
+
 **RF-COM-05 — Confirmar recepción (Alta).** El sistema deberá registrar cantidades recibidas, aceptadas y rechazadas por detalle, usuario, almacén y fecha.  
 *Criterio:* aceptadas + rechazadas = recibidas; solo unidades aceptadas actualizan stock y el movimiento queda en la misma transacción.
+
+*Estado de implementación (Fase 3, parte 9):* se registran, consultan y confirman recepciones con idempotencia. La confirmación valida igualdad y saldo, y registra entrada, estado documental y auditoría en la misma transacción; `ConfirmarRecepcionIT` comprueba CA-01, rollback y concurrencia.
 
 **RF-COM-06 — Factura de proveedor (Alta).** El sistema deberá registrar una factura de proveedor y validarla contra orden y recepciones antes de crear la cuenta por pagar. Para el MVP se permite una factura por orden.  
 *Criterio:* diferencias o documentos faltantes impiden marcar la validación como completada; la operación no duplica cuentas por pagar.
@@ -476,7 +482,7 @@ Esta decisión limita la complejidad de despliegue y permite operaciones transac
 4. **Persistencia e infraestructura:** implementaciones de repositorios, JPA/Hibernate, migraciones y conexiones externas. Implementa contratos definidos por capas superiores.
 5. **Servicios compartidos:** auditoría, autorización común, validación, reportería, errores y notificaciones. No se deben convertir en un conjunto de dependencias globales que permita saltarse los límites de los módulos.
 
-**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración y errores propios de seguridad. `com.techsupply.erp_backend.common.api` implementa el formato de error, el `@RestControllerAdvice` global y contratos acotados de paginación. `com.techsupply.erp_backend.maestros` implementa únicamente el catálogo jerárquico de categorías de producto; el resto de Gestión Maestra sigue pendiente. `audit` registra eventos de seguridad y categorías; `notifications` aporta la bandeja interna APP, lectura por destinatario y un publicador posterior al commit, sin productores de negocio conectados. El advice de seguridad conserva prioridad para sus endpoints. Las entidades actuales contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Portal React integrado, CORS, Nginx/TLS, SMTP, notificaciones automáticas de negocio y jobs de despliegue/backup siguen pendientes.
+**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración y errores propios de seguridad. `com.techsupply.erp_backend.common.api` implementa el formato de error, el `@RestControllerAdvice` global y contratos acotados de paginación. `com.techsupply.erp_backend.maestros` expone categorías y, desde la parte 3 de Fase 3, departamentos, proveedores y almacenes con DTO, permisos, paginación, baja lógica y auditoría; V6 también creó la tabla de productos y la parte 4 agregó su servicio/API. V7 añade el esquema inicial de compras e inventario; orden y detalle tienen entidades, cálculo de dominio y API de órdenes; inventario expone consulta de existencias y entrada interna, y recepción ofrece registro, consulta y confirmación transaccional; `audit` registra eventos de seguridad y catálogos; `notifications` aporta la bandeja interna APP, lectura por destinatario y un publicador posterior al commit, sin productores de negocio conectados. El advice de seguridad conserva prioridad para sus endpoints. Las entidades actuales contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Portal React integrado, CORS, Nginx/TLS, SMTP, notificaciones automáticas de negocio y jobs de despliegue/backup siguen pendientes.
 
 ### 8.4 Módulos del dominio
 
@@ -605,8 +611,9 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 
 | Grupo de requisitos | Caso de uso/proceso | Clases principales | Prueba sugerida |
 |---|---|---|---|
-| RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT; asociación con productos pendiente |
-| RF-COM-01 a RF-COM-08 | Compras y recepción | RequisicionCompra, OrdenCompra, RecepcionCompra, FacturaProveedor | CA-01; validar recepción parcial y factura de proveedor |
+| RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT y MasterCatalogApiIT; consulta de productos por categoría |
+| RF-COM-03/04/05, RN-07/08/18 | Orden y recepción parcial | OrdenCompra, RecepcionCompra, InventarioService | `ConfirmarRecepcionIT`: CA-01, reintento, concurrencia y rollback |
+| RF-COM-01/02/06/07/08 | Requisición, factura y devolución | RequisicionCompra, FacturaProveedor y devolución | Pendiente de implementación y pruebas |
 | RF-INV-01 a RF-INV-07 | Inventario, conteo y ajuste | Existencia, MovimientoInventario, ConteoInventario, AjusteInventario | CA-01, CA-02, CA-03 |
 | RF-VEN-01 a RF-VEN-09 | Cotización, portal, pedido y despacho | Cotizacion, PedidoVenta, Despacho, FacturaVenta | CA-02, CA-03 |
 | RF-CON-01 a RF-CON-08 | Contabilidad y aplicaciones | AsientoContable, DetalleAsiento, CuentaPorCobrar/Pagar, aplicaciones | CA-04, CA-05 |

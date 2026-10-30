@@ -1,6 +1,6 @@
 @startuml ERP_01_Gestion_Maestra_Seguridad
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e integraciones pendientes.
+caption VISTA MIXTA · Seguridad, categorías y cuatro entidades JPA maestras implementadas; los cuatro catálogos tienen API.
  title TechSupply Solutions - Vista lógica: Gestión maestra y seguridad (actual y objetivo)
  hide circle
 
@@ -76,7 +76,7 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
 }
  }
  package "Estructura organizacional" {
-  class Empleado {
+  class Empleado <<objetivo>> {
   -id: Long
   -numeroEmpleado: String
   -nombres: String
@@ -84,13 +84,13 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
   -fechaIngreso: Date
   -activo: Boolean
 }
-  class Departamento {
+  class Departamento <<implementado>> {
   -id: Long
   -codigo: String
   -nombre: String
-  -activo: Boolean
+  -activo: boolean
 }
-  class Puesto {
+  class Puesto <<objetivo>> {
   -id: Long
   -codigo: String
   -nombre: String
@@ -98,7 +98,7 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
 }
  }
  package "Catalogos comerciales" {
-  class Cliente {
+  class Cliente <<objetivo>> {
   -id: Long
   -codigo: String
   -nombreRazonSocial: String
@@ -107,13 +107,17 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
   -plazoCreditoDias: Integer
   -activo: Boolean
 }
-  class Proveedor {
+  class Proveedor <<implementado>> {
   -id: Long
   -codigo: String
   -nombreRazonSocial: String
   -identificadorFiscal: String
-  -plazoCreditoDias: Integer
-  -activo: Boolean
+  -contacto: String
+  -correo: String
+  -telefono: String
+  -direccion: String
+  -plazoCreditoDias: short
+  -activo: boolean
 }
   class CategoriaProducto <<implementado>> {
   -id: Long
@@ -122,22 +126,26 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
   -descripcion: String [0..1]
   -activa: Boolean
 }
-  class Producto {
+  class Producto <<implementado>> {
   -id: Long
   -sku: String
   -nombre: String
+  -descripcion: String
   -unidadMedida: String
-  -precioLista: Decimal
-  -costoReferencia: Decimal
-  -puntoReorden: Decimal
-  -activo: Boolean
+  -precioLista: BigDecimal
+  -costoReferencia: BigDecimal
+  -tasaImpuesto: BigDecimal
+  -puntoReorden: BigDecimal
+  -cantidadReorden: BigDecimal
+  -activo: boolean
 }
-  class Almacen {
+  class Almacen <<implementado>> {
   -id: Long
   -codigo: String
   -nombre: String
   -sede: String
-  -activo: Boolean
+  -ubicacion: String
+  -activo: boolean
 }
  }
  enum EstadoAutorizacion {
@@ -188,8 +196,10 @@ caption VISTA MIXTA · Seguridad y categorías implementadas; otros catálogos e
   Vigencia de dos horas; revocado_en invalida solicitudes posteriores.
  end note
  note bottom of Producto
+  Entidad JPA con categoria obligatoria y proveedor principal opcional.
   SKU unico. El stock real no se guarda en Producto:
-  existencias se controla por producto y almacen.
+  existencias por producto y almacen siguen pendientes.
+  Aun no existen servicio ni API HTTP de productos.
  end note
  note bottom of EventoAuditoria
   IMPLEMENTADO V4: solo adición para seguridad y categorías.
