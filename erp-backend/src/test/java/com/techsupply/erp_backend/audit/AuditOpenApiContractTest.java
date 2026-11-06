@@ -2,6 +2,7 @@ package com.techsupply.erp_backend.audit;
 
 import com.techsupply.erp_backend.audit.api.AuditController;
 import com.techsupply.erp_backend.audit.application.AuditEventResponse;
+import com.techsupply.erp_backend.audit.application.AuditState;
 import com.techsupply.erp_backend.common.api.ApiError;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import java.lang.reflect.RecordComponent;
@@ -80,5 +81,11 @@ class AuditOpenApiContractTest {
         assertThat(map(map(schemas.get("ApiError")).get("properties")).keySet())
             .containsExactlyInAnyOrderElementsOf(Arrays.stream(ApiError.class.getRecordComponents())
                 .map(RecordComponent::getName).toList());
+        var properties = map(map(schemas.get("AuditEvent")).get("properties"));
+        for (String field : List.of("estadoAnterior", "estadoNuevo")) {
+            Set<String> documented = ((List<?>) map(properties.get(field)).get("enum")).stream()
+                .map(Object::toString).collect(Collectors.toSet());
+            assertThat(documented).containsExactlyInAnyOrderElementsOf(Arrays.stream(AuditState.values()).map(Enum::name).toList());
+        }
     }
 }
