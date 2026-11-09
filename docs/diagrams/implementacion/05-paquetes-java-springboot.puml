@@ -61,6 +61,7 @@ package "src/main/resources" {
     artifact "V5__internal_notifications.sql" as V5
     artifact "V6__master_purchase_catalogs.sql" as V6
     artifact "V7__purchase_receipt_inventory_core.sql" as V7
+    artifact "V8__widen_inventory_cost_precision.sql" as V8
   }
 }
 package "src/test/java/com/techsupply/erp_backend" {
@@ -74,6 +75,7 @@ package "src/test/java/com/techsupply/erp_backend" {
   artifact "MasterCatalogPersistenceIT" as CatalogPersistenceIT <<implementado>>
   artifact "MasterCatalogApiIT / MasterCatalogOpenApiContractTest" as CatalogApiIT <<implementado>>
   artifact "PurchaseCoreMigrationIT" as PurchaseMigrationIT <<implementado>>
+  artifact "InventoryCostPrecisionMigrationIT" as CostMigrationIT <<implementado>>
   artifact "CalculoOrdenTest / OrdenCompraPersistenceIT" as PurchaseTests <<implementado>>
   artifact "OrdenCompraApiIT / OrdenCompraOpenApiContractTest" as PurchaseApiTests <<implementado>>
   artifact "ValoracionInventarioTest / InventarioIntegrationIT\nInventarioOpenApiContractTest" as InventoryTests <<implementado>>
@@ -92,6 +94,8 @@ NotificationModule ..> V5
 NotificationIT ..> V5
 CatalogMigrationIT ..> V6
 PurchaseMigrationIT ..> V7
+CostMigrationIT ..> V8
+Inventory ..> V8 : precisión de costos
 PurchaseDomain ..> V7 : mapeo JPA
 PurchaseTests ..> PurchaseDomain
 PurchaseApi ..> PurchaseDomain
@@ -124,7 +128,7 @@ AppClasses ..> Models
 AppClasses ..> Repos
 SecurityClasses ..> Repos
 note bottom of V6
-  Flyway ejecuta V1–V7 en orden de versión.
+  Flyway ejecuta V1–V8 en orden de versión.
   V6 crea cuatro tablas y permisos. Los cuatro catálogos tienen API.
   El orden de ejecución no es una asociación estructural UML.
 end note

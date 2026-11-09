@@ -198,12 +198,12 @@ caption VISTA MIXTA · Seguridad, categorías y cuatro entidades JPA maestras im
  note bottom of Producto
   Entidad JPA con categoria obligatoria y proveedor principal opcional.
   SKU unico. El stock real no se guarda en Producto:
-  existencias por producto y almacen siguen pendientes.
-  Aun no existen servicio ni API HTTP de productos.
+  existencias se gestionan por producto y almacen.
+  Servicio y API HTTP de productos implementados.
  end note
  note bottom of EventoAuditoria
-  IMPLEMENTADO V4: solo adición para seguridad y categorías.
-  Otros módulos deberán publicar eventos al implementarse.
+  IMPLEMENTADO V4: eventos de seguridad, catálogos,
+  órdenes y recepciones; otros módulos quedan pendientes.
   No almacenar contrasenas, tokens ni secretos.
  end note
 @enduml

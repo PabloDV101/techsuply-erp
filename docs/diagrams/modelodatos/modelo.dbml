@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.7 — V1–V6 físicos y V7 parcial; los cuatro catálogos maestros tienen API; resto modelo objetivo; SRS-TSS-ERP-001.
+// Versión 1.8 — V1–V6 físicos, V7 parcial y precisión V8; los cuatro catálogos maestros tienen API; resto modelo objetivo; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; órdenes, registro de recepción y consulta de existencias tienen API. Los campos y tablas futuros permanecen como objetivo. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía la precisión de costos. Órdenes, recepción y consulta de existencias tienen API. Los campos y tablas futuros permanecen como objetivo. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -341,7 +341,7 @@ Table existencias [headercolor: #D68910] {
   almacen_id bigint [not null]
   cantidad_fisica numeric(14,3) [not null, default: 0]
   cantidad_reservada numeric(14,3) [not null, default: 0]
-  costo_promedio numeric(14,4) [not null, default: 0]
+  costo_promedio numeric(16,4) [not null, default: 0]
   version int [not null, default: 0, note: 'Control optimista; usar bloqueo/actualización condicional para operaciones críticas.']
   indexes { (producto_id, almacen_id) [unique] }
   Note: 'OBJETIVO con SQL V7, JPA y API de lectura. Disponible = cantidad_fisica - cantidad_reservada. CHECKs de no negatividad y reservada <= física deben estar en PostgreSQL.'
@@ -354,7 +354,7 @@ Table movimientos_inventario [headercolor: #D68910] {
   tipo varchar(12) [not null, note: 'ENTRADA, SALIDA, RESERVA, LIBERACION, REVERSA']
   motivo varchar(35) [not null, note: 'RECEPCION_COMPRA, DESPACHO_VENTA, AJUSTE, DEVOLUCION_PROVEEDOR, DEVOLUCION_CLIENTE, RESERVA_PEDIDO, CANCELACION_PEDIDO, REVERSA']
   cantidad numeric(14,3) [not null]
-  costo_unitario numeric(14,4) [not null, default: 0]
+  costo_unitario numeric(16,4) [not null, default: 0]
   fecha timestamptz [not null, default: `now()`]
   usuario_id bigint [not null]
   detalle_recepcion_id bigint

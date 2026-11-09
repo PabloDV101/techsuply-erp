@@ -32,3 +32,11 @@ git status --short
 ```
 
 Revisar el contenido preparado, especialmente archivos nuevos y documentación, antes de hacer el commit. Estos comandos preparan cambios; no se ejecutaron como parte de este cierre. La configuración local se conservó sin modificar.
+
+## Revisión posterior del 9 de noviembre de 2026
+
+La revisión detectó que un precio de recepción válido `numeric(14,2)` podía superar el límite de costos `numeric(14,4)` e impedir la confirmación. V8 amplía ambos costos de inventario a `numeric(16,4)` sin cambiar el contrato HTTP ni editar V7; la [decisión y compatibilidad](SPRINT_1_MIGRACIONES.md#v8-precisión-compatible-con-el-precio-recibido) incluyen el bloqueo de tablas durante la migración. El modelo DBML, JPA, cálculo y vista de implementación se actualizaron. La configuración ya no aporta contraseña predeterminada: `DB_PASSWORD` debe proporcionarse externamente. Una contraseña que hubiera sido real debe rotarse; el cambio no elimina el valor del historial de Git.
+
+Validación de esta revisión: `cd erp-backend && ./mvnw -o verify` terminó en `BUILD SUCCESS` con 50 pruebas Surefire y 72 Failsafe, sin fallos ni omisiones. Incluye PostgreSQL de Testcontainers, actualización V7→V8 conservando costos y confirmación con el precio máximo; la prueba de rollback ahora provoca desbordamiento de cantidad. También se validaron los seis contratos OpenAPI, 71 tablas y 141 relaciones DBML (con ambas copias iguales), y se renderizaron 42 diagramas PlantUML. La comparación DBML no sustituye la prueba de restricciones ejecutables. No se midieron cobertura ni rendimiento, ni se integró el frontend.
+
+Las prioridades y dependencias del próximo sprint están en la [ruta de fase 3](../FASE_3_RUTA_BACKEND.md#prioridad-propuesta-para-iniciar-el-sprint-2). El sprint 2 sigue pendiente y su calendario original necesita actualización; completar el flujo de requisiciones y decidir la compatibilidad con órdenes previas es prioritario para RF-COM-02.

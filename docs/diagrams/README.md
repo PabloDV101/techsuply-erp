@@ -120,7 +120,7 @@ La autoridad ejecutable del esquema actual es `erp-backend/src/main/resources/db
 V1 crea seguridad, V2 sus catálogos, V3 categorías, V4 auditoría, V5 bandeja APP y V6 cuatro catálogos maestros físicos. El DBML global
 mezcla esquema actual y diseño futuro; **no debe exportarse y ejecutarse completo
 como sustituto de Flyway**. Al iniciar el backend contra una base en V5,
-Flyway aplicará V6 y V7. No habilita baseline/clean automáticos.
+Flyway aplicará las migraciones pendientes hasta V8. No habilita baseline/clean automáticos.
 
 ## Validar y generar las vistas
 
@@ -144,7 +144,7 @@ Para PNG, añadir `--formato png` y usar otro directorio de salida. PlantUML uti
 tras `@startuml` para el artefacto: por ejemplo, `TSS_Secuencia_Auth.svg`.
 Los generados quedan fuera del repositorio. Los diagramas extensos se consultan ampliando el SVG.
 
-Para analizar DBML y comparar las tablas actuales con V1/V3/V4/V5/V6, instalar el analizador oficial en un directorio
+Para analizar DBML y comparar las tablas actuales con V1/V3/V4/V5/V6 y V7 con los cambios de V8, instalar el analizador oficial en un directorio
 auxiliar, con acceso a npm cuando no esté disponible:
 
 ```bash

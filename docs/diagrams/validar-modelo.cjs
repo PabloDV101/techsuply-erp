@@ -61,6 +61,13 @@ assert.deepEqual(actualRefs.sort(), expectedRefs.sort(), 'Implemented foreign ke
 // V7 implements a subset of the target model: future document references remain in DBML.
 const v7 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V7__purchase_receipt_inventory_core.sql'), 'utf8');
 const v7Tables = [...v7.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+const v8 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V8__widen_inventory_cost_precision.sql'), 'utf8');
+const overrides = new Map([...v8.matchAll(/^ALTER TABLE (\w+) ALTER COLUMN (\w+) TYPE (\w+\(\d+,\d+\));$/gm)]
+  .map(([, table, column, type]) => [`${table}.${column}`, type]));
+assert.deepEqual([...overrides.entries()].sort(), [
+  ['existencias.costo_promedio', 'numeric(16,4)'],
+  ['movimientos_inventario.costo_unitario', 'numeric(16,4)'],
+]);
 assert.equal(v7Tables.length, 6, 'Review V7 table count');
 const futureFields = {
   ordenes_compra: ['requisicion_id'],
@@ -76,7 +83,7 @@ for (const [, name, body] of v7Tables) {
     columns.map(c => c[1]).concat(futureFields[name] || []).sort(), `${name}: V7/target columns differ`);
   for (const [, column, type, constraints] of columns) {
     const field = target.fields.find(f => f.name === column);
-    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    assert.equal(normalize(field.type.type_name), normalize(overrides.get(`${name}.${column}`) || type), `${name}.${column}: type differs`);
     if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: missing primary key`);
     // V7 supports reception entries only; the target allows other sources.
     if (!(name === 'movimientos_inventario' && column === 'detalle_recepcion_id')) {
@@ -101,5 +108,5 @@ for (const table of schema.tables) {
 assert.ok(!/\buuid\b|gen_random_uuid/i.test(primary), 'Stale UUID policy');
 console.log(`DBML OK: ${schema.tables.length} tables, ${schema.refs.length} relationships; both copies identical.`);
 console.log(`Implemented schema matches V1/V3/V4/V5/V6: ${tables.length} tables, column types/nullability, PK/unique constraints and ${expectedRefs.length} foreign keys.`);
-console.log('V7 partial target comparison: 6 tables, columns/types, nullability, declared uniqueness and SQL foreign keys. Future fields remain in DBML.');
+console.log('V7 partial target comparison with V8 type alterations: 6 tables, columns/types, nullability, declared uniqueness and SQL foreign keys. Future fields remain in DBML.');
 console.log('CHECK, triggers and partial indexes are described in notes; executable authority remains Flyway SQL.');

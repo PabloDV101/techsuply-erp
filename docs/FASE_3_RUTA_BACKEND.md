@@ -20,7 +20,7 @@
 
 ## Punto de partida comprobado
 
-Al iniciar el sprint, el backend tenía seguridad con Bearer opaco, usuarios/roles/permisos, validación y errores HTTP, categorías con búsqueda, auditoría y bandeja APP; Flyway llegaba a V5. La parte 1 añadió V6 con cuatro catálogos SQL y permisos; la parte 2 añadió sus entidades JPA y repositorios; la parte 3 añadió servicios y API de departamentos, proveedores y almacenes. La parte 4 añadió API de producto. V7 creó el esquema inicial de compras y existencias; la parte 6 añadió entidades, repositorios y cálculo de órdenes. La parte 7 añadió servicios y API de órdenes; la parte 8 añadió el núcleo de inventario y consulta de existencias. La parte 9 añadió registro y consulta de recepciones; la parte 10 añadió confirmación transaccional. Ventas, contabilidad y reportes siguen sin implementación. El contrato de reportería es diseño. El frontend se desarrolla por separado.
+Al iniciar el sprint, el backend tenía seguridad con Bearer opaco, usuarios/roles/permisos, validación y errores HTTP, categorías con búsqueda, auditoría y bandeja APP; Flyway llegaba a V5. La parte 1 añadió V6 con cuatro catálogos SQL y permisos; la parte 2 añadió sus entidades JPA y repositorios; la parte 3 añadió servicios y API de departamentos, proveedores y almacenes. La parte 4 añadió API de producto. V7 creó el esquema inicial de compras y existencias; la parte 6 añadió entidades, repositorios y cálculo de órdenes. La parte 7 añadió servicios y API de órdenes; la parte 8 añadió el núcleo de inventario y consulta de existencias. La parte 9 añadió registro y consulta de recepciones; la parte 10 añadió confirmación transaccional. V8 corrige la precisión de los costos de inventario. Ventas, contabilidad y reportes siguen sin implementación. El contrato de reportería es diseño. El frontend se desarrolla por separado.
 
 La verificación comunicada antes de crear este plan fue `./mvnw -o verify` el 27 de octubre de 2026: se informaron 41 pruebas Surefire y 49 Failsafe. No se conserva una salida íntegra de esa ejecución para reconfirmar el primer número. En la ejecución de la parte 0, los reportes vigentes sumaron 40 Surefire y 49 Failsafe; el XML adicional era antiguo y seguía en `target/`. Ninguna cifra mide cobertura de código ni rendimiento concurrente.
 
@@ -37,12 +37,24 @@ La verificación comunicada antes de crear este plan fue `./mvnw -o verify` el 2
 | 7 | 8–14 dic. | Integración de contratos con frontend del compañero, regresión, pruebas de carga y cobertura, manual técnico, trazabilidad y preparación de demostración. | RNF-02/03/04/12/17; evidencia reproducible y defectos corregidos. | Pendiente |
 | Cierre | 15–17 dic. | Correcciones de hallazgos, revisión de entrega y documentación final. | No iniciar un módulo grande nuevo en esta ventana. | Pendiente |
 
+**Replanificación (9 nov. 2026):** el sprint 2 sigue pendiente aunque su ventana original termina hoy. Antes de iniciarlo, el equipo debe acordar fechas semanales actualizadas y alcance con base en la capacidad restante; las fechas de la tabla son el plan original. No se da por implementado RR. HH. ni se presupone que cabrá sin una decisión de alcance.
+
 **Dependencias:** por decisión del equipo, Gestión Maestra y el flujo central de Compras se adelantan al sprint 1. La recepción necesita existencias y movimientos, por eso su base se construye en esa misma semana. Facturación y contabilidad necesitan documentos operativos válidos; reportería necesita fuentes y fórmulas aprobadas. El calendario es una secuencia de prioridades, no una promesa de que todas las funcionalidades caben en siete semanas.
+
+## Prioridad propuesta para iniciar el sprint 2
+
+1. Preflight: revisar RF-COM-01/02, modelo y contrato; definir estados, autorización, motivo de rechazo y tratamiento compatible de las órdenes ya existentes. El flujo actual crea órdenes directamente y todavía no asegura que provengan de una requisición aprobada: RF-COM-02 no está cumplido de extremo a extremo.
+2. Implementar requisiciones y sus detalles con migración nueva, validaciones, persistencia, permisos, auditoría y pruebas PostgreSQL; después crear, consultar, aprobar y rechazar mediante API y OpenAPI.
+3. Vincular la generación de órdenes a requisiciones aprobadas, con protección contra concurrencia y duplicación según las decisiones de negocio adoptadas; probar el flujo completo y la compatibilidad de documentos previos. La propuesta automática por umbral es una historia separada, no una orden automática.
+4. Priorizar una solución para recepciones pendientes que no puedan confirmarse por causas corregibles, definiendo y probando edición o cancelación, permisos y auditoría sin alterar recepciones confirmadas. No está implementada todavía.
+5. Incorporar medición de cobertura y coordinación con frontend de forma temprana. Facturas de proveedor requieren conciliación y una cuenta por pagar real; coordinar con contabilidad y no darlas por completadas con una API aislada. Devoluciones requieren salidas de inventario y control de saldo; planificarlas con inventario.
+
+Inventario completo, kardex protegido frente a SQL directo, carga, CORS/despliegue y funciones de otros módulos siguen como trabajo futuro. Los límites no se cerrarán automáticamente por cambiar de sprint: deben convertirse en historias con responsables y evidencia. El orden de esta lista es una propuesta de alcance, no una garantía de que todo quepa en una semana.
 
 ## Criterio de terminado para cada historia
 
 - Requisito y caso de aceptación identificados; decisión de negocio no inventada.
-- Migración Flyway nueva y coherente con entidad, restricciones, claves e índices. No editar V1–V5 ya aplicadas.
+- Migración Flyway nueva y coherente con entidad, restricciones, claves e índices. No editar migraciones ya aplicadas.
 - Operación transaccional, autorización en backend, DTO y validación de entrada; errores con el formato existente.
 - Auditoría de cambios críticos sin secretos; idempotencia y concurrencia probadas cuando corresponda.
 - OpenAPI y consumidor frontend coordinados si cambia el contrato. No presentar rutas de diseño como activas.
@@ -54,10 +66,10 @@ La verificación comunicada antes de crear este plan fue `./mvnw -o verify` el 2
 | Tema | Estado / siguiente decisión |
 |---|---|
 | Alcance de RR. HH. y portal de clientes | El SRS los incluye, pero la lista de siete módulos principales de la narrativa no cuenta RR. HH. como módulo principal. Confirmar con docente/equipo si entran en la entrega funcional y ajustar esta ruta. |
-| Fórmulas y reglas | [Políticas de compras e inventario del sprint 1](fase-3/SPRINT_1_POLITICAS.md) fijadas para el MVP, aún sin implementar. Crédito, rotación, ABC, rentabilidad, estados financieros y zona de negocio requieren definición antes de calcularlos. |
+| Fórmulas y reglas | [Políticas de compras e inventario del sprint 1](fase-3/SPRINT_1_POLITICAS.md): importes, autorización y valoración implementados; alertas y cancelación pendientes. Crédito, rotación, ABC, rentabilidad, estados financieros y zona de negocio requieren definición antes de calcularlos. |
 | Cobertura y CI | Configurar medición; objetivo de la narrativa: mínimo 70 %, rúbrica excelente: 80 % o más. Ningún porcentaje se ha medido aún. |
 | Rendimiento | Diseñar datos y carga representativos; objetivos: p95 < 2 s en consultas, p95 < 5 s en reportes y evaluación de 200 usuarios concurrentes. No inferir cumplimiento de pruebas MockMvc secuenciales. |
-| Configuración local | Hay cambios sin confirmar en `application.yaml`; revisar especialmente cualquier contraseña por defecto antes de entregar o desplegar. No alterar cambios de otro autor sin revisarlos. |
+| Configuración local | La contraseña de base de datos se suministra mediante `DB_PASSWORD`, sin valor predeterminado en `application.yaml`; la versión anterior contenía un valor predeterminado en Git. Si correspondía a una credencial real, rotarla y evaluar la exposición del historial; quitarla del archivo actual no elimina commits anteriores. |
 | Coordinación con frontend | Entregar OpenAPI y ejemplos por sprint; acordar autenticación, errores, paginación y estados con el compañero. La implementación del frontend no forma parte de este plan. |
 
 ## Bitácora de avance
@@ -79,3 +91,4 @@ Añadir una fila por historia cerrada o cambio de plan. Registrar hechos, no est
 | 29 oct. 2026 | Sprint 1, parte 9 | Registro/consulta de recepciones pendientes con idempotencia, permisos y auditoría; `./mvnw -o verify`: 50 Surefire + 66 Failsafe sin fallos. | Parte 10: confirmación de recepción e inventario. |
 | 29 oct. 2026 | Sprint 1, parte 10 | Confirmación transaccional de recepción con idempotencia, inventario y auditoría; `./mvnw -o verify`: 50 Surefire + 70 Failsafe sin fallos. | Parte 11: cierre integral, documentación, contratos y revisión de seguridad. |
 | 29 oct. 2026 | Sprint 1, parte 11 | [Cierre backend](fase-3/SPRINT_1_CIERRE.md): 50 Surefire + 70 Failsafe; contratos OpenAPI, DBML y UML validados. | Preparar commit excluyendo configuración local sensible; siguiente sprint según prioridades y límites documentados. |
+| 9 nov. 2026 | Revisión posterior sprint 1 | V8 amplía precisión de costos; `./mvnw -o verify`: 50 Surefire + 72 Failsafe sin fallos. DBML, seis contratos y 42 diagramas validados. | Sprint 2 pendiente: requisiciones, compatibilidad de órdenes anteriores y planificación semanal actualizada. |
