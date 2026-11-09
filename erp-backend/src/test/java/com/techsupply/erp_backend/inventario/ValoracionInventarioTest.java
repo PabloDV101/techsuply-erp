@@ -19,6 +19,7 @@ class ValoracionInventarioTest {
     @Test void invalidAndOverflowInputsFail() {
         assertThatThrownBy(() -> ValoracionInventario.entrada(n("0"), n("0"), n("0"), n("1"))).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ValoracionInventario.entrada(n("99999999999.999"), n("0"), n("1"), n("1"))).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ValoracionInventario.entrada(n("0"), n("0"), n("1"), n("10000000000"))).isInstanceOf(IllegalArgumentException.class);
+        assertThat(ValoracionInventario.entrada(n("0"), n("0"), n("1"), n("999999999999.99")).costoPromedio()).isEqualByComparingTo("999999999999.9900");
+        assertThatThrownBy(() -> ValoracionInventario.entrada(n("0"), n("0"), n("1"), n("1000000000000"))).isInstanceOf(IllegalArgumentException.class);
     }
 }

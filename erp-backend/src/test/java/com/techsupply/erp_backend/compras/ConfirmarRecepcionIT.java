@@ -126,6 +126,14 @@ class ConfirmarRecepcionIT extends PostgresIntegrationSupport {
         } finally { retryPool.shutdownNow(); }
         assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id=?", Integer.class, f.product())).isEqualTo(1);
     }
+    @Test void pendingReceiptAcceptsMaximumDocumentPriceInInventory() throws Exception {
+        Fixture f = fixture(); String confirm = token("COMPRAS_RECEPCIONES_CONFIRMAR");
+        long receipt = receipt(f, "MAX", 1, 0);
+        db.update("update detalles_recepcion set precio_unitario_recibido=? where recepcion_id=?", new BigDecimal("999999999999.99"), receipt);
+        assertThat(confirm(confirm, receipt)).isEqualTo(200);
+        assertThat(db.queryForObject("select costo_promedio from existencias where producto_id=?", BigDecimal.class, f.product())).isEqualByComparingTo("999999999999.9900");
+        assertThat(db.queryForObject("select costo_unitario from movimientos_inventario where producto_id=?", BigDecimal.class, f.product())).isEqualByComparingTo("999999999999.9900");
+    }
     @Test void lateFailureRollsBackAllAndAllRejectedCreatesNoMovement() throws Exception {
         Fixture f = fixture(); String confirm = token("COMPRAS_RECEPCIONES_CONFIRMAR");
         long receipt = receipt(f,"E",1,0);
@@ -133,9 +141,11 @@ class ConfirmarRecepcionIT extends PostgresIntegrationSupport {
         long secondProduct = db.queryForObject("insert into productos(sku,nombre,categoria_id) values (?,?,?) returning id", Long.class, f.key()+"X", "Otro", category);
         long secondLine = db.queryForObject("insert into detalles_orden_compra(orden_compra_id,producto_id,cantidad,precio_unitario,tasa_impuesto) values (?,?,?,?,?) returning id", Long.class, f.order(), secondProduct, 10, 10, 16);
         db.update("insert into detalles_recepcion(recepcion_id,detalle_orden_compra_id,cantidad_recibida,cantidad_aceptada,cantidad_rechazada,precio_unitario_recibido) values (?,?,?,?,?,?)", receipt, secondLine, 1, 1, 0, new BigDecimal("10000000000.00"));
+        db.update("insert into existencias(producto_id,almacen_id,cantidad_fisica) values (?,?,?)", secondProduct, f.warehouse(), new BigDecimal("99999999999.999"));
         assertThat(confirm(confirm, receipt)).isEqualTo(409);
         assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id in (?,?)", Integer.class, f.product(), secondProduct)).isZero();
-        assertThat(db.queryForObject("select count(*) from existencias where producto_id in (?,?)", Integer.class, f.product(), secondProduct)).isZero();
+        assertThat(db.queryForObject("select count(*) from existencias where producto_id=?", Integer.class, f.product())).isZero();
+        assertThat(db.queryForObject("select cantidad_fisica from existencias where producto_id=?", BigDecimal.class, secondProduct)).isEqualByComparingTo("99999999999.999");
         assertThat(db.queryForObject("select estado from recepciones_compra where id=?", String.class, receipt)).isEqualTo("PENDIENTE");
         assertThat(db.queryForObject("select estado from ordenes_compra where id=?", String.class, f.order())).isEqualTo("ENVIADA");
         assertThat(db.queryForObject("select count(*) from eventos_auditoria where accion='PURCHASE_RECEIPT_CONFIRMED' and entidad_id=?", Integer.class, receipt)).isZero();

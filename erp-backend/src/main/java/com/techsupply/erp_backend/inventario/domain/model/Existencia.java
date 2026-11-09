@@ -10,7 +10,7 @@ public class Existencia {
     @Column(name = "almacen_id", nullable = false) private Long almacenId;
     @Column(name = "cantidad_fisica", nullable = false, precision = 14, scale = 3) private BigDecimal cantidadFisica;
     @Column(name = "cantidad_reservada", nullable = false, precision = 14, scale = 3) private BigDecimal cantidadReservada;
-    @Column(name = "costo_promedio", nullable = false, precision = 14, scale = 4) private BigDecimal costoPromedio;
+    @Column(name = "costo_promedio", nullable = false, precision = 16, scale = 4) private BigDecimal costoPromedio;
     @Version @Column(nullable = false) private int version;
     protected Existencia() {}
     public Long getId() { return id; }

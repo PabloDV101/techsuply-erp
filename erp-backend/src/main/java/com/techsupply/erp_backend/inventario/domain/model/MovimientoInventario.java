@@ -12,7 +12,7 @@ public class MovimientoInventario {
     @Column(nullable = false, length = 12) private String tipo;
     @Column(nullable = false, length = 35) private String motivo;
     @Column(nullable = false, precision = 14, scale = 3) private BigDecimal cantidad;
-    @Column(name = "costo_unitario", nullable = false, precision = 14, scale = 4) private BigDecimal costoUnitario;
+    @Column(name = "costo_unitario", nullable = false, precision = 16, scale = 4) private BigDecimal costoUnitario;
     @Column(nullable = false) private Instant fecha;
     @Column(name = "usuario_id", nullable = false) private Long usuarioId;
     @Column(name = "detalle_recepcion_id", nullable = false, unique = true) private Long detalleRecepcionId;

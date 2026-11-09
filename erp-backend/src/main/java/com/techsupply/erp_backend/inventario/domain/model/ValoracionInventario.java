@@ -7,7 +7,7 @@ import java.util.Objects;
 /** Pure weighted average of physical stock, independent of reservations. */
 public final class ValoracionInventario {
     private static final BigDecimal MAX_CANTIDAD = new BigDecimal("99999999999.999");
-    private static final BigDecimal MAX_COSTO = new BigDecimal("9999999999.9999");
+    private static final BigDecimal MAX_COSTO = new BigDecimal("999999999999.9999");
     private ValoracionInventario() {}
     public record Resultado(BigDecimal cantidadFisica, BigDecimal costoPromedio) {}
     public static Resultado entrada(BigDecimal fisica, BigDecimal promedio, BigDecimal cantidad, BigDecimal costo) {
@@ -18,7 +18,7 @@ public final class ValoracionInventario {
         BigDecimal total = fisica.add(cantidad);
         if (total.compareTo(MAX_CANTIDAD) > 0) throw new IllegalArgumentException("Existencia excede numeric(14,3)");
         BigDecimal result = fisica.multiply(promedio).add(cantidad.multiply(costo)).divide(total, 4, RoundingMode.HALF_UP);
-        if (result.compareTo(MAX_COSTO) > 0) throw new IllegalArgumentException("Costo excede numeric(14,4)");
+        if (result.compareTo(MAX_COSTO) > 0) throw new IllegalArgumentException("Costo excede numeric(16,4)");
         return new Resultado(total, result);
     }
 }
