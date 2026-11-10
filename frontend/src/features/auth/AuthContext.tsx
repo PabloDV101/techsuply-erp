@@ -6,6 +6,7 @@ interface AuthState {
   user: SessionUser | null
   login: (identificador: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  clearLocalSession: () => void
   can: (permiso: string) => boolean
 }
 
@@ -55,12 +56,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const clearLocalSession = useCallback(() => {
+    clearSession()
+    setUser(null)
+  }, [])
+
   const value = useMemo<AuthState>(
     () => ({
-      user, login, logout,
+      user, login, logout, clearLocalSession,
       can: (p) => !!user && (SUPER_ROLES.some((r) => user.roles.includes(r)) || user.permisos.includes(p)),
     }),
-    [user, login, logout],
+    [user, login, logout, clearLocalSession],
   )
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

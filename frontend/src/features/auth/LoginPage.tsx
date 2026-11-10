@@ -17,6 +17,7 @@ export default function LoginPage() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const success = (location.state as { message?: string } | null)?.message
   const [error, setError] = useState('')
   const {
     register,
@@ -58,6 +59,7 @@ export default function LoginPage() {
       <Box sx={{ display: 'grid', placeItems: 'center', p: 2 }}>
         <Paper component="form" onSubmit={handleSubmit(onSubmit)} noValidate elevation={0} sx={{ p: 4, width: '100%', maxWidth: 400 }}>
           <Typography variant="h5" gutterBottom>Iniciar sesión</Typography>
+          {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <TextField
             label="Usuario o correo"
