@@ -3,7 +3,7 @@ info:
   title: TechSupply ERP - Consulta de auditoría
   version: 1.0.0
   description: >-
-    Eventos de solo lectura. El backend controla el catálogo de acciones y los metadatos.
+    Eventos de solo lectura, incluidos conteos, solicitudes y decisiones sobre ajustes. El backend controla el catálogo de acciones y los metadatos.
     La respuesta de error conserva status, code y message como el resto de la API.
 servers:
   - url: /api/v1
@@ -66,8 +66,8 @@ components:
         motivoCodigo: { type: string, nullable: true }
         fecha: { type: string, format: date-time }
         camposModificados: { type: array, items: { type: string } }
-        estadoAnterior: { type: string, nullable: true, enum: [ACTIVO, INACTIVO, PENDIENTE, CONFIRMADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA] }
-        estadoNuevo: { type: string, nullable: true, enum: [ACTIVO, INACTIVO, PENDIENTE, CONFIRMADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA] }
+        estadoAnterior: { type: string, nullable: true, enum: [ACTIVO, INACTIVO, PENDIENTE, CONFIRMADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA, PROGRAMADO, EN_CAPTURA, CERRADO, CANCELADO, APROBADO, RECHAZADO, APLICADO] }
+        estadoNuevo: { type: string, nullable: true, enum: [ACTIVO, INACTIVO, PENDIENTE, CONFIRMADA, ENVIADA, PARCIALMENTE_RECIBIDA, RECIBIDA, PROGRAMADO, EN_CAPTURA, CERRADO, CANCELADO, APROBADO, RECHAZADO, APLICADO] }
     ApiError:
       type: object
       required: [status, code, message]

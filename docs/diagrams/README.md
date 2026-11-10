@@ -74,14 +74,12 @@ El esquema OpenAPI `AuthError` conserva su nombre como alias. `common.api` decla
 común no importa `audit` y la consulta de auditoría puede usar paginación común
 sin formar un ciclo de paquetes.
 La validación común tiene pruebas MVC aisladas y se ha verificado junto a auth,
-categorías, auditoría y notificaciones. La paginación común tiene tres consumidores reales:
-categorías, consulta de auditoría y bandeja APP; su reutilización en otro módulo de negocio
-aún no está demostrada.
+categorías, auditoría y notificaciones. La paginación común se reutiliza en seguridad, auditoría, notificaciones, maestros, compras e inventario.
 `maestros` añade criterios validados y `CategoriaProductoSpecifications` para
 filtros combinables con JPA; la búsqueda de otros módulos sigue pendiente.
 
-Las demás vistas conservan los procesos de compras, inventario, ventas, finanzas, RR. HH. y
-reportería. Son objetivos funcionales, sin clases de producción que los implementen todavía.
+Las demás vistas muestran procesos de compras, inventario, ventas, finanzas, RR. HH. y
+reportería. Las implementaciones parciales y los objetivos pendientes se identifican en cada vista.
 El diseño aprobado de reportería se documenta en `docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md`
 y `docs/api/openapi-reporteria.yaml`; ambos son contratos propuestos, no endpoints activos.
 Las vistas `casos-uso/reporteria.puml`, `procesos/08-proceso-reporteria.puml` y
@@ -120,7 +118,7 @@ La autoridad ejecutable del esquema actual es `erp-backend/src/main/resources/db
 V1 crea seguridad, V2 sus catálogos, V3 categorías, V4 auditoría, V5 bandeja APP y V6 cuatro catálogos maestros físicos. El DBML global
 mezcla esquema actual y diseño futuro; **no debe exportarse y ejecutarse completo
 como sustituto de Flyway**. Al iniciar el backend contra una base en V5,
-Flyway aplicará las migraciones pendientes hasta V8. No habilita baseline/clean automáticos.
+Flyway aplicará las migraciones pendientes hasta V10. No habilita baseline/clean automáticos.
 
 ## Validar y generar las vistas
 
@@ -144,7 +142,7 @@ Para PNG, añadir `--formato png` y usar otro directorio de salida. PlantUML uti
 tras `@startuml` para el artefacto: por ejemplo, `TSS_Secuencia_Auth.svg`.
 Los generados quedan fuera del repositorio. Los diagramas extensos se consultan ampliando el SVG.
 
-Para analizar DBML y comparar las tablas actuales con V1/V3/V4/V5/V6 y V7 con los cambios de V8, instalar el analizador oficial en un directorio
+Para analizar DBML y comparar las tablas actuales con V1/V3/V4/V5/V6 y V7 con los cambios de V8 y las tablas de V9, instalar el analizador oficial en un directorio
 auxiliar, con acceso a npm cuando no esté disponible:
 
 ```bash
@@ -190,3 +188,15 @@ futuros, política de retención, CORS/frontend, carga y adopción de bases exis
 - Parte 9: las vistas de clases y paquetes muestran el registro y consulta de recepción; la confirmación sigue como objetivo.
 
 - Parte 10: la secuencia de recepción refleja la confirmación implementada, incluidos el bloqueo, la entrada de inventario, el rollback y el reintento; el proceso conserva requisiciones y facturas como objetivo.
+
+- Sprint 2, parte 5: el proceso de conteos distingue la API implementada de los ajustes todavía de diseño. El cierre ocurre antes de crear una solicitud de ajuste; se actualizó también la vista de paquetes para servicio, controlador y pruebas.
+
+- Sprint 2, parte 6: el proceso y las vistas de clases/paquetes distinguen el registro y la consulta de ajustes implementados de su aprobación y aplicación pendientes.
+
+- Sprint 2, parte 7: proceso, clases, casos de uso y paquetes distinguen autorización implementada de aplicación pendiente. Ante un conflicto de reservas, el diagrama conserva el ajuste aprobado y rechaza la aplicación.
+
+- Sprint 2, parte 8: proceso, clases, casos de uso y paquetes representan la aplicación transaccional y sus pruebas; las fuentes futuras y la protección del kardex ante SQL directo siguen pendientes.
+
+- Sprint 2, parte 9: clases y paquetes reflejan V10 y la protección de historial ante DML ordinario; no garantizan protección frente al dueño o administrador de PostgreSQL.
+
+- Sprint 2, parte 10: casos de uso y paquetes distinguen la consulta de alerta global calculada de la tabla de alertas persistidas y la reportería, que siguen como objetivo.

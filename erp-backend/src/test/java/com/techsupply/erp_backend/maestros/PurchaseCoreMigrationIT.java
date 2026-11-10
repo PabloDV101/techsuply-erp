@@ -28,7 +28,7 @@ class PurchaseCoreMigrationIT extends PostgresIntegrationSupport {
         assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
         assertThat(db.queryForObject("select count(*) from " + schema + ".departamentos where codigo='PREVIO'", Integer.class)).isEqualTo(1);
         assertThat(db.queryForObject("select count(*) from information_schema.tables where table_schema=? and table_name in ('ordenes_compra','detalles_orden_compra','recepciones_compra','detalles_recepcion','existencias','movimientos_inventario')", Integer.class, schema)).isEqualTo(6);
-        assertThat(flyway.info().applied()).hasSize(8);
+        assertThat(flyway.info().applied()).hasSize(10);
         assertThat(db.queryForObject("select count(*) from " + schema + ".permisos where codigo in ('COMPRAS_ORDENES_LEER','COMPRAS_ORDENES_ADMIN','COMPRAS_ORDENES_APROBAR','COMPRAS_RECEPCIONES_LEER','COMPRAS_RECEPCIONES_REGISTRAR','COMPRAS_RECEPCIONES_CONFIRMAR','INVENTARIO_EXISTENCIAS_LEER')", Integer.class)).isEqualTo(7);
         assertThat(db.queryForObject("select count(*) from " + schema + ".roles_permisos rp join " + schema + ".roles r on r.id=rp.rol_id join " + schema + ".permisos p on p.id=rp.permiso_id where r.codigo='ADMINISTRADOR' and p.modulo in ('COMPRAS','INVENTARIO')", Integer.class)).isEqualTo(7);
         assertThat(db.queryForObject("select count(*) from information_schema.sequences where sequence_schema=? and sequence_name in ('orden_compra_folio_seq','recepcion_compra_folio_seq')", Integer.class, schema)).isEqualTo(2);
@@ -54,8 +54,8 @@ class PurchaseCoreMigrationIT extends PostgresIntegrationSupport {
         db.update("insert into existencias(producto_id,almacen_id,cantidad_fisica) values (?,?,?)", product, warehouse, 18);
         assertThatThrownBy(() -> db.update("insert into existencias(producto_id,almacen_id) values (?,?)", product, warehouse)).isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> db.update("update existencias set cantidad_reservada=19 where producto_id=? and almacen_id=?", product, warehouse)).isInstanceOf(DataIntegrityViolationException.class);
-        db.update("insert into movimientos_inventario(producto_id,almacen_id,tipo,motivo,cantidad,usuario_id,detalle_recepcion_id,clave_operacion) values (?,?,?,?,?,?,?,?)", product, warehouse, "ENTRADA", "RECEPCION_COMPRA", 18, user, detail, key);
-        assertThatThrownBy(() -> db.update("insert into movimientos_inventario(producto_id,almacen_id,tipo,motivo,cantidad,usuario_id,detalle_recepcion_id,clave_operacion) values (?,?,?,?,?,?,?,?)", product, warehouse, "ENTRADA", "RECEPCION_COMPRA", 18, user, detail, key + "X")).isInstanceOf(DataIntegrityViolationException.class);
+        db.update("insert into movimientos_inventario(producto_id,almacen_id,tipo,motivo,cantidad,costo_unitario,usuario_id,detalle_recepcion_id,clave_operacion) values (?,?,?,?,?,?,?,?,?)", product, warehouse, "ENTRADA", "RECEPCION_COMPRA", 18, 1, user, detail, key);
+        assertThatThrownBy(() -> db.update("insert into movimientos_inventario(producto_id,almacen_id,tipo,motivo,cantidad,costo_unitario,usuario_id,detalle_recepcion_id,clave_operacion) values (?,?,?,?,?,?,?,?,?)", product, warehouse, "ENTRADA", "RECEPCION_COMPRA", 18, 1, user, detail, key + "X")).isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> db.update("delete from productos where id=?", product)).isInstanceOf(DataIntegrityViolationException.class);
     }
 }

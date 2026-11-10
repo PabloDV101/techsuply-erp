@@ -9,6 +9,7 @@ import com.techsupply.erp_backend.inventario.infrastructure.persistence.Existenc
 import com.techsupply.erp_backend.security.application.AuthenticatedUserProvider;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -87,6 +88,79 @@ public class InventarioService {
             }
         });
     }
+    /** The caller must mark the approved adjustment applied in this same transaction. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    @PreAuthorize("hasAuthority('INVENTARIO_AJUSTES_APLICAR')")
+    public BigDecimal registrarAjuste(long detalleId) {
+        Long actor = users.currentUser().orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticación requerida")).usuarioId();
+        var rows = db.query("""
+            select a.id as ajuste_id,a.estado,a.almacen_id,d.producto_id,d.tipo,d.cantidad,d.costo_unitario,d.detalle_conteo_id,
+                   p.activo as producto_activo,w.activo as almacen_activo
+            from detalles_ajuste_inventario d join ajustes_inventario a on a.id=d.ajuste_inventario_id
+            join productos p on p.id=d.producto_id join almacenes w on w.id=a.almacen_id
+            where d.id=? for update of a,d for share of p,w
+            """, (rs, row) -> new FuenteAjuste(rs.getLong("ajuste_id"),rs.getString("estado"),rs.getLong("almacen_id"),
+                rs.getLong("producto_id"),rs.getString("tipo"),rs.getBigDecimal("cantidad"),rs.getBigDecimal("costo_unitario"),
+                rs.getObject("detalle_conteo_id",Long.class),rs.getBoolean("producto_activo"),rs.getBoolean("almacen_activo")), detalleId);
+        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Detalle de ajuste no encontrado");
+        FuenteAjuste f = rows.getFirst();
+        if (!f.estado().equals("APROBADO") || !f.productoActivo() || !f.almacenActivo()) throw ajusteConflicto();
+        if (Boolean.TRUE.equals(db.queryForObject("select exists(select 1 from movimientos_inventario where detalle_ajuste_id=?)", Boolean.class, detalleId))) throw ajusteConflicto();
+        ReferenciaConteo reference = null;
+        if (f.detalleConteoId() != null) {
+            var references = db.query("""
+                select c.estado,c.almacen_id,d.producto_id,d.diferencia,d.existencia_previa,d.version_existencia
+                from detalles_conteo d join conteos_inventario c on c.id=d.conteo_id where d.id=? for update of d
+                """, (rs, row) -> new ReferenciaConteo(rs.getString("estado"),rs.getLong("almacen_id"),rs.getLong("producto_id"),
+                    rs.getBigDecimal("diferencia"),rs.getBoolean("existencia_previa"),rs.getObject("version_existencia",Integer.class)), f.detalleConteoId());
+            if (references.isEmpty()) throw ajusteConflicto();
+            reference = references.getFirst();
+            boolean sign = reference.diferencia().signum() > 0 && f.tipo().equals("POSITIVO")
+                || reference.diferencia().signum() < 0 && f.tipo().equals("NEGATIVO");
+            if (!reference.estado().equals("CERRADO") || reference.almacenId()!=f.almacenId() || reference.productoId()!=f.productoId()
+                || !sign || reference.diferencia().abs().compareTo(f.cantidad())!=0) throw ajusteConflicto();
+            if (Boolean.TRUE.equals(db.queryForObject("""
+                select exists(select 1 from detalles_ajuste_inventario d join ajustes_inventario a on a.id=d.ajuste_inventario_id
+                where d.detalle_conteo_id=? and a.estado='APLICADO')
+                """, Boolean.class, f.detalleConteoId()))) throw ajusteConflicto();
+        }
+        // A successful insert reserves an absent product/warehouse pair; ON CONFLICT waits for concurrent creators.
+        int inserted = db.update("insert into existencias(producto_id,almacen_id) values (?,?) on conflict (producto_id,almacen_id) do nothing", f.productoId(), f.almacenId());
+        var stock = db.queryForObject("select cantidad_fisica,cantidad_reservada,costo_promedio,version from existencias where producto_id=? and almacen_id=? for update",
+            (rs,row) -> new StockActual(rs.getBigDecimal("cantidad_fisica"),rs.getBigDecimal("cantidad_reservada"),rs.getBigDecimal("costo_promedio"),rs.getInt("version")), f.productoId(),f.almacenId());
+        if (stock == null || stock.version()==Integer.MAX_VALUE) throw ajusteConflicto();
+        if (reference != null && (reference.existenciaPrevia() ? inserted != 0 || !Objects.equals(reference.version(),stock.version()) : inserted != 1)) throw ajusteConflicto();
+        BigDecimal newQuantity, newCost, movementCost;
+        if (f.tipo().equals("POSITIVO") && f.costo() != null) {
+            try {
+                ValoracionInventario.Resultado result = ValoracionInventario.entrada(stock.fisica(),stock.promedio(),f.cantidad(),f.costo());
+                newQuantity=result.cantidadFisica(); newCost=result.costoPromedio(); movementCost=f.costo();
+            } catch (IllegalArgumentException ex) { throw ajusteConflicto(); }
+        } else if (f.tipo().equals("NEGATIVO") && f.cantidad().signum()>0) {
+            newQuantity=stock.fisica().subtract(f.cantidad());
+            if (newQuantity.compareTo(stock.reservada())<0) throw ajusteConflicto();
+            newCost=stock.promedio(); movementCost=stock.promedio();
+        } else throw ajusteConflicto();
+        db.update("update existencias set cantidad_fisica=?,costo_promedio=?,version=version+1 where producto_id=? and almacen_id=?",
+            newQuantity,newCost,f.productoId(),f.almacenId());
+        db.update("insert into movimientos_inventario(producto_id,almacen_id,tipo,motivo,cantidad,costo_unitario,usuario_id,detalle_ajuste_id,clave_operacion) values (?,?,?,'AJUSTE',?,?,?,?,?)",
+            f.productoId(),f.almacenId(),f.tipo().equals("POSITIVO") ? "ENTRADA" : "SALIDA",f.cantidad(),movementCost,actor,detalleId,"AJUSTE:"+detalleId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void beforeCommit(boolean readOnly) {
+                Boolean valid=db.queryForObject("""
+                    select exists(select 1 from detalles_ajuste_inventario d join ajustes_inventario a on a.id=d.ajuste_inventario_id
+                    join movimientos_inventario m on m.detalle_ajuste_id=d.id
+                    where d.id=? and a.estado='APLICADO' and d.costo_unitario=m.costo_unitario)
+                    """,Boolean.class,detalleId);
+                if (!Boolean.TRUE.equals(valid)) throw new IllegalStateException("El ajuste y su costo deben confirmarse en la misma transacción");
+            }
+        });
+        return movementCost;
+    }
+    private static ResponseStatusException ajusteConflicto() { return new ResponseStatusException(HttpStatus.CONFLICT,"Ajuste o existencia incompatible"); }
+    private record FuenteAjuste(long ajusteId,String estado,long almacenId,long productoId,String tipo,BigDecimal cantidad,BigDecimal costo,Long detalleConteoId,boolean productoActivo,boolean almacenActivo) {}
+    private record ReferenciaConteo(String estado,long almacenId,long productoId,BigDecimal diferencia,boolean existenciaPrevia,Integer version) {}
+    private record StockActual(BigDecimal fisica,BigDecimal reservada,BigDecimal promedio,int version) {}
     private record Fuente(long productoId, long almacenId, BigDecimal recibida, BigDecimal aceptada,
         BigDecimal rechazada, BigDecimal costo, String estado, String ordenEstado, boolean almacenActivo) {}
 }

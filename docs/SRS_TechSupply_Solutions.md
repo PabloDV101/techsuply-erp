@@ -275,6 +275,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-INV-02 — Movimientos (Alta).** El sistema deberá registrar entradas, salidas, devoluciones, ajustes y reversiones con fecha, cantidad, tipo, usuario y fuente del movimiento.  
 *Criterio:* cada movimiento confirmado tiene exactamente una fuente válida y no se elimina físicamente.
 
+*Estado de implementación (Fase 3, sprint 2, parte 9):* existe consulta paginada protegida; recepciones y ajustes producen movimientos. V10 impide su modificación, borrado y truncado ordinarios y comprueba atributos de fuentes nuevas. Propietarios y administradores pueden alterar los controles; SQL directo con privilegios de inserción sigue sin garantizar el flujo transaccional. Salidas de ventas, devoluciones y reversas permanecen pendientes.
+
 **RF-INV-03 — Reserva de ventas (Alta).** Al confirmar un pedido, el sistema deberá reservar cantidades disponibles dentro de una transacción.  
 *Criterio:* las reservas concurrentes no permiten comprometer más unidades que las disponibles.
 
@@ -284,11 +286,17 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-INV-05 — Conteo físico (Media).** El sistema deberá permitir conteos por almacén y producto, comparar cantidad física contada con la registrada y conservar diferencias.  
 *Criterio:* el conteo por sí solo no cambia el stock.
 
+*Estado de implementación (Fase 3, sprint 2, parte 5):* creación, consulta, captura, cierre y cancelación tienen API protegida y auditoría. La captura conserva cantidad y versión observadas sin alterar stock; la aplicación comprueba la vigencia bajo bloqueo.
+
 **RF-INV-06 — Ajustes autorizados (Alta).** El sistema deberá crear solicitudes de ajuste con motivo, detalle, solicitante y aprobador.  
 *Criterio:* solo un ajuste aprobado puede aplicarse y el cambio de existencia se acompaña del movimiento en una transacción.
 
+*Estado de implementación (Fase 3, sprint 2, parte 8):* solicitudes registradas, consultadas, aprobadas, rechazadas y aplicadas con permisos y auditoría; el autorizador debe ser distinto del solicitante. Aplicar una solicitud aprobada actualiza existencias, movimientos, costo y auditoría atómicamente; los reintentos no duplican movimientos. El alcance implementado y sus límites se detallan en el diseño del sprint.
+
 **RF-INV-07 — Alertas e informes de inventario (Media).** El sistema deberá identificar stock bajo y permitir consultar rotación y productos sin movimiento/obsoletos según un umbral configurable.  
 *Criterio:* el umbral usado aparece en la configuración o parámetros del reporte; la alerta no genera una orden aprobada automáticamente.
+
+*Estado de implementación (Fase 3, sprint 2, parte 10):* la consulta protegida identifica stock bajo global con umbral configurable por producto y no crea órdenes. Rotación y obsolescencia siguen pendientes de reglas y fuentes; RF-INV-07 permanece parcial.
 
 ### 5.5 Ventas
 
@@ -413,6 +421,8 @@ de exportación siguen pendientes; este avance no cierra RF-REP-02.
 
 **RNF-12 — Pruebas (Alta).** Las pruebas unitarias deberán alcanzar como mínimo 70% de cobertura según la métrica acordada (recomendado: cobertura de líneas/instrucciones del backend). Se realizarán pruebas de integración, end-to-end, seguridad y carga.
 
+*Estado de implementación (sprint 2, parte 11):* JaCoCo mide líneas Java con las suites separadas. Surefire (incluye pruebas de contrato) cubre 290/2077 líneas, 13,96 %; integración cubre 1967/2077, 94,70 %, y la unión 1981/2077, 95,38 %. La cifra Surefire no es exclusivamente unitaria y la combinada no acredita el mínimo de cobertura unitaria. La meta y las pruebas de carga siguen pendientes; ver [medición y límites](fase-3/SPRINT_2_DISENO_INVENTARIO.md#parte-11--informes-y-medición-de-cobertura).
+
 **RNF-13 — Usabilidad (Media).** Las pantallas emplearán terminología consistente con el negocio, formularios con validaciones comprensibles, confirmación en operaciones críticas, estados de proceso visibles y mensajes de error accionables.
 
 **RNF-14 — Compatibilidad (Media).** La aplicación deberá funcionar en versiones recientes de navegadores modernos acordados por el equipo y adaptarse como mínimo a resoluciones de escritorio utilizadas en demostración.
@@ -482,7 +492,7 @@ Esta decisión limita la complejidad de despliegue y permite operaciones transac
 4. **Persistencia e infraestructura:** implementaciones de repositorios, JPA/Hibernate, migraciones y conexiones externas. Implementa contratos definidos por capas superiores.
 5. **Servicios compartidos:** auditoría, autorización común, validación, reportería, errores y notificaciones. No se deben convertir en un conjunto de dependencias globales que permita saltarse los límites de los módulos.
 
-**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración y errores propios de seguridad. `com.techsupply.erp_backend.common.api` implementa el formato de error, el `@RestControllerAdvice` global y contratos acotados de paginación. `com.techsupply.erp_backend.maestros` expone categorías y, desde la parte 3 de Fase 3, departamentos, proveedores y almacenes con DTO, permisos, paginación, baja lógica y auditoría; V6 también creó la tabla de productos y la parte 4 agregó su servicio/API. V7 añade el esquema inicial de compras e inventario y V8 amplía la precisión de sus costos; orden y detalle tienen entidades, cálculo de dominio y API de órdenes; inventario expone consulta de existencias y entrada interna, y recepción ofrece registro, consulta y confirmación transaccional; `audit` registra eventos de seguridad y catálogos; `notifications` aporta la bandeja interna APP, lectura por destinatario y un publicador posterior al commit, sin productores de negocio conectados. El advice de seguridad conserva prioridad para sus endpoints. Las entidades actuales contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Portal React integrado, CORS, Nginx/TLS, SMTP, notificaciones automáticas de negocio y jobs de despliegue/backup siguen pendientes.
+**Estado actual:** `com.techsupply.erp_backend.security` implementa autenticación, administración y errores propios de seguridad. `com.techsupply.erp_backend.common.api` implementa el formato de error, el `@RestControllerAdvice` global y contratos acotados de paginación. `com.techsupply.erp_backend.maestros` expone categorías y, desde la parte 3 de Fase 3, departamentos, proveedores y almacenes con DTO, permisos, paginación, baja lógica y auditoría; V6 también creó la tabla de productos y la parte 4 agregó su servicio/API. V7 añade el esquema inicial de compras e inventario y V8 amplía la precisión de sus costos; V9 crea las tablas SQL de conteos y ajustes con entidades JPA y reglas de dominio, y habilita la fuente de ajuste en movimientos; V10 protege el historial y valida atributos de fuentes nuevas; conteos y registro/consulta/aprobación/rechazo/aplicación de ajustes tienen servicios/API; orden y detalle tienen entidades, cálculo de dominio y API de órdenes; inventario expone consulta de existencias, lectura protegida de movimientos, alertas globales calculadas y entrada interna por recepción, y recepción ofrece registro, consulta y confirmación transaccional; `audit` registra eventos de seguridad y catálogos; `notifications` aporta la bandeja interna APP, lectura por destinatario y un publicador posterior al commit, sin productores de negocio conectados. El advice de seguridad conserva prioridad para sus endpoints. Las entidades actuales contienen anotaciones JPA y sus servicios usan repositorios Spring Data directamente. La separación más estricta por puertos y los demás módulos son diseño objetivo; no se declaran implementados por aparecer en estas vistas. Portal React integrado, CORS, Nginx/TLS, SMTP, notificaciones automáticas de negocio y jobs de despliegue/backup siguen pendientes.
 
 ### 8.4 Módulos del dominio
 
@@ -593,6 +603,8 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 
 **CA-01 — Compra y recepción.** Dada una orden aprobada por 20 unidades, al confirmar una recepción con 18 aceptadas y 2 rechazadas, el sistema aumentará la cantidad física en 18, registrará el movimiento, conservará las cantidades rechazadas y mantendrá la orden abierta mientras exista saldo pendiente. Si la transacción falla, no cambiará parcialmente ni la existencia ni el documento.
 
+*Evidencia adicional (sprint 2, parte 12):* `FlujoCompraInventarioIT` recorre orden y recepción 20/18/2 con API y PostgreSQL; `ConfirmarRecepcionIT` cubre también rollback y recepciones concurrentes.
+
 **CA-02 — Sobreventa.** Dado un producto con cantidad física 10 y reserva 6, la disponibilidad es 4. El sistema no deberá permitir que un pedido reserve más de 4 unidades adicionales. Dos solicitudes concurrentes no deben comprometer unidades por encima de la existencia disponible.
 
 **CA-03 — Despacho parcial.** Dado un pedido confirmado con 10 unidades reservadas, un despacho de 4 unidades disminuirá cantidad física en 4 y cantidad reservada en 4, registrará un movimiento de salida y dejará el pedido parcialmente despachado con 6 unidades pendientes.
@@ -602,6 +614,8 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 **CA-05 — Contabilización.** Un asiento con debe 1,000 y haber 950 no podrá contabilizarse. Un asiento equilibrado asociado a un periodo cerrado tampoco podrá contabilizarse. Reintentar una contabilización exitosa no generará otro asiento.
 
 **CA-06 — Autorización.** Un usuario sin permiso para ajustar inventario no podrá aplicar un ajuste enviando directamente una solicitud a la API. La denegación deberá quedar registrada según la política de auditoría.
+
+*Evidencia parcial (sprint 2, parte 8):* `AplicarAjusteIT` comprueba `401`, `403` y el evento de denegación en condiciones normales; `FlujoCompraInventarioIT` comprueba la denegación dentro del recorrido completo. La auditoría de denegación sigue la política existente de mejor esfuerzo.
 
 **CA-07 — Nómina.** Una nómina que no se encuentre aprobada no podrá pasar al pago. El neto deberá coincidir con el total de percepciones menos deducciones.
 
@@ -614,7 +628,8 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 | RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT y MasterCatalogApiIT; consulta de productos por categoría |
 | RF-COM-03/04/05, RN-07/08/18 | Orden y recepción parcial | OrdenCompra, RecepcionCompra, InventarioService | `ConfirmarRecepcionIT`: CA-01, reintento, concurrencia y rollback |
 | RF-COM-01/02/06/07/08 | Requisición, factura y devolución | RequisicionCompra, FacturaProveedor y devolución | Pendiente de implementación y pruebas |
-| RF-INV-01 a RF-INV-07 | Inventario, conteo y ajuste | Existencia, MovimientoInventario, ConteoInventario, AjusteInventario | CA-01, CA-02, CA-03 |
+| RF-INV-01/02/05/06/07 (parcial según alcance) | Existencia, movimiento, conteo, ajuste y alerta global | Existencia, MovimientoInventario, ConteoInventario, AjusteInventario | `FlujoCompraInventarioIT`, `AplicarAjusteIT`, `AlertaStockIT`; CA-01/06 |
+| RF-INV-03/04 y restantes de RF-INV-02/07 | Reservas, despachos y reportes | Inventario y módulos fuente futuros | CA-02/03 e informes: pendientes de implementación |
 | RF-VEN-01 a RF-VEN-09 | Cotización, portal, pedido y despacho | Cotizacion, PedidoVenta, Despacho, FacturaVenta | CA-02, CA-03 |
 | RF-CON-01 a RF-CON-08 | Contabilidad y aplicaciones | AsientoContable, DetalleAsiento, CuentaPorCobrar/Pagar, aplicaciones | CA-04, CA-05 |
 | RF-RH-01 a RF-RH-04 | RR. HH. y nómina | ExpedienteLaboral, SolicitudVacaciones, Nomina, DetalleNomina | CA-07 |

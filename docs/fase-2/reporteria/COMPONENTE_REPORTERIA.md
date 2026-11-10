@@ -51,3 +51,10 @@ El comando base de verificación del backend, cuando existan implementaciones y 
 ## Decisiones abiertas antes de implementar resultados
 
 El SRS, sección 12.2, pide validar las fórmulas de rotación, productos obsoletos, rentabilidad y margen operativo. También faltan la selección de KPI, reglas de ABC, mapeo de estados financieros/flujo de efectivo, definición de costo laboral, zona de negocio y asignación de permisos por reporte. Hasta entonces esos valores se identifican como no disponibles; no se inventan fórmulas. La existencia de este contrato documental no habilita endpoints ni migraciones.
+
+
+## Revisión de fuentes del sprint 2, parte 11
+
+El backend registra movimientos de entradas por recepción y entradas o salidas por ajuste. Todavía no registra despachos de ventas, devoluciones ni reversas; tampoco define aquí un historial completo de existencias para cada instante anterior al inicio del sistema. La ausencia de esos datos no demuestra que un producto no haya tenido actividad. La consulta global de stock bajo de Inventario sí está implementada, pero tiene semántica diferente del reporte por almacén propuesto en este componente.
+
+Antes de habilitar **rotación**, el equipo/docente debe definir numerador y denominador, unidades o valor, período y límites, existencias promedio e historial inicial, zona horaria, tratamiento de ajustes, devoluciones, reversas y denominador cero, además de asegurar las fuentes. Para **productos sin movimiento/obsoletos** debe acordar qué movimientos cuentan, el tratamiento de productos nunca movidos y anteriores a la puesta en marcha, estado y almacén aplicables, ventana y zona, y si ausencia de datos produce `NO_DISPONIBLE`. También faltan permisos específicos de reportería. Los endpoints de este contrato permanecen en diseño; no se calculan ceros ni resultados incompletos como indicadores definitivos.

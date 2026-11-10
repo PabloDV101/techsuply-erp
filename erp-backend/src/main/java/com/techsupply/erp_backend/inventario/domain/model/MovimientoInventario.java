@@ -15,11 +15,20 @@ public class MovimientoInventario {
     @Column(name = "costo_unitario", nullable = false, precision = 16, scale = 4) private BigDecimal costoUnitario;
     @Column(nullable = false) private Instant fecha;
     @Column(name = "usuario_id", nullable = false) private Long usuarioId;
-    @Column(name = "detalle_recepcion_id", nullable = false, unique = true) private Long detalleRecepcionId;
+    @Column(name = "detalle_recepcion_id", unique = true) private Long detalleRecepcionId;
+    @Column(name = "detalle_ajuste_id", unique = true) private Long detalleAjusteId;
     @Column(name = "clave_operacion", nullable = false, unique = true, length = 120) private String claveOperacion;
     @Column(columnDefinition = "text") private String referencia;
     protected MovimientoInventario() {}
     public Long getId() { return id; }
+    public Long getProductoId() { return productoId; }
+    public Long getAlmacenId() { return almacenId; }
+    public String getTipo() { return tipo; }
+    public String getMotivo() { return motivo; }
+    public BigDecimal getCostoUnitario() { return costoUnitario; }
+    public Instant getFecha() { return fecha; }
+    public Long getUsuarioId() { return usuarioId; }
     public Long getDetalleRecepcionId() { return detalleRecepcionId; }
+    public Long getDetalleAjusteId() { return detalleAjusteId; }
     public BigDecimal getCantidad() { return cantidad; }
 }

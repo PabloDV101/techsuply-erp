@@ -1,6 +1,6 @@
 @startuml TS03_Proceso_Conteos_Ajustes
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
+caption VISTA MIXTA · Conteos, autorización y aplicación de ajustes implementados.
 title ERP TechSupply Solutions - Conteos y Ajustes de Inventario
 
 |Responsable de almacen|
@@ -11,32 +11,34 @@ start
 :Consultar cantidad registrada;
 :Comparar cantidad fisica y cantidad del sistema;
 if (¿Hay diferencias?) then (Si)
+  :Cerrar conteo sin modificar existencias;
   :Crear solicitud de ajuste con motivo;
   :Calcular diferencia por producto;
   |Aprobador autorizado|
   :Revisar conteo, diferencia y motivo;
   if (¿Autoriza ajuste?) then (Si)
     |Modulo de inventario|
-    :Validar autorizacion y estado del conteo;
-    :Validar stock resultante y reservas;
-    if (¿Stock resultante valido?) then (Si)
-      :Iniciar transaccion;
+    :Validar permiso, solicitante y estado pendiente;
+    :Guardar aprobacion, actor, fecha y auditoria;
+    :Iniciar transaccion de aplicación;
+    :Bloquear ajuste, conteo y existencia;
+    :Validar permiso, vigencia y reservas;
+    if (¿Aplicación válida?) then (Si)
       :Aplicar diferencia a cantidad fisica;
       :Registrar movimiento de ajuste;
-      :Vincular movimiento al conteo y ajuste;
+      :Vincular movimiento al detalle de ajuste;
       :Registrar usuario y auditoria;
       :Confirmar transaccion;
-      :Cerrar conteo;
       stop
     else (No)
-      :Rechazar ajuste por conflicto con reservas;
-      :Registrar incidencia y conservar trazabilidad;
+      :Revertir aplicación por conflicto;
+      :Conservar ajuste aprobado y trazabilidad;
       stop
     endif
   else (No)
     |Modulo de inventario|
-    :Registrar rechazo y motivo;
-    :Conservar cantidades y conteo para consulta;
+    :Registrar rechazo, actor, fecha y auditoria;
+    :Conservar motivo y conteo para consulta;
     stop
   endif
 else (No)

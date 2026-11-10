@@ -26,7 +26,7 @@ class MasterCatalogMigrationIT extends PostgresIntegrationSupport {
 
     @Test
     void flywayCreatesV6CatalogsAndPermissions() {
-        assertThat(flyway.info().applied()).hasSize(8);
+        assertThat(flyway.info().applied()).hasSize(10);
         assertThat(db.queryForObject("""
             select count(*) from information_schema.tables
             where table_schema = current_schema()

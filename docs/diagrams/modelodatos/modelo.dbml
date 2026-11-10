@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.8 — V1–V6 físicos, V7 parcial y precisión V8; los cuatro catálogos maestros tienen API; resto modelo objetivo; SRS-TSS-ERP-001.
+// Versión 1.16 — V1–V6 físicos, V7 parcial, precisión V8, documentos V9, controles V10 y alerta calculada; los cuatro catálogos maestros tienen API; resto modelo objetivo; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía la precisión de costos. Órdenes, recepción y consulta de existencias tienen API. Los campos y tablas futuros permanecen como objetivo. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía la precisión de costos. V9 crea tablas SQL de conteos y ajustes; tienen JPA y dominio; conteos y registro/consulta/aprobación/rechazo/aplicación de ajustes cuentan con servicio/API. V10 protege historial y verifica fuentes en inserciones nuevas; sus triggers y límites se detallan en migraciones. Órdenes, recepción y consulta de existencias tienen API. Los campos y tablas futuros permanecen como objetivo. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -357,16 +357,16 @@ Table movimientos_inventario [headercolor: #D68910] {
   costo_unitario numeric(16,4) [not null, default: 0]
   fecha timestamptz [not null, default: `now()`]
   usuario_id bigint [not null]
-  detalle_recepcion_id bigint
+  detalle_recepcion_id bigint [unique]
   detalle_despacho_id bigint
-  detalle_ajuste_id bigint
+  detalle_ajuste_id bigint [unique]
   detalle_devolucion_proveedor_id bigint
   detalle_devolucion_cliente_id bigint
   detalle_pedido_id bigint
   movimiento_reversado_de_id bigint [unique]
   clave_operacion varchar(120) [not null, unique, note: 'Clave idempotente de cada movimiento; evita duplicados por reintentos.']
   referencia text
-  Note: 'OBJETIVO con SQL parcial V7 y JPA; solo entradas por recepción implementadas, fuentes futuras pendientes. Kardex inmutable objetivo. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
+  Note: 'OBJETIVO con SQL V7/V9, JPA y lectura protegida de movimientos: SQL admite recepción y ajuste; recepción y ajustes implementados en aplicación, otras fuentes futuras pendientes. V10 bloquea UPDATE/DELETE/TRUNCATE y comprueba atributos de la fuente al insertar; dueño/administrador puede alterar el control. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
 }
 
 Table conteos_inventario [headercolor: #D68910] {
@@ -376,8 +376,8 @@ Table conteos_inventario [headercolor: #D68910] {
   creado_por_usuario_id bigint [not null]
   fecha_programada date [not null]
   estado varchar(15) [not null, note: 'PROGRAMADO, EN_CAPTURA, CERRADO, CANCELADO']
-  clase varchar(10) [note: 'CICLICO, GENERAL']
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  clase varchar(10) [not null, note: 'CICLICO, GENERAL']
+  Note: 'SQL V9, JPA/dominio y API de conteos con auditoría implementados; validación de vigencia al aplicar ajuste implementada; V10 congela conteos cerrados o cancelados.'
 }
 
 Table detalles_conteo [headercolor: #D68910] {
@@ -385,10 +385,12 @@ Table detalles_conteo [headercolor: #D68910] {
   conteo_id bigint [not null]
   producto_id bigint [not null]
   cantidad_sistema numeric(14,3) [not null]
-  cantidad_contada numeric(14,3)
-  diferencia numeric(14,3)
+  cantidad_contada numeric(14,3) [not null]
+  diferencia numeric(14,3) [not null]
+  existencia_previa boolean [not null]
+  version_existencia int
   indexes { (conteo_id, producto_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. El conteo no cambia existencias por sí solo. La diferencia se calcula como contada menos sistema.'
+  Note: 'SQL V9, JPA/dominio y captura API implementados. La diferencia es contada menos sistema. Versión y existencia previa capturan referencia; no garantizan concurrencia por sí solas; V10 protege líneas de conteos cerrados o cancelados.'
 }
 
 Table ajustes_inventario [headercolor: #D68910] {
@@ -399,10 +401,12 @@ Table ajustes_inventario [headercolor: #D68910] {
   solicitado_por_usuario_id bigint [not null]
   autorizado_por_usuario_id bigint
   clave_idempotencia varchar(120) [not null, unique]
-  estado varchar(15) [not null, note: 'BORRADOR, PENDIENTE, APROBADO, APLICADO, RECHAZADO, CANCELADO']
+  estado varchar(15) [not null, note: 'SQL V9: PENDIENTE, APROBADO, APLICADO, RECHAZADO; BORRADOR y CANCELADO son objetivo futuro']
   fecha timestamptz [not null, default: `now()`]
+  autorizado_en timestamptz
+  motivo_rechazo text
   aplicado_en timestamptz
-  Note: 'OBJETIVO: tabla aún no implementada. Encabezado de ajuste. Solo se aplica tras aprobación; el solicitante no puede ser quien autoriza.'
+  Note: 'OBJETIVO con SQL V9, JPA y API de registro/consulta/aprobación/rechazo/aplicación. CHECK de actor/estado y segregación; servicio aplica atómicamente; V10 congela ajustes aplicados.'
 }
 
 Table alertas_inventario [headercolor: #D68910] {
@@ -414,7 +418,7 @@ Table alertas_inventario [headercolor: #D68910] {
   generada_en timestamptz [not null, default: `now()`]
   resuelta_en timestamptz
   detalle text
-  Note: 'OBJETIVO: tabla aún no implementada. Índice único parcial recomendado por (producto_id, almacen_id, tipo) cuando estado = ACTIVA.'
+  Note: 'OBJETIVO: tabla aún no implementada. La alerta global de stock bajo es una consulta calculada sin esta tabla; persistencia y ciclo de vida siguen como objetivo. Índice único parcial recomendado por (producto_id, almacen_id, tipo) cuando estado = ACTIVA.'
 }
 
 // ==================== VENTAS ====================
@@ -858,11 +862,11 @@ Table detalles_ajuste_inventario [headercolor: #D68910] {
   producto_id bigint [not null]
   tipo varchar(12) [not null, note: 'POSITIVO, NEGATIVO']
   cantidad numeric(14,3) [not null]
-  costo_unitario numeric(14,4) [not null, default: 0]
+  costo_unitario numeric(16,4)
   motivo_linea varchar(250)
   detalle_conteo_id bigint
   indexes { (ajuste_inventario_id, producto_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'OBJETIVO con SQL V9, JPA y API de registro/consulta y aplicación. Positivo requiere costo; negativo guarda costo al aplicar; V10 protege líneas de ajustes aplicados.'
 }
 
 Table devoluciones_cliente [headercolor: #8E44AD] {

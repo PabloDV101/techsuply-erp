@@ -42,7 +42,11 @@ package "erp-backend/src/main/java/com/techsupply/erp_backend" {
     component "RecepcionCompraController / Service\nRecepcionCompra / DetalleRecepcion / DTO / repositorios" as ReceiptApi <<implementado>>
   }
   package "inventario" {
-    component "ExistenciaController / InventarioService\nExistencia / MovimientoInventario / ValoracionInventario\nrepositorios / DTO" as Inventory <<implementado>>
+    component "ExistenciaController / InventarioService\nMovimientoController / MovimientoConsultaService\nExistencia / MovimientoInventario / ValoracionInventario\nrepositorios / DTO" as Inventory <<implementado>>
+    component "ConteoInventario / DetalleConteo\nAjusteInventario / DetalleAjusteInventario\nCalculoConteo / repositorios" as InventoryDomain <<JPA y dominio>>
+    component "ConteoInventarioController / Service\nDTO / permisos / auditoría" as CountApi <<implementado>>
+    component "AjusteInventarioController / Service\nregistro, consulta, autorización y aplicación / DTO" as AdjustmentApi <<implementado parcial>>
+    component "AlertaStockController / Service\nAlertaStockRepository / DTO" as AlertApi <<implementado>>
   }
   package "notifications" {
     component "NotificationController / NotificationPublisher\nInboxService / InternalNotification / Writer" as NotificationModule <<implementado>>
@@ -62,6 +66,8 @@ package "src/main/resources" {
     artifact "V6__master_purchase_catalogs.sql" as V6
     artifact "V7__purchase_receipt_inventory_core.sql" as V7
     artifact "V8__widen_inventory_cost_precision.sql" as V8
+    artifact "V9__inventory_counts_adjustments.sql" as V9
+    artifact "V10__protect_inventory_history.sql" as V10
   }
 }
 package "src/test/java/com/techsupply/erp_backend" {
@@ -76,6 +82,12 @@ package "src/test/java/com/techsupply/erp_backend" {
   artifact "MasterCatalogApiIT / MasterCatalogOpenApiContractTest" as CatalogApiIT <<implementado>>
   artifact "PurchaseCoreMigrationIT" as PurchaseMigrationIT <<implementado>>
   artifact "InventoryCostPrecisionMigrationIT" as CostMigrationIT <<implementado>>
+  artifact "InventoryDocumentsMigrationIT" as InventoryDocumentsIT <<implementado>>
+  artifact "InventarioDominioTest / InventarioDocumentosPersistenceIT" as InventoryDomainTests <<implementado>>
+  artifact "MovimientoOpenApiContractTest / MovimientoConsultaIT" as MovementTests <<implementado>>
+  artifact "AlertaStockOpenApiContractTest / AlertaStockIT" as AlertTests <<implementado>>
+  artifact "ConteoOpenApiContractTest / ConteoInventarioIT" as CountTests <<implementado>>
+  artifact "AjusteOpenApiContractTest / AjusteInventarioIT\nAutorizarAjusteIT / AplicarAjusteIT" as AdjustmentTests <<implementado>>
   artifact "CalculoOrdenTest / OrdenCompraPersistenceIT" as PurchaseTests <<implementado>>
   artifact "OrdenCompraApiIT / OrdenCompraOpenApiContractTest" as PurchaseApiTests <<implementado>>
   artifact "ValoracionInventarioTest / InventarioIntegrationIT\nInventarioOpenApiContractTest" as InventoryTests <<implementado>>
@@ -95,6 +107,21 @@ NotificationIT ..> V5
 CatalogMigrationIT ..> V6
 PurchaseMigrationIT ..> V7
 CostMigrationIT ..> V8
+InventoryDocumentsIT ..> V9
+InventoryDocumentsIT ..> V10 : actualización
+Inventory ..> V10 : protección de historial
+InventoryDomain ..> V9 : mapeo JPA
+CountApi ..> InventoryDomain
+CountApi ..> AuditModule
+CountTests ..> CountApi
+AdjustmentApi ..> Inventory : aplicación transaccional
+AdjustmentApi ..> InventoryDomain
+AdjustmentApi ..> AuditModule
+AdjustmentTests ..> AdjustmentApi
+AlertTests ..> AlertApi
+AlertApi ..> V7 : existencias
+AlertApi ..> V6 : productos y almacenes
+InventoryDomainTests ..> InventoryDomain
 Inventory ..> V8 : precisión de costos
 PurchaseDomain ..> V7 : mapeo JPA
 PurchaseTests ..> PurchaseDomain
@@ -114,6 +141,7 @@ ConfirmationTests ..> ReceiptApi
 Inventory ..> V7 : JPA / SQL transaccional
 Inventory ..> GlobalErrors : paginación / errores
 InventoryTests ..> Inventory
+MovementTests ..> Inventory
 CatalogPersistenceIT ..> MasterPersistence
 CatalogPersistenceIT ..> V6
 MasterPersistence ..> V6 : mapeo JPA
@@ -128,15 +156,24 @@ AppClasses ..> Models
 AppClasses ..> Repos
 SecurityClasses ..> Repos
 note bottom of V6
-  Flyway ejecuta V1–V8 en orden de versión.
+  Flyway ejecuta V1–V10 en orden de versión.
   V6 crea cuatro tablas y permisos. Los cuatro catálogos tienen API.
   El orden de ejecución no es una asociación estructural UML.
 end note
 note bottom of V7
   SQL parcial de compras e inventario; entidades de orden implementadas,
   Órdenes, recepción y consulta de existencias implementadas;
-  fuentes adicionales de inventario permanecen pendientes.
+  fuentes adicionales de inventario permanecen pendientes en aplicación.
   El modelo objetivo incluye fuentes adicionales aún no creadas.
+end note
+note bottom of V10
+  Triggers protegen movimientos y documentos finales;
+  propietario y administrador pueden alterar controles.
+end note
+note bottom of V9
+  Tablas SQL y dominio JPA; API de conteos implementada,
+  registro/consulta/autorización/aplicación de ajustes implementados.
+  Movimientos de ajuste se crean desde aplicación.
 end note
 Integration ..> V1
 Unit ..> AppClasses

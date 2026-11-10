@@ -1,6 +1,6 @@
 @startuml ERP_02_Compras_Inventario
 !include ../_estilo.iuml
-caption VISTA MIXTA · Órdenes y confirmación de recepción implementadas; facturas y otros movimientos son objetivo.
+caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementados.
  title TechSupply Solutions - Vista logica: Compras e inventario (modelo objetivo)
  hide circle
 
@@ -115,39 +115,62 @@ caption VISTA MIXTA · Órdenes y confirmación de recepción implementadas; fac
   -claveOperacion: String
 }
   note right of MovimientoInventario
-    V7 solo admite entradas por recepción;
+    V9 admite fuente de recepción o ajuste;
+    lectura protegida y aplicación de ajustes implementadas;
     relaciones de producto y almacén se almacenan como IDs.
   end note
-  class ConteoInventario {
+  class ConteoInventario <<JPA y dominio>> {
   -id: Long
   -folio: String
   -fechaProgramada: Date
   -estado: EstadoConteo
+  +capturar(...)
+  +cerrar()
+  +cancelar()
 }
-  class DetalleConteo {
+  class DetalleConteo <<JPA y dominio>> {
   -id: Long
   -cantidadSistema: Decimal
   -cantidadContada: Decimal
   -diferencia: Decimal
-  +calcularDiferencia(): Decimal
+  -existenciaPrevia: boolean
+  -versionExistencia: Integer
 }
-  class AlertaInventario {
+  note right of ConteoInventario
+    Referencias externas mapeadas como IDs;
+    API y bloqueo de captura implementados;
+    aplicación valida vigencia bajo bloqueo.
+  end note
+  class CalculoConteo <<función pura>> {
+    +diferencia(sistema, contada): BigDecimal
+  }
+  class AlertaInventario <<objetivo>> {
     -id: Long
     -tipo: TipoAlerta
     -estado: EstadoAlerta
     -generadaEn: DateTime
     -resueltaEn: DateTime
   }
-  class AjusteInventario {
+  note right of AlertaInventario
+    La alerta de stock bajo implementada es calculada;
+    no utiliza esta entidad persistida objetivo.
+  end note
+  class AjusteInventario <<JPA y dominio>> {
   -id: Long
   -folio: String
   -motivo: String
   -claveIdempotencia: String
   -estado: EstadoAjuste
-  +aprobar()
-  +aplicar()
+  +agregarDetalle(...)
+  +aprobar(actor, instante)
+  +rechazar(actor, instante, motivo)
+  +marcarAplicado(instante)
 }
-  class DetalleAjusteInventario {
+  note right of AjusteInventario
+    Registro, consulta, autorización y aplicación por API;
+    la aplicación es transaccional.
+  end note
+  class DetalleAjusteInventario <<JPA y dominio>> {
   -id: Long
   -tipo: TipoAjuste
   -cantidad: Decimal
@@ -200,21 +223,19 @@ caption VISTA MIXTA · Órdenes y confirmación de recepción implementadas; fac
   CONFIRMADA
   CANCELADA
 }
- enum EstadoConteo {
+ enum EstadoConteo <<implementado>> {
   PROGRAMADO
   EN_CAPTURA
   CERRADO
   CANCELADO
 }
- enum EstadoAjuste {
-  BORRADOR
+ enum EstadoAjuste <<implementado>> {
   PENDIENTE
   APROBADO
   APLICADO
   RECHAZADO
-  CANCELADO
 }
- enum TipoAjuste {
+ enum TipoAjuste <<implementado>> {
   POSITIVO
   NEGATIVO
 }
@@ -270,12 +291,13 @@ caption VISTA MIXTA · Órdenes y confirmación de recepción implementadas; fac
  ConteoInventario "0..*" --> "1" Usuario : creado por
  Producto "1" -- "0..*" AlertaInventario
  Almacen "0..1" <-- "0..*" AlertaInventario
- ConteoInventario "1" *-- "1..*" DetalleConteo
+ ConteoInventario "1" *-- "0..*" DetalleConteo
+ ConteoInventario ..> CalculoConteo
  DetalleConteo "0..*" --> "1" Producto
  AjusteInventario "0..*" --> "1" Almacen
  AjusteInventario "0..*" --> "1" Usuario : solicitante
  AjusteInventario "0..*" --> "0..1" Usuario : autorizador
- AjusteInventario "1" *-- "1..*" DetalleAjusteInventario
+ AjusteInventario "1" *-- "0..*" DetalleAjusteInventario
  DetalleAjusteInventario "0..*" --> "1" Producto
  DetalleAjusteInventario "0..*" --> "0..1" DetalleConteo
  MovimientoInventario "0..*" --> "1" Producto
@@ -301,7 +323,8 @@ caption VISTA MIXTA · Órdenes y confirmación de recepción implementadas; fac
  note bottom of MovimientoInventario
   Cada movimiento ordinario referencia exactamente una linea fuente.
   Una REVERSA referencia al movimiento original.
-  Kardex inmutable, idempotente y transaccional con Existencia.
+  V10 bloquea UPDATE/DELETE/TRUNCATE ordinarios;
+  el dueño o administrador puede alterar los controles.
  end note
  note bottom of DetalleDevolucionProveedor
   La cantidad acumulada devuelta no supera las unidades aceptadas

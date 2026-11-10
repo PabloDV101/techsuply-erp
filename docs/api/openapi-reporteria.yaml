@@ -35,7 +35,9 @@ paths:
       description: >-
         RF-INV-07. Fotografía del estado actual; no reconstruye existencias históricas.
         Disponible = física - reservada. El DBML propone productos.punto_reorden
-        como umbral global, pendiente de confirmar frente al stock mínimo del SRS.
+        como umbral global. El sprint 2 implementa una alerta operativa global en
+        /inventory/low-stock-alerts; el filtro warehouseId de este reporte no es
+        equivalente y debe redefinirse antes de implementar esta ruta de diseño.
       parameters:
         - $ref: '#/components/parameters/WarehouseId'
         - $ref: '#/components/parameters/ProductId'
@@ -54,8 +56,9 @@ paths:
       summary: Productos sin movimiento según umbral
       description: >-
         RF-INV-07. La interpretación de obsoleto, de productos nunca movidos y de
-        tipos de movimiento válidos sigue pendiente; no llamar obsoleto al resultado
-        hasta aprobarla.
+        tipos de movimiento válidos sigue pendiente; faltan despachos de Ventas,
+        devoluciones y reversas en el kardex actual. No llamar obsoleto al resultado
+        ni interpretar ausencia de fuentes como ausencia de actividad hasta aprobarla.
       parameters:
         - $ref: '#/components/parameters/AsOf'
         - { name: days, in: query, required: true, description: Umbral positivo de días sin movimiento., schema: { type: integer, minimum: 1 } }
@@ -73,7 +76,7 @@ paths:
     get:
       operationId: getInventoryTurnoverReport
       summary: Rotación de inventario
-      description: RF-INV-07 y RF-REP-03. Fórmula y exclusiones pendientes de aprobación.
+      description: RF-INV-07 y RF-REP-03. Fórmula, períodos y exclusiones pendientes de aprobación; faltan salidas de Ventas y fuentes históricas suficientes.
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'

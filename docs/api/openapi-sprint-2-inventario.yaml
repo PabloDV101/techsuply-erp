@@ -1,0 +1,1071 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP — Inventario, sprint 2
+  version: 0.1.0
+  description: 'Contrato implementado para consulta de movimientos, conteos, ajustes y alertas globales calculadas. Reglas y limitaciones: docs/fase-3/SPRINT_2_DISENO_INVENTARIO.md.
+    La ruta de stock existente permanece en el contrato del sprint 1.'
+servers:
+- url: /api/v1
+security:
+- bearerAuth: []
+x-implementation-status: implemented
+paths:
+  /inventory/movements:
+    x-implementation-status: implemented
+    get:
+      operationId: listInventoryMovements
+      summary: Consultar kardex
+      description: 'Requiere INVENTARIO_MOVIMIENTOS_LEER. Orden estable por fecha e identificador descendentes;
+        cada movimiento conserva su fuente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/ProductoId'
+      - $ref: '#/components/parameters/AlmacenId'
+      responses:
+        '200':
+          description: Resultado o reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovimientoPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /inventory/counts:
+    x-implementation-status: implemented
+    get:
+      operationId: listInventoryCounts
+      summary: Listar conteos
+      description: 'Requiere INVENTARIO_CONTEOS_LEER. Orden por identificador descendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/AlmacenId'
+      - $ref: '#/components/parameters/EstadoConteo'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConteoPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createInventoryCount
+      summary: Crear conteo programado
+      description: 'Requiere INVENTARIO_CONTEOS_ADMIN. No modifica existencias.'
+      responses:
+        '201':
+          description: Recurso creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conteo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConteoCreate'
+            example:
+              almacenId: 1
+              fechaProgramada: '2026-11-10'
+              clase: CICLICO
+  /inventory/counts/{id}:
+    x-implementation-status: implemented
+    get:
+      operationId: getInventoryCount
+      summary: Consultar conteo
+      description: 'Requiere INVENTARIO_CONTEOS_LEER. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conteo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inventory/counts/{id}/lines/{productoId}:
+    x-implementation-status: implemented
+    put:
+      operationId: captureInventoryCountLine
+      summary: Capturar o recapturar línea
+      description: 'Requiere INVENTARIO_CONTEOS_ADMIN. Captura o recaptura la referencia y versión actuales; no modifica existencias. Un reintento puede renovar la referencia.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/ProductoId'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conteo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConteoLineaWrite'
+            example:
+              cantidadContada: 18
+  /inventory/counts/{id}/close:
+    x-implementation-status: implemented
+    post:
+      operationId: closeInventoryCount
+      summary: Cerrar conteo
+      description: 'Requiere INVENTARIO_CONTEOS_ADMIN. Congela las líneas, sin cambiar existencias; requiere al menos una. Repetir el cierre devuelve 409.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conteo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inventory/counts/{id}/cancel:
+    x-implementation-status: implemented
+    post:
+      operationId: cancelInventoryCount
+      summary: Cancelar conteo
+      description: 'Requiere INVENTARIO_CONTEOS_ADMIN. Solo PROGRAMADO o EN_CAPTURA; repetir la cancelación devuelve 409.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conteo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inventory/adjustments:
+    x-implementation-status: implemented
+    get:
+      operationId: listInventoryAdjustments
+      summary: Listar ajustes
+      description: 'Requiere INVENTARIO_AJUSTES_LEER. Orden por identificador descendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/AlmacenId'
+      - $ref: '#/components/parameters/EstadoAjuste'
+      responses:
+        '200':
+          description: Resultado o reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AjustePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createInventoryAdjustment
+      summary: Solicitar ajuste
+      description: 'Requiere INVENTARIO_AJUSTES_REGISTRAR. Misma clave y contenido equivalente devuelve 200; contenido
+        diferente 409. No modifica stock.'
+      responses:
+        '200':
+          description: Resultado o reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ajuste'
+        '201':
+          description: Recurso creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ajuste'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AjusteCreate'
+            example:
+              almacenId: 1
+              motivo: Diferencia en conteo
+              claveIdempotencia: ajuste-ejemplo-001
+              detalles:
+              - productoId: 42
+                tipo: NEGATIVO
+                cantidad: 2
+                detalleConteoId: 17
+  /inventory/adjustments/{id}:
+    x-implementation-status: implemented
+    get:
+      operationId: getInventoryAdjustment
+      summary: Consultar ajuste
+      description: 'Requiere INVENTARIO_AJUSTES_LEER. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado o reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ajuste'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inventory/adjustments/{id}/approve:
+    x-implementation-status: implemented
+    post:
+      operationId: approveInventoryAdjustment
+      summary: Aprobar ajuste
+      description: 'Requiere INVENTARIO_AJUSTES_APROBAR. El aprobador debe ser distinto del solicitante; no modifica
+        stock.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ajuste actualizado; repetir la transición devuelve 409.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ajuste'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inventory/adjustments/{id}/reject:
+    x-implementation-status: implemented
+    post:
+      operationId: rejectInventoryAdjustment
+      summary: Rechazar ajuste
+      description: 'Requiere INVENTARIO_AJUSTES_APROBAR. Solicitante y aprobador deben ser distintos; requiere motivo.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Ajuste actualizado; repetir la transición devuelve 409.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ajuste'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rechazo'
+            example:
+              motivo: Requiere un nuevo conteo
+  /inventory/adjustments/{id}/apply:
+    x-implementation-status: implemented
+    post:
+      operationId: applyInventoryAdjustment
+      summary: Aplicar ajuste aprobado
+      description: 'Requiere INVENTARIO_AJUSTES_APLICAR. Actualiza stock, kardex y auditoría en una transacción.
+        Repetir aplicación exitosa devuelve 200 sin duplicar; versión obsoleta o reserva insuficiente devuelve 409.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado o reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ajuste'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /inventory/low-stock-alerts:
+    x-implementation-status: implemented
+    get:
+      operationId: listLowStockAlerts
+      summary: Consultar alertas globales calculadas
+      description: 'Requiere INVENTARIO_ALERTAS_LEER. Productos activos con puntoReorden > 0 y disponible global
+        en almacenes activos <= puntoReorden. cantidadReorden es la cantidad configurada en el producto, no una diferencia calculada. No genera órdenes; orden por productoId ascendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/ProductoId'
+      responses:
+        '200':
+          description: Resultado o reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertaStockPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    ProductoIdPath:
+      name: productoId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    AlmacenId:
+      name: almacenId
+      in: query
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    ProductoId:
+      name: productoId
+      in: query
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    EstadoConteo:
+      name: estado
+      in: query
+      schema:
+        type: string
+        enum: [PROGRAMADO, EN_CAPTURA, CERRADO, CANCELADO]
+    EstadoAjuste:
+      name: estado
+      in: query
+      schema:
+        type: string
+        enum: [PENDIENTE, APROBADO, APLICADO, RECHAZADO]
+    Estado:
+      name: estado
+      in: query
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Autenticación requerida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Permiso insuficiente
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Clave, estado, versión o cantidades en conflicto
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      - code
+      - message
+      properties:
+        status:
+          type: integer
+        code:
+          type: string
+        message:
+          type: string
+    PageMetadata:
+      type: object
+      additionalProperties: false
+      required:
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    Movimiento:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - productoId
+      - almacenId
+      - tipo
+      - motivo
+      - cantidad
+      - costoUnitario
+      - fecha
+      - usuarioId
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        productoId:
+          type: integer
+          format: int64
+          minimum: 1
+        almacenId:
+          type: integer
+          format: int64
+          minimum: 1
+        tipo:
+          type: string
+          enum:
+          - ENTRADA
+          - SALIDA
+        motivo:
+          type: string
+          enum:
+          - RECEPCION_COMPRA
+          - AJUSTE
+        cantidad:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+          exclusiveMinimum: true
+        costoUnitario:
+          type: number
+          minimum: 0
+          maximum: 999999999999.9999
+          multipleOf: 0.0001
+          description: Hasta 12 dígitos enteros y 4 decimales; usar decimales exactos.
+        fecha:
+          type: string
+          format: date-time
+        usuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+        detalleRecepcionId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        detalleAjusteId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+    ConteoCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - almacenId
+      - fechaProgramada
+      - clase
+      properties:
+        almacenId:
+          type: integer
+          format: int64
+          minimum: 1
+        fechaProgramada:
+          type: string
+          format: date
+        clase:
+          type: string
+          enum:
+          - CICLICO
+          - GENERAL
+    ConteoLineaWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - cantidadContada
+      properties:
+        cantidadContada:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+    ConteoLinea:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - productoId
+      - cantidadSistema
+      - cantidadContada
+      - diferencia
+      - existenciaPrevia
+      - versionExistencia
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        productoId:
+          type: integer
+          format: int64
+          minimum: 1
+        cantidadSistema:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+        cantidadContada:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+        diferencia:
+          type: number
+          minimum: -99999999999.999
+          maximum: 99999999999.999
+          multipleOf: 0.001
+        existenciaPrevia:
+          type: boolean
+        versionExistencia:
+          type: integer
+          minimum: 0
+          nullable: true
+    Conteo:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - folio
+      - almacenId
+      - creadoPorUsuarioId
+      - fechaProgramada
+      - clase
+      - estado
+      - detalles
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        folio:
+          type: string
+        almacenId:
+          type: integer
+          format: int64
+          minimum: 1
+        creadoPorUsuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+        fechaProgramada:
+          type: string
+          format: date
+        clase:
+          type: string
+          enum:
+          - CICLICO
+          - GENERAL
+        estado:
+          type: string
+          enum:
+          - PROGRAMADO
+          - EN_CAPTURA
+          - CERRADO
+          - CANCELADO
+        detalles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConteoLinea'
+    AjusteLineaWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - productoId
+      - tipo
+      - cantidad
+      properties:
+        productoId:
+          type: integer
+          format: int64
+          minimum: 1
+        tipo:
+          type: string
+          enum:
+          - POSITIVO
+          - NEGATIVO
+        cantidad:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+          exclusiveMinimum: true
+        costoUnitario:
+          type: number
+          minimum: 0
+          maximum: 999999999999.9999
+          multipleOf: 0.0001
+          description: Hasta 12 dígitos enteros y 4 decimales; usar decimales exactos.
+          nullable: true
+        detalleConteoId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        motivoLinea:
+          type: string
+          minLength: 1
+          maxLength: 250
+          nullable: true
+      description: POSITIVO requiere costoUnitario numérico; NEGATIVO lo omite o envía null y el servidor captura el promedio vigente al aplicar.
+      oneOf:
+      - properties:
+          tipo:
+            type: string
+            enum:
+            - POSITIVO
+          costoUnitario:
+            type: number
+        required:
+        - costoUnitario
+      - properties:
+          tipo:
+            type: string
+            enum:
+            - NEGATIVO
+        not:
+          required:
+          - costoUnitario
+          properties:
+            costoUnitario:
+              type: number
+    AjusteCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - almacenId
+      - motivo
+      - claveIdempotencia
+      - detalles
+      properties:
+        almacenId:
+          type: integer
+          format: int64
+          minimum: 1
+        motivo:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        claveIdempotencia:
+          type: string
+          minLength: 1
+          maxLength: 120
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AjusteLineaWrite'
+    AjusteLinea:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - productoId
+      - tipo
+      - cantidad
+      - costoUnitario
+      - detalleConteoId
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        productoId:
+          type: integer
+          format: int64
+          minimum: 1
+        tipo:
+          type: string
+          enum:
+          - POSITIVO
+          - NEGATIVO
+        cantidad:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+          exclusiveMinimum: true
+        costoUnitario:
+          type: number
+          minimum: 0
+          maximum: 999999999999.9999
+          multipleOf: 0.0001
+          description: Hasta 12 dígitos enteros y 4 decimales; usar decimales exactos.
+          nullable: true
+        detalleConteoId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        motivoLinea:
+          type: string
+          nullable: true
+    Ajuste:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - folio
+      - almacenId
+      - motivo
+      - solicitadoPorUsuarioId
+      - autorizadoPorUsuarioId
+      - claveIdempotencia
+      - estado
+      - fecha
+      - detalles
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        folio:
+          type: string
+        almacenId:
+          type: integer
+          format: int64
+          minimum: 1
+        motivo:
+          type: string
+        solicitadoPorUsuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+        autorizadoPorUsuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        claveIdempotencia:
+          type: string
+        estado:
+          type: string
+          enum:
+          - PENDIENTE
+          - APROBADO
+          - APLICADO
+          - RECHAZADO
+        motivoRechazo:
+          type: string
+          nullable: true
+        fecha:
+          type: string
+          format: date-time
+        autorizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+        aplicadoEn:
+          type: string
+          format: date-time
+          nullable: true
+        detalles:
+          type: array
+          items:
+            $ref: '#/components/schemas/AjusteLinea'
+    Rechazo:
+      type: object
+      additionalProperties: false
+      required:
+      - motivo
+      properties:
+        motivo:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    AlertaStock:
+      type: object
+      additionalProperties: false
+      required:
+      - productoId
+      - sku
+      - nombre
+      - disponibleGlobal
+      - puntoReorden
+      - cantidadReorden
+      properties:
+        productoId:
+          type: integer
+          format: int64
+          minimum: 1
+        sku:
+          type: string
+        nombre:
+          type: string
+        disponibleGlobal:
+          type: number
+          minimum: 0
+          multipleOf: 0.001
+          description: Suma global; puede superar el máximo de una existencia individual.
+        puntoReorden:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+          exclusiveMinimum: true
+        cantidadReorden:
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Hasta 11 dígitos enteros y 3 decimales; validar decimal exacto en backend.
+    MovimientoPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Movimiento'
+    ConteoPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conteo'
+    AjustePage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ajuste'
+    AlertaStockPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertaStock'

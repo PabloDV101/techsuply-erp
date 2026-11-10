@@ -15,6 +15,16 @@ cd erp-backend
 
 El ciclo `verify` incluye pruebas unitarias y de integración con un PostgreSQL desechable de Testcontainers. Si las dependencias y la imagen ya están disponibles localmente, puede ejecutarse `./mvnw -o verify`. Los resultados quedan en `erp-backend/target/surefire-reports/` y `erp-backend/target/failsafe-reports/`.
 
+Para medir cobertura de código con JaCoCo, desde `erp-backend/` ejecutar la suite completa con el perfil opcional:
+
+```bash
+MAVEN_OPTS='-XX:+UseSerialGC -Xms128m -Xmx768m' ./mvnw -Pcoverage \
+  -Dcoverage.jvm.args='-XX:+UseSerialGC -Xms128m -Xmx768m' verify
+```
+
+Se necesita acceso a Maven Central la primera vez para descargar el plugin; después se puede añadir `-o`. Los informes HTML y XML se generan en `target/site/jacoco-unit/`, `target/site/jacoco-integration/` y `target/site/jacoco-combined/`. El combinado une ambas suites; no equivale a cobertura exclusivamente unitaria ni a corrección funcional. No usar `-DskipTests`, selección parcial de pruebas ni cambiar el número de forks para una medición comparable: podrían quedar datos de ejecuciones previas. Comprobar que `verify` terminó correctamente y que ambos archivos `.exec` se regeneraron. En el perfil, usar `coverage.jvm.args` para argumentos de JVM; `-DargLine` puede interferir con el agente. `target/` es generado y no se versiona.
+
+
 Para iniciar la aplicación contra una base local, seguir las [instrucciones de configuración y bootstrap](docs/fase-2/autenticacion/COMPONENTE_AUTENTICACION.md). Configurar `DB_URL`, `DB_USERNAME` y `DB_PASSWORD` fuera de Git; el `.env` usado por Compose no se carga automáticamente en Spring. Flyway ejecuta las migraciones sobre la base configurada: revisar su compatibilidad antes de conectarla. El archivo `deploy/docker-compose.yml` inicia PostgreSQL con variables de entorno definidas por el usuario; no inicializa automáticamente usuarios del ERP.
 
 ## Documentación
@@ -24,4 +34,4 @@ Para iniciar la aplicación contra una base local, seguir las [instrucciones de 
 - [Requisitos SRS](docs/SRS_TechSupply_Solutions.md), [modelo de datos](database/modelo.dbml) y [diagramas UML](docs/diagrams/README.md). El DBML incluye partes del modelo objetivo que todavía no existen en SQL.
 - [Patrones de diseño y programación funcional](docs/PATRONES_Y_PROGRAMACION_FUNCIONAL.md).
 
-Los objetivos de rendimiento, disponibilidad y cobertura del SRS requieren medición; los resultados de pruebas funcionales no los garantizan.
+Los objetivos de rendimiento y disponibilidad requieren medición; la cobertura puede medirse con el perfil descrito y debe interpretarse junto con los resultados y límites de las pruebas.

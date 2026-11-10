@@ -10,7 +10,11 @@ están marcadas `implemented` en cada ruta y se comprobaron con
 la [guía de integración para frontend](guia-sprint-1.md), la [documentación de módulos](../fase-3/SPRINT_1_MODULOS.md) y el
 [diseño de migraciones](../fase-3/SPRINT_1_MIGRACIONES.md).
 
-Para validar la estructura y las referencias de los seis contratos, instalar el
+## Sprint 2 de la Fase 3
+
+[`openapi-sprint-2-inventario.yaml`](openapi-sprint-2-inventario.yaml) documenta las rutas implementadas de conteos, ajustes, lectura de movimientos y alertas globales calculadas. El estado `implemented` se refiere a esas rutas, no a la totalidad de Inventario ni al contrato separado de Reportería. La consulta de existencias implementada permanece en el contrato del sprint 1. Las decisiones y diferencias con Reportería están en el [diseño de Inventario](../fase-3/SPRINT_2_DISENO_INVENTARIO.md); ver la [guía de consumo](guia-sprint-2-inventario.md).
+
+Para validar la estructura y las referencias de todos los contratos, instalar el
 validador temporalmente fuera del repositorio y ejecutar:
 
 ```bash
