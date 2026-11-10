@@ -30,16 +30,20 @@ export default function DashboardPage() {
   const borr = useTotal(PATHS.ordenes, { estado: 'BORRADOR' })
   const aprob = useTotal(PATHS.ordenes, { estado: 'APROBADA' })
   const parc = useTotal(PATHS.ordenes, { estado: 'PARCIAL' })
+  const alertas = useTotal(PATHS.alertas, {})
+  const conteos = useTotal(PATHS.conteos, { estado: 'EN_CONTEO' })
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Hola, {user?.nombre}</Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>Resumen de maestros y compras.</Typography>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>Resumen de maestros, compras e inventario.</Typography>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
         <Card to="/proveedores" label="Proveedores activos" value={prov.data} loading={prov.isLoading} />
         <Card to="/productos" label="Productos activos" value={prod.data} loading={prod.isLoading} />
         <Card to="/ordenes-compra" label="Órdenes en borrador" value={borr.data} loading={borr.isLoading} />
         <Card to="/ordenes-compra" label="Órdenes aprobadas sin recibir" value={aprob.data} loading={aprob.isLoading} />
         <Card to="/recepciones" label="Órdenes con recepción parcial" value={parc.data} loading={parc.isLoading} />
+        <Card to="/inventario/alertas" label="Productos bajo el mínimo" value={alertas.data} loading={alertas.isLoading} />
+        <Card to="/inventario/conteos" label="Conteos en curso" value={conteos.data} loading={conteos.isLoading} />
       </Box>
     </Box>
   )

@@ -20,3 +20,9 @@ export const txt = (v: unknown): string => {
 }
 
 export const today = () => new Date().toISOString().slice(0, 10)
+
+export const fechaHora = (s: unknown) => (s ? new Date(String(s)).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—')
+
+export const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10)
+
+export const productoLabel = (p: any) => (p ? `${p.codigo ?? ''} — ${p.descripcion ?? ''}` : '—')

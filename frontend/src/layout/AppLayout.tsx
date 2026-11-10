@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
-  AppBar, Avatar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText,
+  AppBar, Avatar, Badge, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, ListSubheader,
   Menu, MenuItem, Toolbar, Typography, useMediaQuery, useTheme,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -10,15 +11,46 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCartOutlined'
 import MoveToInboxIcon from '@mui/icons-material/MoveToInbox'
+import WarehouseIcon from '@mui/icons-material/WarehouseOutlined'
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import TuneIcon from '@mui/icons-material/Tune'
+import FactCheckIcon from '@mui/icons-material/FactCheckOutlined'
+import NotificationsIcon from '@mui/icons-material/NotificationsActiveOutlined'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import PasswordIcon from '@mui/icons-material/Password'
 import { useAuth } from '../features/auth/AuthContext'
+import { http } from '../api/http'
+import { PATHS } from '../config/contract'
+import { normalizePage } from '../shared/api'
 
 const WIDTH = 232
-const items = [
-  { to: '/', label: 'Panel', icon: <DashboardIcon /> },
-  { to: '/proveedores', label: 'Proveedores', icon: <LocalShippingIcon /> },
-  { to: '/productos', label: 'Productos', icon: <Inventory2Icon /> },
-  { to: '/ordenes-compra', label: 'Órdenes de compra', icon: <ShoppingCartIcon /> },
-  { to: '/recepciones', label: 'Recepción de bienes', icon: <MoveToInboxIcon /> },
+const groups = [
+  { title: '', items: [{ to: '/', label: 'Panel', icon: <DashboardIcon /> }] },
+  {
+    title: 'Maestros',
+    items: [
+      { to: '/proveedores', label: 'Proveedores', icon: <LocalShippingIcon /> },
+      { to: '/productos', label: 'Productos', icon: <Inventory2Icon /> },
+    ],
+  },
+  {
+    title: 'Compras',
+    items: [
+      { to: '/ordenes-compra', label: 'Órdenes de compra', icon: <ShoppingCartIcon /> },
+      { to: '/recepciones', label: 'Recepción de bienes', icon: <MoveToInboxIcon /> },
+    ],
+  },
+  {
+    title: 'Inventario',
+    items: [
+      { to: '/inventario/existencias', label: 'Existencias', icon: <WarehouseIcon /> },
+      { to: '/inventario/movimientos', label: 'Movimientos', icon: <SwapHorizIcon /> },
+      { to: '/inventario/ajustes', label: 'Ajustes', icon: <TuneIcon /> },
+      { to: '/inventario/conteos', label: 'Conteos físicos', icon: <FactCheckIcon /> },
+      { to: '/inventario/alertas', label: 'Alertas de stock', icon: <NotificationsIcon />, alert: true },
+      { to: '/inventario/rotacion', label: 'Rotación', icon: <TrendingUpIcon /> },
+    ],
+  },
 ]
 
 export default function AppLayout() {
@@ -28,25 +60,34 @@ export default function AppLayout() {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
+  const alerts = useQuery({
+    queryKey: ['total', PATHS.alertas, 'menu'],
+    refetchInterval: 120_000,
+    queryFn: async () => normalizePage((await http.get(PATHS.alertas, { params: { page: 0, size: 1 } })).data).total,
+  })
 
   const nav = (
-    <Box sx={{ width: WIDTH }}>
+    <Box sx={{ width: WIDTH, pb: 2 }}>
       <Toolbar><Typography sx={{ fontWeight: 700 }} color="primary">TechSupply ERP</Typography></Toolbar>
       <Divider />
-      <List>
-        {items.map((i) => (
-          <ListItemButton
-            key={i.to}
-            component={NavLink}
-            to={i.to}
-            selected={i.to === '/' ? pathname === '/' : pathname.startsWith(i.to)}
-            onClick={() => setOpen(false)}
-          >
-            <ListItemIcon>{i.icon}</ListItemIcon>
-            <ListItemText primary={i.label} />
-          </ListItemButton>
-        ))}
-      </List>
+      {groups.map((g) => (
+        <List key={g.title || 'main'} dense subheader={g.title ? <ListSubheader sx={{ lineHeight: '32px' }}>{g.title}</ListSubheader> : undefined}>
+          {g.items.map((i) => (
+            <ListItemButton
+              key={i.to}
+              component={NavLink}
+              to={i.to}
+              selected={i.to === '/' ? pathname === '/' : pathname.startsWith(i.to)}
+              onClick={() => setOpen(false)}
+            >
+              <ListItemIcon>
+                {'alert' in i && i.alert ? <Badge color="error" badgeContent={alerts.data ?? 0} max={99}>{i.icon}</Badge> : i.icon}
+              </ListItemIcon>
+              <ListItemText primary={i.label} />
+            </ListItemButton>
+          ))}
+        </List>
+      ))}
     </Box>
   )
 
@@ -62,6 +103,10 @@ export default function AppLayout() {
           </IconButton>
           <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)}>
             <MenuItem disabled>{user?.roles.join(", ") || "Sin rol"}</MenuItem>
+            <MenuItem component={NavLink} to="/cambiar-contrasena" onClick={() => setAnchor(null)}>
+              <PasswordIcon fontSize="small" sx={{ mr: 1 }} />
+              Cambiar contraseña
+            </MenuItem>
             <MenuItem onClick={logout}>Cerrar sesión</MenuItem>
           </Menu>
         </Toolbar>
