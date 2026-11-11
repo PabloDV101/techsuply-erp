@@ -1,0 +1,22 @@
+@startuml CU_Ventas_Validacion
+!include ../_estilo.iuml
+title TechSupply Solutions — Validación y cancelación de pedidos
+left to right direction
+actor "Responsable de ventas" as Vendedor
+rectangle "ERP · Pedidos de venta" {
+  usecase "Confirmar pedido" as Confirmar
+  usecase "Validar condiciones\ncomerciales" as Condiciones
+  usecase "Consultar\ndisponibilidad" as Disponibilidad
+  usecase "Validar crédito" as Credito
+  usecase "Cancelar saldo\npendiente" as Cancelar
+}
+Vendedor -- Confirmar
+Vendedor -- Cancelar
+Confirmar ..> Condiciones : <<include>>
+Confirmar ..> Disponibilidad : <<include>>
+Credito ..> Confirmar : <<extend>> [venta a crédito]
+note bottom of Cancelar
+  Se libera la reserva del saldo pendiente.
+  Los despachos confirmados se conservan.
+end note
+@enduml

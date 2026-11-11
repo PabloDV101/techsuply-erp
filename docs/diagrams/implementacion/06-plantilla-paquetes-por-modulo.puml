@@ -1,6 +1,5 @@
 @startuml TechSupply_Module_Package_Template
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
  title TechSupply Solutions - Plantilla interna de un módulo
  left to right direction
 

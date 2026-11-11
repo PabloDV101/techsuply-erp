@@ -1,7 +1,6 @@
 @startuml ERP_02_Compras_Inventario
 !include ../_estilo.iuml
-caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementados.
- title TechSupply Solutions - Vista logica: Compras e inventario (modelo objetivo)
+ title TechSupply Solutions - Vista logica: Compras e inventario
  hide circle
 
  package "Compras" {
@@ -19,7 +18,7 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   -cantidadSolicitada: Decimal
   -cantidadAprobada: Decimal
 }
-  class OrdenCompra <<implementado>> {
+  class OrdenCompra {
   -id: Long
   -folio: String
   -fecha: Instant
@@ -34,18 +33,18 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   +aprobar(actor, instante)
   +registrarEnvio()
 }
-  class DetalleOrdenCompra <<implementado>> {
+  class DetalleOrdenCompra {
   -id: Long
   -cantidad: Decimal
   -precioUnitario: Decimal
   -descuentoPct: Decimal
   -tasaImpuesto: Decimal
 }
-  class CalculoOrden <<implementado>> {
+  class CalculoOrden {
   +calcular(lineas): Totales
   +pendiente(ordenada, aceptada): BigDecimal
   }
-  class RecepcionCompra <<implementado>> {
+  class RecepcionCompra {
   -id: Long
   -folio: String
   -fecha: Instant
@@ -53,7 +52,7 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   -estado: EstadoRecepcion
   +confirmar(instante)
 }
-  class DetalleRecepcion <<implementado>> {
+  class DetalleRecepcion {
   -id: Long
   -cantidadRecibida: Decimal
   -cantidadAceptada: Decimal
@@ -98,14 +97,14 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
 }
  }
  package "Inventario" {
-  class Existencia <<implementado>> {
+  class Existencia {
   -id: Long
   -cantidadFisica: Decimal
   -cantidadReservada: Decimal
   -costoPromedio: Decimal
   -version: Integer
 }
-  class MovimientoInventario <<implementado>> {
+  class MovimientoInventario {
   -id: Long
   -fecha: Instant
   -tipo: String
@@ -114,12 +113,12 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   -costoUnitario: Decimal
   -claveOperacion: String
 }
-  note right of MovimientoInventario
-    V9 admite fuente de recepción o ajuste;
-    lectura protegida y aplicación de ajustes implementadas;
-    relaciones de producto y almacén se almacenan como IDs.
-  end note
-  class ConteoInventario <<JPA y dominio>> {
+
+note right of MovimientoInventario
+  Cada movimiento identifica producto, almacén y origen.
+end note
+
+  class ConteoInventario {
   -id: Long
   -folio: String
   -fechaProgramada: Date
@@ -128,7 +127,7 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   +cerrar()
   +cancelar()
 }
-  class DetalleConteo <<JPA y dominio>> {
+  class DetalleConteo {
   -id: Long
   -cantidadSistema: Decimal
   -cantidadContada: Decimal
@@ -136,26 +135,27 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   -existenciaPrevia: boolean
   -versionExistencia: Integer
 }
-  note right of ConteoInventario
-    Referencias externas mapeadas como IDs;
-    API y bloqueo de captura implementados;
-    aplicación valida vigencia bajo bloqueo.
-  end note
+
+note right of ConteoInventario
+  La vigencia del conteo se comprueba al aplicar un ajuste.
+end note
+
   class CalculoConteo <<función pura>> {
     +diferencia(sistema, contada): BigDecimal
   }
-  class AlertaInventario <<objetivo>> {
+  class AlertaInventario {
     -id: Long
     -tipo: TipoAlerta
     -estado: EstadoAlerta
     -generadaEn: DateTime
     -resueltaEn: DateTime
   }
-  note right of AlertaInventario
-    La alerta de stock bajo implementada es calculada;
-    no utiliza esta entidad persistida objetivo.
-  end note
-  class AjusteInventario <<JPA y dominio>> {
+
+note right of AlertaInventario
+  La alerta de stock bajo se calcula con el umbral configurado.
+end note
+
+  class AjusteInventario {
   -id: Long
   -folio: String
   -motivo: String
@@ -170,7 +170,7 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
     Registro, consulta, autorización y aplicación por API;
     la aplicación es transaccional.
   end note
-  class DetalleAjusteInventario <<JPA y dominio>> {
+  class DetalleAjusteInventario {
   -id: Long
   -tipo: TipoAjuste
   -cantidad: Decimal
@@ -195,7 +195,7 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   CONVERTIDA
   CANCELADA
 }
- enum EstadoOrdenCompra <<implementado>> {
+ enum EstadoOrdenCompra {
   BORRADOR
   PENDIENTE_APROBACION
   APROBADA
@@ -223,19 +223,19 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   CONFIRMADA
   CANCELADA
 }
- enum EstadoConteo <<implementado>> {
+ enum EstadoConteo {
   PROGRAMADO
   EN_CAPTURA
   CERRADO
   CANCELADO
 }
- enum EstadoAjuste <<implementado>> {
+ enum EstadoAjuste {
   PENDIENTE
   APROBADO
   APLICADO
   RECHAZADO
 }
- enum TipoAjuste <<implementado>> {
+ enum TipoAjuste {
   POSITIVO
   NEGATIVO
 }
@@ -274,7 +274,7 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
  RecepcionCompra "0..*" --> "1" Usuario : registrada por
  RecepcionCompra "1" *-- "1..*" DetalleRecepcion
  DetalleRecepcion "0..*" --> "1" DetalleOrdenCompra
- OrdenCompra "1" -- "0..1" FacturaProveedor : maximo una factura en MVP
+ OrdenCompra "1" -- "0..1" FacturaProveedor : maximo una factura
  FacturaProveedor "0..*" --> "1" Proveedor
  FacturaProveedor "1" *-- "1..*" DetalleFacturaProveedor
  DetalleFacturaProveedor "0..*" --> "1" DetalleOrdenCompra
@@ -317,15 +317,16 @@ caption VISTA MIXTA · Recepción, conteos y aplicación de ajustes implementado
   Reservada no puede superar fisica.
  end note
  note bottom of DetalleRecepcion
-  Aceptadas + rechazadas = recibidas.
+  Al confirmar, aceptadas + rechazadas = recibidas.
   Solo aceptadas aumentan stock al confirmar.
  end note
- note bottom of MovimientoInventario
-  Cada movimiento ordinario referencia exactamente una linea fuente.
-  Una REVERSA referencia al movimiento original.
-  V10 bloquea UPDATE/DELETE/TRUNCATE ordinarios;
-  el dueño o administrador puede alterar los controles.
- end note
+
+note bottom of MovimientoInventario
+  Cada movimiento ordinario referencia una línea fuente.
+  Una reversa referencia el movimiento original.
+  El historial confirmado se protege ante cambios ordinarios.
+end note
+
  note bottom of DetalleDevolucionProveedor
   La cantidad acumulada devuelta no supera las unidades aceptadas
   en recepciones originales menos devoluciones previas.

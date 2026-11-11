@@ -1,6 +1,5 @@
 @startuml CU_Seguridad
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y consulta de auditoría implementadas parcialmente; ERP restante pendiente.
 title TechSupply Solutions — Seguridad
 left to right direction
 
@@ -9,16 +8,16 @@ actor "Administrador del sistema" as Admin
 actor "Auditor" as Auditor
 
 rectangle "ERP - Seguridad" {
-  usecase "Iniciar sesión" as Login <<implementado>>
-  usecase "Cerrar sesión" as Logout <<implementado>>
-  usecase "Validar credenciales" as Credenciales <<implementado>>
-  usecase "Consultar perfil propio" as Perfil <<implementado>>
-  usecase "Gestionar usuarios" as GestionUsuarios <<implementado>>
-  usecase "Activar y desactivar cuentas" as EstadoCuenta <<implementado>>
-  usecase "Crear y consultar permisos" as CatalogoPermisos <<implementado>>
-  usecase "Gestionar roles" as Roles <<implementado>>
-  usecase "Asignar permisos por módulo" as AsignarPermisos <<implementado>>
-  usecase "Consultar registros de auditoría" as ConsultarAuditoria <<implementado>>
+  usecase "Iniciar sesión" as Login
+  usecase "Cerrar sesión" as Logout
+  usecase "Validar credenciales" as Credenciales
+  usecase "Consultar perfil propio" as Perfil
+  usecase "Gestionar usuarios" as GestionUsuarios
+  usecase "Activar y desactivar cuentas" as EstadoCuenta
+  usecase "Crear y consultar permisos" as CatalogoPermisos
+  usecase "Gestionar roles" as Roles
+  usecase "Asignar permisos por módulo" as AsignarPermisos
+  usecase "Consultar registros de auditoría" as ConsultarAuditoria
 }
 
 
@@ -36,18 +35,15 @@ Admin -- ConsultarAuditoria
 Auditor -- ConsultarAuditoria
 
 Login ..> Credenciales : <<include>>
+
 note bottom of GestionUsuarios
-  Los endpoints administrativos exigen autoridades concretas.
-  Crear usuario requiere USUARIOS_ADMIN y ROLES_ADMIN.
-  Solo se delegan permisos que posee el actor.
-  Gestión actual: consultar/crear usuarios, estado y asignación de roles.
-  No hay edición de perfil ni cambio/recuperación de contraseña implementados.
-  Verificar permisos y registrar eventos son comportamientos internos,
-  no casos de uso autónomos del actor.
+  Los administradores solo pueden delegar permisos
+  que poseen y sus acciones quedan auditadas.
 end note
+
 note bottom of ConsultarAuditoria
-  Consulta implementada para eventos de seguridad y categorías.
-  Los eventos de módulos futuros siguen pendientes.
+  La consulta requiere autorización y protege
+  los datos sensibles del registro.
 end note
 
 @enduml

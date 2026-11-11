@@ -1,6 +1,5 @@
 @startuml CU_Inventario
 !include ../_estilo.iuml
-caption VISTA MIXTA · Conteos, ajustes y alerta global implementados; salidas de ventas pendientes.
 title TechSupply Solutions — Inventario
 left to right direction
 
@@ -12,17 +11,17 @@ actor "Aprobador autorizado" as Aprobador
 actor "Aplicador autorizado" as Aplicador
 
 rectangle "ERP - Gestión de Inventario" {
-  usecase "Consultar existencias" as Existencias <<implementado>>
+  usecase "Consultar existencias" as Existencias
   usecase "Registrar entrada de productos" as Entrada
   usecase "Registrar salida de productos" as Salida
   usecase "Registrar otros movimientos" as Movimientos
-  usecase "Realizar conteo físico" as Conteo <<implementado>>
-  usecase "Comparar stock físico y registrado" as Comparar <<implementado>>
-  usecase "Solicitar ajuste de inventario" as SolicitarAjuste <<implementado>>
-  usecase "Autorizar ajuste" as AutorizarAjuste <<implementado>>
-  usecase "Aplicar ajuste aprobado" as AplicarAjuste <<implementado>>
-  usecase "Consultar historial de movimientos" as Historial <<implementado>>
-  usecase "Consultar alertas globales de stock mínimo" as Alertas <<implementado>>
+  usecase "Realizar conteo físico" as Conteo
+  usecase "Comparar stock físico y registrado" as Comparar
+  usecase "Solicitar ajuste de inventario" as SolicitarAjuste
+  usecase "Autorizar ajuste" as AutorizarAjuste
+  usecase "Aplicar ajuste aprobado" as AplicarAjuste
+  usecase "Consultar historial de movimientos" as Historial
+  usecase "Consultar alertas globales de stock mínimo" as Alertas
   usecase "Consultar rotación de productos" as Rotacion
   usecase "Consultar productos obsoletos" as Obsoletos
 }

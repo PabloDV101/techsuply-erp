@@ -1,6 +1,5 @@
 @startuml TS08_Proceso_Reporteria
 !include ../_estilo.iuml
-caption DISEÑO APROBADO · Flujo propuesto; fuentes transaccionales y endpoints pendientes.
 title ERP TechSupply Solutions - Consulta de reportes
 
 |Usuario autenticado|

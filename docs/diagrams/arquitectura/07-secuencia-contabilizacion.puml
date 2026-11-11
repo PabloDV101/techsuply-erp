@@ -1,7 +1,6 @@
 @startuml TSS_Secuencia_Contabilizacion
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title Validacion y contabilizacion idempotente - modelo objetivo
+ title Validacion y contabilizacion idempotente
  hide footbox
 
  actor "Contador" as User

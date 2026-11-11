@@ -1,70 +1,55 @@
 @startuml TSS_Componentes_Backend
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementados; otros módulos pendientes.
- title TechSupply Solutions - Componentes internos del backend
+title TechSupply Solutions — Componentes del backend
 top to bottom direction
-
-package "Entrada HTTP" as Web {
-  component "AuthController / AdminUsuariosController\nCategoriaProductoController" as Controllers <<implementado>>
-  component "Spring Security\nAutenticación y autorización" as Security <<implementado>>
-  component "Jakarta Validation + common.api\nErrores HTTP uniformes" as InputErrors <<implementado>>
+package "Interfaz HTTP" {
+  component "Controladores REST\ny DTO" as API
+  component "Autenticación y autorización\nSpring Security" as Security
+  component "Validación y errores HTTP" as Errors
 }
-package "Aplicación" as Application {
-  component "Casos de uso" as UseCases <<implementado>>
-  component "Coordinación transaccional\n@Transactional" as Tx <<implementado>>
+package "Aplicación" {
+  component "Servicios y casos de uso" as Services
 }
-package "Módulos de dominio (una aplicación Spring Boot)" as Domain {
-  component "Seguridad: Usuario, Rol, Permiso, TokenSesion" as Auth <<implementado>>
-  component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
-  component "Compras" as Purchasing <<objetivo>>
-  component "Inventario" as Inventory <<objetivo>>
-  component "Ventas y despachos" as Sales <<objetivo>>
-  component "Contabilidad y finanzas" as Accounting <<objetivo>>
-  component "RR. HH. y nómina" as Payroll <<objetivo>>
+package "Módulos de negocio" {
+  component "Gestión maestra" as Masters
+  component "Compras" as Purchases
+  component "Inventario" as Inventory
+  component "Ventas" as Sales
+  component "Contabilidad" as Finance
+  component "Recursos humanos" as Payroll
 }
-package "Servicios compartidos" as Shared {
-  component "Validación de negocio" as Validation <<objetivo>>
-  component "Auditoría: seguridad y categorías" as Audit <<implementado>>
-  component "Reportería" as Reporting <<objetivo>>
-  component "Bandeja APP post-commit" as Notifications <<implementado>>
+package "Servicios compartidos" {
+  component "Auditoría" as Audit
+  component "Notificaciones" as Notify
+  component "Reportería" as Reports
 }
-package "Persistencia e infraestructura" as Infra {
-  component "Repositorios JPA / Hibernate" as Repositories <<implementado>>
-  component "Migraciones Flyway" as Flyway <<implementado>>
+package "Infraestructura" {
+  component "Repositorios\nSpring Data JPA" as Repos
+  component "Migraciones Flyway" as Migrations
   database "PostgreSQL" as DB
 }
-
-Controllers ..> UseCases
-Controllers ..> InputErrors : validación / respuesta de error
-Controllers ..> Security : requiere autorización
-UseCases ..> Tx
-Tx ..> Auth : coordina casos actuales
-Tx ..> Domain : integración objetivo
-Domain ..> Shared : utiliza capacidades comunes
-Auth ..> Repositories : Spring Data JPA directo
-Masters ..> Repositories : Spring Data JPA directo
-Domain ..> Repositories : contratos propuestos para otros módulos
-Shared ..> Repositories : eventos / consultas autorizadas
-Repositories ..> DB
-Flyway ..> DB : esquema versionado
-UseCases ..> Notifications : productores futuros
-
-note right of Domain
-  Dependencias de negocio relevantes:
-  - Compras solicita recepción / devolución a Inventario.
-  - Ventas solicita reserva / despacho a Inventario.
-  - Compras, Ventas y Nómina entregan documentos validados
-    a Contabilidad mediante contratos de aplicación.
-  Ver diagramas de secuencia para operaciones críticas.
-end note
-note bottom of Tx
-  Los cambios relacionados de documento, stock, movimiento,
-  auditoría y saldos se confirman o revierten como unidad
-  cuando la operación lo requiere.
-end note
-note as EstadoActual
-  Azul: seguridad, categorías, auditoría, bandeja APP y errores comunes. Gris: módulos propuestos.
-  El cliente React no consume aún el API. La búsqueda de categorías está implementada;
-  auditoría de otros módulos, reportería y productores de avisos siguen pendientes.
+API ..> Security : requiere permisos
+API ..> Errors : valida y responde
+API ..> Services : invoca
+Services ..> Masters
+Services ..> Purchases
+Services ..> Inventory
+Services ..> Sales
+Services ..> Finance
+Services ..> Payroll
+Services ..> Audit
+Services ..> Notify
+Reports ..> Repos : lecturas autorizadas
+Purchases ..> Inventory : entradas y devoluciones
+Sales ..> Inventory : reservas y despachos
+Purchases ..> Finance : documentos validados
+Sales ..> Finance : documentos validados
+Payroll ..> Finance : nómina aprobada
+Services ..> Repos
+Repos ..> DB : JDBC
+Migrations ..> DB : esquema versionado
+note bottom of Services
+  Los cambios relacionados se confirman o revierten
+  en una sola transacción cuando la operación lo requiere.
 end note
 @enduml

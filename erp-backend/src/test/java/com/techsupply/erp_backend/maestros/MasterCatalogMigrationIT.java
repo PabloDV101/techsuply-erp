@@ -26,19 +26,19 @@ class MasterCatalogMigrationIT extends PostgresIntegrationSupport {
 
     @Test
     void flywayCreatesV6CatalogsAndPermissions() {
-        assertThat(flyway.info().applied()).hasSize(10);
+        assertThat(flyway.info().applied()).hasSize(11);
         assertThat(db.queryForObject("""
             select count(*) from information_schema.tables
             where table_schema = current_schema()
               and table_name in ('departamentos', 'proveedores', 'almacenes', 'productos')
             """, Integer.class)).isEqualTo(4);
-        assertThat(db.queryForObject("select count(*) from permisos where modulo='MAESTROS' and codigo <> 'MAESTROS_CATEGORIAS_LEER' and codigo <> 'MAESTROS_CATEGORIAS_ADMIN'", Integer.class))
+        assertThat(db.queryForObject("select count(*) from permisos where modulo='MAESTROS' and codigo <> 'MAESTROS_CATEGORIAS_LEER' and codigo <> 'MAESTROS_CATEGORIAS_ADMIN' and codigo not like 'MAESTROS_CLIENTES_%'", Integer.class))
             .isEqualTo(8);
         assertThat(db.queryForObject("""
             select count(*) from roles_permisos rp
             join roles r on r.id = rp.rol_id
             join permisos p on p.id = rp.permiso_id
-            where r.codigo = 'ADMINISTRADOR' and p.modulo = 'MAESTROS'
+            where r.codigo = 'ADMINISTRADOR' and p.modulo = 'MAESTROS' and p.codigo not like 'MAESTROS_CLIENTES_%'
             """, Integer.class)).isEqualTo(10);
     }
 

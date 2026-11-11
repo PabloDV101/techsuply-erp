@@ -1,7 +1,6 @@
-@startuml TechSupply_Deployment_MVP
+@startuml TechSupply_Deployment_Single
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Despliegue MVP
+ title TechSupply Solutions - Despliegue de una instancia
  top to bottom direction
 
  actor "Usuario interno o cliente" as User
@@ -14,16 +13,13 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  }
 
  node "Servidor privado de aplicaciones" as AppHost {
-   artifact "erp-backend-0.0.1-SNAPSHOT.jar\nJava 21 + Spring Boot" as API
+   artifact "Backend Spring Boot\nJava 21 / Flyway" as API
  }
 
  node "Servidor PostgreSQL en red privada" as DataNetwork {
    database "PostgreSQL\nBase de datos ERP\nPuerto 5432 privado" as DB
  }
 
- node "Tarea de despliegue\n(una vez por versión)" as MigrationJob {
-   artifact "Migraciones versionadas\nFlyway / SQL" as Flyway
- }
 
  node "Tarea programada de respaldo" as BackupJob {
    artifact "pg_dump\nrespaldo lógico" as BackupTool
@@ -36,17 +32,14 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  Network -- WebHost : HTTPS / TLS :443
  WebHost -- AppHost : proxy /api/*\nTLS privado recomendado
  AppHost -- DataNetwork : JDBC / TLS :5432
- MigrationJob -- DataNetwork : migraciones antes de liberar versión
  BackupJob -- DataNetwork : acceso restringido para respaldo
  BackupJob -- BackupStorage : copia cifrada
  AppHost -- SMTP : SMTP/TLS opcional
 
- note right of API
-   Una única instancia backend.
-   No se requiere balanceador para el MVP.
-   Reglas de negocio y permisos se validan
-   en Spring Boot, no en React.
- end note
+note right of API
+  El servidor valida reglas y permisos en cada operación.
+end note
+
  note bottom of Nginx
    Sirve el artefacto SPA y actúa como proxy inverso.
  end note
@@ -57,14 +50,4 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
    credenciales y verificar restauraciones.
  end note
 
- note bottom of Flyway
-   La migración se ejecuta como paso de release,
-   no como tarea duplicada de cada instancia.
- end note
-note as ImplementacionActual
-  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
-  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
-  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
-  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
-end note
 @enduml

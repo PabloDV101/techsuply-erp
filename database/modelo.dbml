@@ -55,7 +55,7 @@ Table clientes [headercolor: #2E86C1] {
   limite_credito numeric(14,2) [not null, default: 0, note: 'No negativo; la autorización de cambios es regla de negocio.']
   plazo_credito_dias smallint [not null, default: 30]
   activo boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V11, JPA y API de clientes implementados; usuario.cliente_id aún no tiene FK. Límite y plazo son datos maestros, no crédito disponible.'
 }
 
 Table proveedores [headercolor: #2E86C1] {
@@ -358,7 +358,7 @@ Table movimientos_inventario [headercolor: #D68910] {
   fecha timestamptz [not null, default: `now()`]
   usuario_id bigint [not null]
   detalle_recepcion_id bigint [unique]
-  detalle_despacho_id bigint
+  detalle_despacho_id bigint [unique]
   detalle_ajuste_id bigint [unique]
   detalle_devolucion_proveedor_id bigint
   detalle_devolucion_cliente_id bigint
@@ -366,7 +366,7 @@ Table movimientos_inventario [headercolor: #D68910] {
   movimiento_reversado_de_id bigint [unique]
   clave_operacion varchar(120) [not null, unique, note: 'Clave idempotente de cada movimiento; evita duplicados por reintentos.']
   referencia text
-  Note: 'OBJETIVO con SQL V7/V9, JPA y lectura protegida de movimientos: SQL admite recepción y ajuste; recepción y ajustes implementados en aplicación, otras fuentes futuras pendientes. V10 bloquea UPDATE/DELETE/TRUNCATE y comprueba atributos de la fuente al insertar; dueño/administrador puede alterar el control. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
+  Note: 'OBJETIVO con SQL V7/V9, JPA y lectura protegida de movimientos: SQL V11 admite recepción, ajuste y despacho; solo recepción y ajustes están implementados en aplicación. V10 bloquea UPDATE/DELETE/TRUNCATE y V11 amplía la comprobación de atributos de la fuente al insertar; dueño/administrador puede alterar el control. En cada movimiento ordinario debe existir exactamente una fuente de detalle; en una REVERSA, movimiento_reversado_de_id referencia al original. El cambio de existencia y el kardex se confirman en una transacción.'
 }
 
 Table conteos_inventario [headercolor: #D68910] {
@@ -427,13 +427,14 @@ Table cotizaciones [headercolor: #8E44AD] {
   folio varchar(30) [not null, unique]
   cliente_id bigint [not null]
   vendedor_usuario_id bigint [not null]
+  clave_idempotencia varchar(100) [not null, unique]
   fecha timestamptz [not null, default: `now()`]
   vigencia_hasta date [not null]
   estado varchar(15) [not null, note: 'BORRADOR, VIGENTE, ACEPTADA, VENCIDA, CANCELADA']
   subtotal numeric(14,2) [not null, default: 0]
   impuestos numeric(14,2) [not null, default: 0]
   total numeric(14,2) [not null, default: 0]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V11 y mapeo JPA; reglas de vigencia, escritura y API pendientes.'
 }
 
 Table detalles_cotizacion [headercolor: #8E44AD] {
@@ -445,26 +446,27 @@ Table detalles_cotizacion [headercolor: #8E44AD] {
   descuento_pct numeric(5,2) [not null, default: 0]
   tasa_impuesto numeric(5,2) [not null]
   indexes { (cotizacion_id, producto_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V11 y mapeo JPA; escritura y cálculo de Ventas pendientes.'
 }
 
 Table pedidos_venta [headercolor: #8E44AD] {
   id bigint [pk, not null, increment]
   folio varchar(30) [not null, unique]
   cliente_id bigint [not null]
-  vendedor_usuario_id bigint
-  cotizacion_id bigint
-  almacen_id bigint
+  vendedor_usuario_id bigint [not null]
+  cotizacion_id bigint [not null, unique]
+  almacen_id bigint [not null]
   creado_por_usuario_id bigint [not null]
-  canal varchar(15) [not null, note: 'INTERNO, PORTAL']
+  canal varchar(15) [not null, note: 'SQL V11: INTERNO']
+  modalidad varchar(15) [not null, note: 'SQL V11: CONTADO; no indica pago']
   fecha timestamptz [not null, default: `now()`]
-  estado varchar(20) [not null, note: 'BORRADOR, CONFIRMADO, PARCIALMENTE_DESPACHADO, DESPACHADO, FACTURADO, CANCELADO']
+  estado varchar(25) [not null, note: 'SQL V11: BORRADOR, CONFIRMADO, PARCIALMENTE_DESPACHADO, DESPACHADO, CANCELADO']
   subtotal numeric(14,2) [not null, default: 0]
   impuestos numeric(14,2) [not null, default: 0]
   total numeric(14,2) [not null, default: 0]
-  clave_idempotencia varchar(100) [unique]
+  clave_idempotencia varchar(100) [not null, unique]
   observaciones text
-  Note: 'OBJETIVO: tabla aún no implementada. La confirmación valida crédito y reserva stock mediante el módulo Inventario.'
+  Note: 'SQL V11 y mapeo JPA; escritura y API pendientes. La confirmación y reserva aún no existen; crédito queda fuera de este incremento.'
 }
 
 Table detalles_pedido [headercolor: #8E44AD] {
@@ -478,7 +480,7 @@ Table detalles_pedido [headercolor: #8E44AD] {
   descuento_pct numeric(5,2) [not null, default: 0]
   tasa_impuesto numeric(5,2) [not null]
   indexes { (pedido_id, producto_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Los contadores de reserva y despacho por línea se actualizan en la misma transacción que existencias y movimientos. No pueden exceder lo pedido.'
+  Note: 'SQL V11 y mapeo JPA: reservada más despachada no excede cantidad. Actualización transaccional y API pendientes.'
 }
 
 Table despachos [headercolor: #8E44AD] {
@@ -490,7 +492,7 @@ Table despachos [headercolor: #8E44AD] {
   fecha timestamptz [not null, default: `now()`]
   estado varchar(15) [not null, note: 'BORRADOR, CONFIRMADO, CANCELADO']
   clave_idempotencia varchar(100) [not null, unique]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V11 y mapeo JPA; escritura, confirmación y API pendientes. V11 protege fuentes referenciadas por movimientos.'
 }
 
 Table detalles_despacho [headercolor: #8E44AD] {
@@ -498,9 +500,9 @@ Table detalles_despacho [headercolor: #8E44AD] {
   despacho_id bigint [not null]
   detalle_pedido_id bigint [not null]
   cantidad numeric(14,3) [not null]
-  costo_unitario numeric(14,4) [not null]
+  costo_unitario numeric(16,4) [note: 'Nullable en borrador; debe coincidir con el movimiento de salida.']
   indexes { (despacho_id, detalle_pedido_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V11 y mapeo JPA; costo se fija al confirmar por aplicación futura.'
 }
 
 Table facturas_venta [headercolor: #8E44AD] {
@@ -1122,7 +1124,7 @@ TableGroup maestros_jpa_v6 {
   almacenes
 }
 
-TableGroup erp_objetivo {
+TableGroup erp_mixto_sql_y_objetivo {
   puestos
   empleados
   clientes

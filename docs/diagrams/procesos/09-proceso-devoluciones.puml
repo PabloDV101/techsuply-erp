@@ -1,6 +1,5 @@
 @startuml TS09_Proceso_Devoluciones
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
  title ERP TechSupply Solutions - Devoluciones a proveedor y de cliente
  |Usuario autorizado|
  start

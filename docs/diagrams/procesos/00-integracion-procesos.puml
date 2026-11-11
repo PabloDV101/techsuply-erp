@@ -1,6 +1,5 @@
 @startuml TS00_Integracion_Procesos
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title TechSupply Solutions - Mapa de Integracion de Procesos
 left to right direction
 component "Gestion Maestra\nProductos, proveedores, clientes,\nempleados y almacenes" as Master

@@ -1,6 +1,5 @@
 @startuml CU_Compras
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title TechSupply Solutions — Compras
 left to right direction
 
@@ -46,6 +45,6 @@ end note
 note bottom of Recepcion
   La verificación de mercancía es obligatoria.
   La discrepancia amplía la recepción solo si se detectan diferencias.
-  El aviso contable es una integración interna, no un objetivo de actor.
+  El aviso contable se modela como integración interna.
 end note
 @enduml

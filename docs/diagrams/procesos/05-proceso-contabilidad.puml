@@ -1,6 +1,5 @@
 @startuml TS05_Proceso_Contabilidad
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title ERP TechSupply Solutions - Registro Financiero y Contable
 
 |Modulo operativo / Contador|

@@ -1,7 +1,6 @@
 @startuml ERP_04_Contabilidad
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Vista logica: Contabilidad y finanzas (modelo objetivo)
+ title TechSupply Solutions - Vista logica: Contabilidad y finanzas
  hide circle
 
  package "Catalogos contables" {
@@ -45,8 +44,8 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   -descripcion: String
 }
  }
- package "Control presupuestario (futuro)" {
-  class Presupuesto <<Futura>> {
+ package "Control presupuestario" {
+  class Presupuesto {
     -id: Long
     -anio: Integer
     -mes: Integer

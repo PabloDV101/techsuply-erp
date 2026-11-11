@@ -232,6 +232,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-MAE-04 — Clientes (Alta).** El sistema deberá gestionar clientes, información de contacto, estado y límite de crédito.  
 *Criterio:* pedidos nuevos requieren cliente activo y, cuando la venta sea a crédito, se aplica el límite y saldo según política configurada.
 
+*Estado parcial (sprint 3, parte 5):* el catálogo de clientes tiene API, permisos y auditoría; el consumo por pedidos, la validación crediticia y el portal siguen pendientes. Evidencia: `ClienteApiIT` y [documentación](fase-3/SPRINT_3_CLIENTES.md).
+
 **RF-MAE-05 — Estructura interna (Media).** El sistema deberá mantener empleados, departamentos, puestos y almacenes, con códigos identificables y estado.  
 *Criterio:* registros operativos enlazan al empleado responsable y/o almacén correspondiente.
 
@@ -299,6 +301,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 *Estado de implementación (Fase 3, sprint 2, parte 10):* la consulta protegida identifica stock bajo global con umbral configurable por producto y no crea órdenes. Rotación y obsolescencia siguen pendientes de reglas y fuentes; RF-INV-07 permanece parcial.
 
 ### 5.5 Ventas
+
+*Sprint 3: API de clientes implementada; Ventas aún sin API ni servicios.* V11 incorporó el esquema base de clientes y Ventas; por decisión del responsable, el incremento considera únicamente modalidad de contado sin afirmar que se haya cobrado, usa la zona `America/Mexico_City`, conserva el precio acordado de la cotización aceptada y permite cancelar el saldo pendiente tras un despacho parcial conservando el despacho confirmado. Reglas operativas y su alcance están en el [diseño propuesto](fase-3/SPRINT_3_DISENO_VENTAS.md); el crédito, cobros y portal no se dan por implementados.
 
 **RF-VEN-01 — Cotizaciones (Alta).** El sistema deberá crear y consultar cotizaciones con productos, cantidades, precio, descuentos, impuestos, vigencia y estado.  
 *Criterio:* una cotización vencida no puede convertirse directamente en pedido sin revalidación.
@@ -554,23 +558,23 @@ El MVP puede ejecutarse con una instancia de Spring Boot y una de PostgreSQL. In
 
 ### 8.9 Diagramas de arquitectura entregados
 
-Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo local y distinguen el diseño objetivo de la implementación; `docs/diagrams/README.md` define el alcance y los comandos de validación:
+Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo local y representan el diseño del sistema; `docs/diagrams/README.md` define el alcance y los comandos de validación. El estado de implementación se registra por separado:
 - `01-arquitectura-contexto-contenedores.puml`: actores, interfaz, backend, módulos y base de datos.
 - `02-componentes-backend-springboot.puml`: componentes internos y dependencias.
 - `03-paquetes-java-arquitectura-capas.puml`: organización del código Java por capas/módulo.
 - `04-vista-despliegue-react-spring-postgres.puml`: nodos, artefactos y comunicaciones.
 - `05-secuencia-recepcion-compra.puml`: atomicidad de recepción e inventario.
 - `06-secuencia-venta-despacho.puml`: reserva, despacho parcial y salida.
-- `07-secuencia-contabilizacion.puml`: validación de origen, periodo, equilibrio e idempotencia (objetivo).
-- `08-secuencia-autenticacion.puml`: login, validación Bearer, autorización y logout implementados.
-- `../despliegue/00-despliegue-actual.puml`: ejecución local y pruebas aisladas reales; las demás vistas de despliegue describen objetivos.
+- `07-secuencia-contabilizacion.puml`: validación de origen, periodo, equilibrio e idempotencia.
+- `08-secuencia-autenticacion.puml`: login, validación Bearer, autorización y logout.
+- `../despliegue/00-despliegue-actual.puml`: entorno de desarrollo y pruebas aisladas; las demás vistas describen topologías de una o varias instancias. El estado verificable de cada entorno se consulta en su documentación operativa.
 
 ### 8.10 Correspondencia con el modelo 4 + 1
 
 | Vista | Artefactos principales | Validación por escenario |
 |---|---|---|
 | Escenarios (+1) | Casos de uso y descripciones de flujo | Registrar recepción; confirmar pedido y despacho; contabilizar operación |
-| Lógica | Seis diagramas de clases por dominio y vista general de módulos | Entidades, relaciones y reglas de negocio coherentes |
+| Lógica | Diagramas de clases por dominio y vista general de módulos | Entidades, relaciones y reglas de negocio coherentes |
 | Procesos | Diagramas de actividad y secuencia | Orden de pasos, decisiones, roles y concurrencia |
 | Desarrollo/implementación | Componentes, paquetes y capas | Dependencias controladas y reutilización |
 | Despliegue | Nodos, artefactos, redes y protocolos | API privada, PostgreSQL no expuesto, HTTPS y respaldos |
@@ -625,6 +629,7 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 
 | Grupo de requisitos | Caso de uso/proceso | Clases principales | Prueba sugerida |
 |---|---|---|---|
+| RF-MAE-04 (parcial) | Gestionar clientes | Cliente, ClienteService, ClienteController | `ClienteApiIT`, `ClienteOpenApiContractTest`; cliente activo y crédito en pedidos pendientes |
 | RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT y MasterCatalogApiIT; consulta de productos por categoría |
 | RF-COM-03/04/05, RN-07/08/18 | Orden y recepción parcial | OrdenCompra, RecepcionCompra, InventarioService | `ConfirmarRecepcionIT`: CA-01, reintento, concurrencia y rollback |
 | RF-COM-01/02/06/07/08 | Requisición, factura y devolución | RequisicionCompra, FacturaProveedor y devolución | Pendiente de implementación y pruebas |

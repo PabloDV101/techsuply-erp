@@ -1,6 +1,5 @@
 @startuml CU_Gestion_Maestra
 !include ../_estilo.iuml
-caption VISTA MIXTA · Gestión de categorías implementada; productos y demás catálogos pendientes.
 title TechSupply Solutions — Gestion maestra
 left to right direction
 
@@ -11,7 +10,7 @@ actor "Responsable de RR. HH." as RRHH
 actor "Administrador del sistema" as Admin
 
 rectangle "ERP - Gestión Maestra" {
-  usecase "Gestionar categorías\nde producto" as Categorias <<implementado>>
+  usecase "Gestionar categorías\nde producto" as Categorias
   usecase "Gestionar productos" as Productos
   usecase "Consultar productos" as ConsultarProductos
   usecase "Clasificar productos" as ClasificarProductos
@@ -57,10 +56,15 @@ note bottom of ClasificarProductos
   Clasificar asigna una categoría a un producto existente.
   Es un caso independiente de mantener el catálogo de productos.
 end note
-note right of Categorias
-  API actual: crear, consultar, listar con paginación,
-  actualizar y activar/desactivar. Requiere permisos
-  MAESTROS_CATEGORIAS_LEER o MAESTROS_CATEGORIAS_ADMIN.
-  No hay borrado físico ni productos implementados.
+
+note right of Clientes
+  Las operaciones requieren permisos de lectura o administración.
+  Modificar el límite de crédito requiere un permiso adicional.
 end note
+
+note right of Categorias
+  Las categorías se consultan, mantienen y desactivan
+  conservando las referencias de productos.
+end note
+
 @enduml

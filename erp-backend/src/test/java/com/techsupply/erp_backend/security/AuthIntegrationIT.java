@@ -69,7 +69,7 @@ class AuthIntegrationIT extends PostgresIntegrationSupport {
     }
 
     @Test void flywayAndRealPersistenceMatchJpaSchema() throws Exception {
-        assertThat(flyway.info().applied()).hasSize(10);
+        assertThat(flyway.info().applied()).hasSize(11);
         var a = account("SEGURIDAD_USUARIOS_ADMIN");
         String token = login(a);
         assertThat(db.queryForObject("select password_hash from usuarios where id=?", String.class, a.id()))

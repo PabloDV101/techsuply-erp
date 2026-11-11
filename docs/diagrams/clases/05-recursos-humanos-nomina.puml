@@ -1,7 +1,6 @@
 @startuml ERP_05_Recursos_Humanos
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Vista logica: Recursos humanos y nomina (modelo objetivo)
+ title TechSupply Solutions - Vista logica: Recursos humanos y nomina
  hide circle
 
  package "Administracion laboral" {
@@ -137,7 +136,7 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  RegistroAsistencia "0..*" --> "1" Usuario : registrado por
  Empleado "1" -- "0..*" SolicitudVacaciones
  SolicitudVacaciones "0..*" --> "0..1" Usuario : autorizada por
- PeriodoNomina "1" -- "0..1" Nomina : una nomina por periodo en MVP
+ PeriodoNomina "1" -- "0..1" Nomina : una nomina por periodo
  Nomina "1" *-- "1..*" DetalleNomina
  DetalleNomina "0..*" --> "1" Empleado
  DetalleNomina "0..*" --> "0..1" ExpedienteLaboral : contrato base
@@ -160,8 +159,10 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   Totales por empleado congelados para la corrida.
   Neto = percepciones - deducciones.
  end note
- note bottom of PagoNomina
-  Solo se paga una nómina aprobada. MVP: un pago por detalle;
-  reintentos idempotentes y acciones auditadas.
- end note
+
+note bottom of PagoNomina
+  Solo se paga una nómina aprobada; un pago por detalle.
+  Los reintentos son idempotentes y las acciones se auditan.
+end note
+
 @enduml

@@ -1,6 +1,5 @@
 @startuml CU_General_ERP
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad y gestión de categorías implementadas; resto pendiente.
 title TechSupply Solutions — General
 left to right direction
 
@@ -16,7 +15,7 @@ actor "Cliente" as Cliente
 rectangle "Sistema ERP - TechSupply Solutions" {
 
   package "Gestión maestra" {
-    usecase "Gestionar categorías de producto" as UC_Categorias <<implementado>>
+    usecase "Gestionar categorías de producto" as UC_Categorias
     usecase "Gestionar productos" as UC_Productos
     usecase "Gestionar proveedores" as UC_Proveedores
     usecase "Gestionar clientes" as UC_Clientes
@@ -61,9 +60,9 @@ rectangle "Sistema ERP - TechSupply Solutions" {
   }
 
   package "Seguridad" {
-    usecase "Autenticarse" as UC_Login <<implementado>>
-    usecase "Gestionar usuarios y permisos" as UC_Usuarios <<implementado>>
-    usecase "Consultar auditoría" as UC_Auditoria <<implementado>>
+    usecase "Autenticarse" as UC_Login
+    usecase "Gestionar usuarios y permisos" as UC_Usuarios
+    usecase "Consultar auditoría" as UC_Auditoria
   }
 }
 
@@ -114,8 +113,6 @@ Cliente -- UC_Pedidos
 note bottom of UC_Login
   El acceso requiere autenticación
   y permisos según la acción.
-  Seguridad funciona por HTTP; las pantallas y módulos del ERP son objetivo.
 end note
-
 
 @enduml

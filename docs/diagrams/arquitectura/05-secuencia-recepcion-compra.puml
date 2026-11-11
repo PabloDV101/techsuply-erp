@@ -1,6 +1,5 @@
 @startuml TSS_Secuencia_Recepcion
 !include ../_estilo.iuml
-caption IMPLEMENTADO · Registro, confirmación transaccional e idempotencia de recepción.
  title Confirmacion transaccional de recepcion
  hide footbox
 

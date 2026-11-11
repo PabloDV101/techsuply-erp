@@ -1,104 +1,58 @@
 @startuml TechSupply_Reusable_Components
 !include ../_estilo.iuml
-caption VISTA MIXTA · Seguridad, auditoría y bandeja APP implementadas; productores de avisos pendientes.
- title TechSupply Solutions - Componentes reutilizables y contratos
- left to right direction
-
- package "Implementaciones compartidas" as Providers {
-   component "Spring Security\nFilter Chain + @PreAuthorize" as Security <<implementado>>
-   component "Jakarta Validation\nDTOs de entrada" as InputValidation <<implementado>>
-   component "common.api\nApiError / GlobalApiExceptionHandler" as CommonErrors <<implementado>>
-   component "common.api\nPageRequests / PageResponse" as CrudPaging <<implementado>>
-   component "AuditTrail / AuditQueryService" as Audit <<implementado>>
-   component "Búsqueda de categorías\nPageRequests + JPA Specification" as Search <<implementado>>
-   component "NotificationPublisher / InboxService\nAPP después del commit" as Notify <<implementado>>
-   component "Reportería: consultas agregadas\nDTO y filtros por reporte" as Reports <<objetivo>>
-   component "AuthExceptionHandler / AuthErrorWriter\n(serializan ApiError común)" as Errors <<implementado>>
- }
-
- interface "AuthenticatedUserProvider" as Identity
- component "SecurityContextAuthenticatedUserProvider" as IdentityAdapter <<implementado>>
- IdentityAdapter ..|> Identity
- interface "AuditTrail" as IAudit <<implementado>>
- interface "AuthorizationDenialRecorder" as IDenial <<implementado>>
- interface "NotificationPublisher" as INotify <<implementado>>
- interface "Consultas de lectura\npor dominio" as IReports <<objetivo>>
-
- package "Módulos consumidores" as Consumers {
-   component "Gestión maestra\nsolo categorías" as Masters <<implementado>>
-   component "Compras" as Purchases <<objetivo>>
-   component "Inventario" as Inventory <<objetivo>>
-   component "Ventas" as Sales <<objetivo>>
-   component "Contabilidad" as Accounting <<objetivo>>
-   component "RR. HH. / nómina" as Payroll <<objetivo>>
- }
-
- Audit - IAudit
- Audit ..|> IDenial
- Notify - INotify
- Reports - IReports
-
- Masters ..> Identity : identidad (integración objetivo)
- Purchases ..> Identity
- Inventory ..> Identity
- Sales ..> Identity
- Masters ..> IAudit
- Purchases ..> IAudit
- Inventory ..> IAudit
- Sales ..> IAudit
- Accounting ..> IAudit
- Payroll ..> IAudit
-
- Masters ..> Search : filtros propios + página
-
- Purchases ..> INotify
- Inventory ..> INotify
- Sales ..> INotify
- Payroll ..> INotify
-
- Reports ..> Security : permiso y alcance de filas
- Reports ..> CrudPaging : página acotada
- Reports ..> IReports : proyecciones de lectura
- InputValidation ..> CommonErrors : errores de entrada
- CommonErrors ..> IDenial : registrar 403 sin importar audit
- Masters ..> CrudPaging : listado paginado real
- Masters ..> CommonErrors : validación / errores reales
- Errors ..> CommonErrors : misma forma JSON; mayor prioridad
-
- note bottom of Security
-   Implementado en seguridad; reutilización en otros módulos aún no demostrada.
-   Los permisos se aplican en la API y en casos de uso sensibles.
-   Ocultar botones en React no es un control de seguridad.
- end note
-
- note bottom of InputValidation
-   Bean Validation y el advice común se prueban en MVC aislado.
-   Categorías usa el advice común; otro módulo de negocio aún no;
-   las invariantes comerciales (stock, saldos, estados) viven
-   en el módulo responsable y se validan en el servidor.
- end note
-
- note bottom of Audit
-   @Transactional define la atomicidad en los servicios de aplicación;
-   no es un microservicio ni un componente remoto independiente.
-   El puerto de denegación rompe el ciclo common / audit.
- end note
-
- note right of Notify
-   Bandeja APP: inserción después del commit, idempotente por
-   operación/destinatario. Sin productores de negocio actuales.
-   La caída entre commit y callback puede perder el aviso;
-   Outbox y SMTP requieren decisiones futuras.
- end note
-note as EstadoActual
-  Azul: seguridad, validación, auditoría, búsqueda de categorías y bandeja APP.
-  El cliente React no consume aún el API. Reportería y productores de avisos
-  siguen pendientes. Búsqueda en otros módulos no está probada.
+title TechSupply Solutions — Componentes y contratos compartidos
+left to right direction
+package "Capacidades compartidas" {
+  component "Autenticación y autorización" as Security
+  component "Validación y errores HTTP" as Validation
+  component "Búsqueda y paginación" as Search
+  component "Auditoría" as Audit
+  component "Notificaciones" as Notify
+  component "Reportería" as Reports
+  component "Operaciones de catálogo" as Catalog
+}
+interface "Identidad autenticada" as Identity
+interface "AuditTrail" as AuditPort
+interface "NotificationPublisher" as NotifyPort
+interface "Consultas de lectura" as QueryPort
+package "Módulos consumidores" {
+  component "Gestión maestra" as Masters
+  component "Compras" as Purchases
+  component "Inventario" as Inventory
+  component "Ventas" as Sales
+  component "Contabilidad" as Finance
+  component "Recursos humanos" as HR
+}
+Security ..|> Identity
+Audit ..|> AuditPort
+Notify ..|> NotifyPort
+Masters ..> Identity
+Purchases ..> Identity
+Inventory ..> Identity
+Sales ..> Identity
+Masters ..> AuditPort
+Purchases ..> AuditPort
+Inventory ..> AuditPort
+Sales ..> AuditPort
+Finance ..> AuditPort
+HR ..> AuditPort
+Masters ..> Search
+Purchases ..> Search
+Inventory ..> Search
+Sales ..> Search
+Masters ..> Catalog
+Purchases ..> NotifyPort
+Inventory ..> NotifyPort
+Sales ..> NotifyPort
+Reports ..> QueryPort
+Reports ..> Security : permisos
+Validation ..> Security : registro de denegación
+note bottom of Notify
+  La publicación se realiza después del commit.
+  El canal APP no garantiza entrega ante caída del proceso.
 end note
-note right of Reports
-  Contrato documental: docs/api/openapi-reporteria.yaml.
-  Las tablas transaccionales no existen aún en Flyway.
-  Fórmulas no definidas producen NO_DISPONIBLE,
-  nunca un cero inventado. Sin exportación en esta etapa.
+note bottom of Reports
+  Cada consulta utiliza fuentes y fórmulas verificadas.
+  Un dato no disponible no se presenta como cero.
 end note
 @enduml

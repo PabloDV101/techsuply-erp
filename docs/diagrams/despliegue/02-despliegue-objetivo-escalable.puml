@@ -1,7 +1,6 @@
 @startuml TechSupply_Deployment_Target
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Despliegue objetivo escalable
+ title TechSupply Solutions - Despliegue con varias instancias
  top to bottom direction
 
  actor "Usuario interno o cliente" as User
@@ -14,10 +13,10 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  node "Red privada de aplicaciones" as AppNet {
    node "Instancia backend A" as AppHostA {
-     artifact "TechSupply API\nSpring Boot / Java 21" as APIA
+     artifact "TechSupply API\nSpring Boot / Java 21 / Flyway" as APIA
    }
    node "Instancia backend B" as AppHostB {
-     artifact "TechSupply API\nSpring Boot / Java 21" as APIB
+     artifact "TechSupply API\nSpring Boot / Java 21 / Flyway" as APIB
    }
  }
 
@@ -25,9 +24,6 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
    database "PostgreSQL\nBase de datos ERP\nPuerto 5432" as DB
  }
 
- node "Release / migraciones" as Release {
-   artifact "Flyway\nmigraciones SQL versionadas" as Flyway
- }
 
  node "Tarea de respaldo" as BackupJob {
    artifact "pg_dump programado\nWAL/PITR si se configura" as BackupTool
@@ -41,7 +37,6 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  Edge -- AppHostB : proxy /api/*\nTLS en red privada
  AppHostA -- DataNet : JDBC / TLS :5432
  AppHostB -- DataNet : JDBC / TLS :5432
- Release -- DataNet : migración única por versión
  BackupJob -- DataNet : acceso restringido
  BackupJob -- BackupStorage : copia cifrada
  AppHostA -- SMTP : SMTP/TLS
@@ -64,15 +59,4 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
    disponibilidad de BD requiere diseño adicional.
  end note
 
- note bottom of Release
-   Ejecutar migraciones como paso controlado del release.
-   Verificar compatibilidad antes de desplegar versiones
-   nuevas en todas las instancias.
- end note
-note as ImplementacionActual
-  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
-  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
-  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
-  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
-end note
 @enduml

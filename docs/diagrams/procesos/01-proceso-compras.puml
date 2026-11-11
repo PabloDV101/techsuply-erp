@@ -1,6 +1,5 @@
 @startuml TS01_Proceso_Compras
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title ERP TechSupply Solutions - Compras y Recepcion
 
 |Sistema ERP|

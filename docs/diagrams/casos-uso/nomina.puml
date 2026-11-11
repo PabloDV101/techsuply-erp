@@ -1,6 +1,5 @@
 @startuml CU_Nomina_RRHH
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title TechSupply Solutions — Nomina
 left to right direction
 

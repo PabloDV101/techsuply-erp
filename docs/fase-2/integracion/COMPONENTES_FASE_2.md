@@ -1,5 +1,7 @@
 # Integración de componentes reutilizables — Fase 2
 
+> **Registro histórico de cierre de Fase 2:** los catálogos, migraciones y pruebas descritos a continuación corresponden a ese momento. Para el estado posterior y la auditoría de componentes del sprint 3, consultar la [estrategia actual](../../fase-3/SPRINT_3_COMPONENTES_ESTRATEGIA.md).
+
 ## Alcance comprobado
 
 La autoridad ejecutable es `erp-backend/src/main`: seguridad, validación,

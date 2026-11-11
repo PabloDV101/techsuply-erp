@@ -1,7 +1,6 @@
 @startuml TS07_Proceso_Seguridad
 !include ../_estilo.iuml
 title TechSupply Solutions — Login, autorización y revocación
-caption IMPLEMENTADO · Correspondencia con security, sus migraciones y el contrato HTTP actual.
 |Cliente HTTP|
 start
 :Enviar username o correo y contraseña;
@@ -61,22 +60,19 @@ endif
 if (¿POST logout?) then (sí)
   :Guardar revocado_en y confirmar;
   :Responder 204 sin cuerpo;
-  note right
-    Otra petición con el mismo token recibe 401.
-    Una petición ya autenticada puede terminar.
-  end note
+
+note right
+  Errores JSON: status, code y message.
+  El contexto de seguridad se limpia al finalizar la solicitud.
+end note
+
 else (no)
   :Consultar /me o ejecutar administración autorizada;
   :Responder DTO o error funcional uniforme;
 endif
 |Filtro / Spring Security|
 :Limpiar contexto al finalizar solicitud;
-note right
-  Cliente actual: HTTP directo / pruebas; React y HTTPS son integración objetivo.
-  Auditoría y eventos de seguridad: pendientes, no se confunden con el contador.
-  Errores: JSON {status, code, message}; falla de datos 503 sin SQL en respuesta.
-  Spring Security limpia el contexto en finally también en las ramas de rechazo.
-end note
+
 
 stop
 

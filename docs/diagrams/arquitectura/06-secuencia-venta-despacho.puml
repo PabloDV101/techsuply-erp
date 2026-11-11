@@ -1,7 +1,6 @@
 @startuml TSS_Secuencia_Despacho
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title Confirmacion transaccional de despacho de venta - modelo objetivo
+ title Confirmacion transaccional de despacho de venta
  hide footbox
 
  actor "Almacen" as User
@@ -13,8 +12,8 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  entity "MovimientoInventario" as Movement
  entity "EventoAuditoria" as Audit
 
- User -> API : confirmarDespacho(id, claveIdempotencia)
- API -> Service : confirmar(id, usuario, clave)
+ User -> API : confirmarDespacho(id)
+ API -> Service : confirmar(id, usuario)
  Service -> Service : validar permiso, estado e idempotencia
  alt validaciones y escrituras exitosas
   group Unidad transaccional: pedido, stock, movimiento y auditoría
@@ -34,10 +33,11 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
   Service --> API : error sin salida parcial
   API --> User : HTTP 4xx/5xx segun la causa
  end
- note over Service,Inventory
-  La cantidad no supera la reserva ni el pendiente de la linea.
-  Stock fisico y reservado se reducen en una sola transaccion;
-  la clave idempotente impide registrar dos veces una misma salida.
-  Spring confirma al salir sin error o revierte ante una excepción.
- end note
+
+note over Service,Inventory
+  La cantidad no supera la reserva ni el saldo del pedido.
+  Existencia, despacho, movimiento y auditoría se confirman
+  o se revierten en una sola transacción.
+end note
+
 @enduml

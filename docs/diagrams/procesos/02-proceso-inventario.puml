@@ -1,6 +1,5 @@
 @startuml TS02_Proceso_Inventario
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
 title ERP TechSupply Solutions - Movimientos de Inventario
 
 |Usuario autorizado|

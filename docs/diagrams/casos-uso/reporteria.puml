@@ -1,6 +1,5 @@
 @startuml CU_Reporteria
 !include ../_estilo.iuml
-caption DISEÑO APROBADO · Contratos propuestos; ninguna consulta de reportería está implementada.
 title TechSupply Solutions - Reportería de solo lectura
 left to right direction
 
@@ -9,7 +8,7 @@ actor "Responsable de almacén" as Almacen
 actor "Contador" as Contador
 actor "Responsable de RR. HH." as RRHH
 
-rectangle "ERP - Reportería objetivo" {
+rectangle "ERP - Reportería" {
   usecase "Consultar dashboard\ncompras / ventas / inventario / finanzas" as Dashboard
   usecase "Consultar stock bajo y\nsin movimiento" as Stock
   usecase "Consultar rotación y ABC" as InventoryAnalysis
@@ -37,9 +36,10 @@ note bottom of Finance
   Periodo, filtros, orden y página son parámetros de consulta,
   no casos de uso autónomos del actor.
 end note
+
 note bottom of Profit
-  Fórmulas y fuentes pendientes no se sustituyen por cero.
-  La respuesta distingue una métrica no disponible de un cero real.
-  Exportación PDF/CSV/XLSX queda fuera de esta etapa.
+  Una métrica sin fórmula o fuente disponible
+  se distingue de un resultado igual a cero.
 end note
+
 @enduml

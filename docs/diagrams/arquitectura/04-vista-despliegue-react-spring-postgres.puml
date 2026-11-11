@@ -1,59 +1,32 @@
 @startuml TSS_Despliegue
 !include ../_estilo.iuml
-caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implementación de los módulos.
- title TechSupply Solutions - Vista de despliegue
+title TechSupply Solutions — Vista de despliegue
 top to bottom direction
-
 actor "Usuarios internos y clientes" as Users
-cloud "Internet / red corporativa" as Network
-
-node "Zona perimetral" as DMZ {
-  node "Nginx · HTTPS / TLS 443" as Nginx {
-    artifact "React + TypeScript\narchivos estáticos" as SPA
-    artifact "Proxy inverso /api/*" as Proxy
-  }
+node "Navegador" as Browser {
+  artifact "Aplicación web" as Client
 }
-
-node "Red privada de aplicaciones" as AppNet {
-  node "Backend Spring Boot\nJava 21 · MVP: 1 instancia" as Backend {
-    artifact "TechSupply ERP API\nREST + Spring Security\nJPA/Hibernate + Flyway" as API
-  }
-  node "Escalado futuro opcional" as Scale {
-    artifact "Instancias adicionales\ntras validar carga y estado" as Extra
-  }
+node "Servidor web · zona perimetral" as Edge {
+  artifact "Archivos React\ny proxy inverso" as SPA
 }
-
-node "Red privada de datos" as DataNet {
-  database "PostgreSQL\npuerto interno 5432" as DB
-  artifact "Volumen persistente" as Volume
+node "Servidor de aplicación · red privada" as App {
+  artifact "Backend Spring Boot\nJava 21 / Flyway" as API
 }
-node "Respaldo separado" as Backup {
-  artifact "Proceso de backup\ny almacenamiento cifrado" as BackupFiles
+node "Servidor de datos · red privada" as Data {
+  database "PostgreSQL" as DB
 }
-cloud "SMTP opcional" as SMTP
-
-Users --> Network
-Network --> Nginx : HTTPS / TLS 443
-Nginx --> SPA : entrega archivos web
-Proxy --> Backend : tráfico API privado
-Backend --> DB : JDBC / TLS
-DB -- Volume : persistencia
-DB ..> BackupFiles : respaldo autorizado
-Backend ..> SMTP : notificación post-commit
-Extra ..> Backend : escala futura
-
-note bottom of DB
-  PostgreSQL no se expone a Internet.
-  Solo acceden backend y proceso de respaldo autorizado.
-end note
-note bottom of Backup
-  Definir retención y probar restauraciones.
-  El backup no sustituye alta disponibilidad.
-end note
-note as ImplementacionActual
-  DISEÑO OBJETIVO: no existen Dockerfiles, configuración Nginx, TLS, SMTP ni jobs de backup/release.
-  Compose actual solo levanta PostgreSQL; Flyway corre al arrancar Spring Boot.
-  Autenticación actual: Bearer opaco con hash/estado compartido en tokens_sesion.
-  Ver 00-despliegue-actual.puml para la ejecución local y las pruebas aisladas.
+node "Almacenamiento de respaldo" as Backup {
+  artifact "Copias cifradas" as Files
+}
+cloud "Servicio de correo" as Mail
+Users -- Browser
+Browser -- Edge : HTTPS
+Edge -- App : HTTPS / API
+App -- Data : JDBC
+App -- Mail : SMTP
+Data -- Backup : respaldo
+note bottom of Data
+  Acceso restringido a los procesos autorizados.
+  Las restauraciones se verifican periódicamente.
 end note
 @enduml

@@ -17,6 +17,7 @@ public class MovimientoInventario {
     @Column(name = "usuario_id", nullable = false) private Long usuarioId;
     @Column(name = "detalle_recepcion_id", unique = true) private Long detalleRecepcionId;
     @Column(name = "detalle_ajuste_id", unique = true) private Long detalleAjusteId;
+    @Column(name = "detalle_despacho_id", unique = true) private Long detalleDespachoId;
     @Column(name = "clave_operacion", nullable = false, unique = true, length = 120) private String claveOperacion;
     @Column(columnDefinition = "text") private String referencia;
     protected MovimientoInventario() {}
@@ -30,5 +31,6 @@ public class MovimientoInventario {
     public Long getUsuarioId() { return usuarioId; }
     public Long getDetalleRecepcionId() { return detalleRecepcionId; }
     public Long getDetalleAjusteId() { return detalleAjusteId; }
+    public Long getDetalleDespachoId() { return detalleDespachoId; }
     public BigDecimal getCantidad() { return cantidad; }
 }

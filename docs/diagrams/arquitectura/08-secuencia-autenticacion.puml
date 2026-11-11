@@ -1,7 +1,6 @@
 @startuml TSS_Secuencia_Auth
 !include ../_estilo.iuml
-title TechSupply Solutions — Contrato de autenticación implementado
-caption IMPLEMENTADO · Correspondencia con security, sus migraciones y el contrato HTTP actual.
+title TechSupply Solutions — Secuencia de autenticación
 autonumber
 actor "Cliente HTTP" as Client
 control "OpaqueBearerAuthenticationFilter" as Filter
@@ -50,7 +49,7 @@ else válido
     Filter -> API : continuar cadena
     API -> Auth : me()
     Auth -> DB : consultar usuario, roles y permisos
-    DB --> Auth : identidad actual
+    DB --> Auth : identidad autenticada
     Auth --> API : UsuarioResponse
     API --> Client : 200 UsuarioResponse
   else endpoint administrativo

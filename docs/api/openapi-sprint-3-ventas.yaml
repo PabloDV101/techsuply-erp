@@ -1,0 +1,1221 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP — Clientes y Ventas sprint 3
+  version: 0.2.0
+  description: 'Clientes implementado; las rutas de Ventas siguen en diseño. Decisiones del usuario:
+    CONTADO sin acreditar pago, zona America/Mexico_City, respetar precio cotizado y permitir cancelar saldo tras
+    despacho parcial. Detalles señalados como pendientes requieren decisión.'
+servers:
+- url: /api/v1
+security:
+- bearerAuth: []
+x-implementation-status: design-only
+paths:
+  /customers:
+    x-implementation-status: implemented
+    get:
+      operationId: listCustomers
+      summary: Listar clientes
+      description: 'Permiso: MAESTROS_CLIENTES_LEER. Orden por id ascendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Activo'
+      responses:
+        '200':
+          description: Cliente o página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createCustomer
+      summary: Crear cliente
+      description: 'Permiso: MAESTROS_CLIENTES_ADMIN. Límite de crédito distinto de cero requiere
+        MAESTROS_CLIENTES_CREDITO_ADMIN.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteWrite'
+            example:
+              codigo: CLI-001
+              nombreRazonSocial: Cliente ejemplo
+              limiteCredito: 0
+              plazoCreditoDias: 0
+      responses:
+        '201':
+          description: Cliente o página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          headers:
+            Location:
+              description: URI del recurso creado
+              schema:
+                type: string
+                format: uri-reference
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /customers/{id}:
+    x-implementation-status: implemented
+    get:
+      operationId: getCustomer
+      summary: Consultar cliente
+      description: 'Permiso: MAESTROS_CLIENTES_LEER. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Cliente o página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    put:
+      operationId: updateCustomer
+      summary: Actualizar cliente
+      description: 'Permiso: MAESTROS_CLIENTES_ADMIN. Un cambio de límite requiere además MAESTROS_CLIENTES_CREDITO_ADMIN.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteWrite'
+      responses:
+        '200':
+          description: Cliente o página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /customers/{id}/status:
+    x-implementation-status: implemented
+    patch:
+      operationId: setCustomerStatus
+      summary: Activar o desactivar cliente
+      description: 'Permiso: MAESTROS_CLIENTES_ADMIN. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstadoCliente'
+            example:
+              activo: false
+      responses:
+        '200':
+          description: Cliente o página de clientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/quotes:
+    x-implementation-status: design-only
+    get:
+      operationId: listSalesQuotes
+      summary: Listar cotizaciones
+      description: 'Permiso propuesto: VENTAS_COTIZACIONES_LEER. Orden propuesto por id descendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/ClienteId'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotizacionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createSalesQuote
+      summary: Crear cotización
+      description: 'Permiso propuesto: VENTAS_COTIZACIONES_REGISTRAR. No reserva existencias. Redondeo de venta
+        pendiente de aprobación.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CotizacionCreate'
+            example:
+              clienteId: 1
+              vigenciaHasta: '2026-11-30'
+              claveIdempotencia: cot-2026-001
+              detalles:
+              - productoId: 10
+                cantidad: 3
+                precioUnitario: 10
+                descuentoPct: 0
+                tasaImpuesto: 16
+      responses:
+        '201':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cotizacion'
+          headers:
+            Location:
+              description: URI del recurso creado
+              schema:
+                type: string
+                format: uri-reference
+        '200':
+          description: Reintento equivalente; devuelve el recurso existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cotizacion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/quotes/{id}:
+    x-implementation-status: design-only
+    get:
+      operationId: getSalesQuote
+      summary: Consultar cotización
+      description: 'Permiso propuesto: VENTAS_COTIZACIONES_LEER. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cotizacion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/quotes/{id}/issue:
+    x-implementation-status: design-only
+    post:
+      operationId: IssueSalesQuote
+      summary: Emitir cotización
+      description: 'Permiso propuesto: VENTAS_COTIZACIONES_ADMIN. Pasa de BORRADOR a VIGENTE.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cotizacion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/quotes/{id}/accept:
+    x-implementation-status: design-only
+    post:
+      operationId: AcceptSalesQuote
+      summary: Aceptar cotización
+      description: 'Permiso propuesto: VENTAS_COTIZACIONES_ADMIN. Acepta una cotización vigente dentro de su vigencia;
+        la fecha usa America/Mexico_City.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cotizacion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/quotes/{id}/cancel:
+    x-implementation-status: design-only
+    post:
+      operationId: CancelSalesQuote
+      summary: Cancelar cotización
+      description: 'Permiso propuesto: VENTAS_COTIZACIONES_ADMIN. Cancela desde BORRADOR o VIGENTE; no elimina el
+        documento.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cotizacion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/orders:
+    x-implementation-status: design-only
+    get:
+      operationId: listSalesOrders
+      summary: Listar pedidos
+      description: 'Permiso propuesto: VENTAS_PEDIDOS_LEER. Orden propuesto por id descendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/ClienteId'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidoPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createSalesOrder
+      summary: Convertir cotización en pedido
+      description: 'Permiso propuesto: VENTAS_PEDIDOS_REGISTRAR. Cotización aceptada y vigente; crea BORRADOR y
+        no reserva stock.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoCreate'
+            example:
+              cotizacionId: 1
+              almacenId: 1
+              modalidad: CONTADO
+              claveIdempotencia: ped-2026-001
+      responses:
+        '201':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+          headers:
+            Location:
+              description: URI del recurso creado
+              schema:
+                type: string
+                format: uri-reference
+        '200':
+          description: Reintento equivalente; devuelve el recurso existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/orders/{id}:
+    x-implementation-status: design-only
+    get:
+      operationId: getSalesOrder
+      summary: Consultar pedido
+      description: 'Permiso propuesto: VENTAS_PEDIDOS_LEER. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/orders/{id}/confirm:
+    x-implementation-status: design-only
+    post:
+      operationId: confirmSalesOrder
+      summary: Validar y confirmar pedido
+      description: 'Permiso propuesto: VENTAS_PEDIDOS_CONFIRMAR. Reserva todas las líneas en una transacción. Repetir
+        éxito devuelve 200. Se respeta el precio acordado; la autorización de descuentos y excepciones sigue pendiente.'
+      x-decision-status: pending
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/orders/{id}/cancel:
+    x-implementation-status: design-only
+    post:
+      operationId: cancelSalesOrder
+      summary: Cancelar pedido y liberar reserva
+      description: 'Permiso propuesto: VENTAS_PEDIDOS_CANCELAR. Cancela el saldo pendiente y libera su reserva,
+        conservando despachos confirmados. Tratamiento de despachos en borrador pendiente; repetición exitosa propuesta
+        devuelve 200 sin duplicar liberación.'
+      x-decision-status: pending
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelarRequest'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/dispatches:
+    x-implementation-status: design-only
+    get:
+      operationId: listSalesDispatches
+      summary: Listar despachos
+      description: 'Permiso propuesto: VENTAS_DESPACHOS_LEER. Orden propuesto por id descendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/PedidoId'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DespachoPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createSalesDispatch
+      summary: Registrar despacho pendiente
+      description: 'Permiso propuesto: VENTAS_DESPACHOS_REGISTRAR. No modifica existencias; costo se establece al
+        confirmar.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DespachoCreate'
+            example:
+              pedidoId: 1
+              claveIdempotencia: des-2026-001
+              detalles:
+              - detallePedidoId: 1
+                cantidad: 2
+      responses:
+        '201':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Despacho'
+          headers:
+            Location:
+              description: URI del recurso creado
+              schema:
+                type: string
+                format: uri-reference
+        '200':
+          description: Reintento equivalente; devuelve el recurso existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Despacho'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/dispatches/{id}:
+    x-implementation-status: design-only
+    get:
+      operationId: getSalesDispatch
+      summary: Consultar despacho
+      description: 'Permiso propuesto: VENTAS_DESPACHOS_LEER. '
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Despacho'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/dispatches/{id}/confirm:
+    x-implementation-status: design-only
+    post:
+      operationId: confirmSalesDispatch
+      summary: Confirmar despacho
+      description: 'Permiso propuesto: VENTAS_DESPACHOS_CONFIRMAR. Actualiza físico, reserva, costo, movimiento,
+        pedido y auditoría atómicamente. Repetir éxito devuelve 200.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Despacho'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/dispatches/{id}/cancel:
+    x-implementation-status: design-only
+    post:
+      operationId: cancelSalesDispatch
+      summary: Cancelar despacho pendiente
+      description: 'Permiso propuesto: VENTAS_DESPACHOS_REGISTRAR. Solo BORRADOR; no libera la reserva del pedido.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado propuesto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Despacho'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: &id001
+        type: integer
+        format: int64
+        minimum: 1
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ClienteId:
+      name: clienteId
+      in: query
+      schema: *id001
+    PedidoId:
+      name: pedidoId
+      in: query
+      schema: *id001
+    Activo:
+      name: activo
+      in: query
+      schema:
+        type: boolean
+  responses:
+    BadRequest:
+      description: Entrada o parámetro inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Autenticación ausente o inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Permiso insuficiente
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Recurso o referencia no encontrada
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Estado, validación, disponibilidad o idempotencia en conflicto
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      - code
+      - message
+      properties:
+        status:
+          type: integer
+        code:
+          type: string
+        message:
+          type: string
+    ClienteWrite:
+      type: object
+      required:
+      - codigo
+      - nombreRazonSocial
+      - limiteCredito
+      - plazoCreditoDias
+      properties:
+        codigo: &id002
+          type: string
+          minLength: 1
+          maxLength: 20
+        nombreRazonSocial: &id003
+          type: string
+          minLength: 1
+          maxLength: 160
+        identificadorFiscal: &id004
+          type: string
+          maxLength: 20
+          nullable: true
+        correo: &id005
+          type: string
+          format: email
+          maxLength: 150
+          nullable: true
+        telefono: &id006
+          type: string
+          maxLength: 30
+          nullable: true
+        direccion: &id007
+          type: string
+          nullable: true
+        limiteCredito: &id008
+          type: number
+          minimum: 0
+          maximum: 999999999999.99
+          multipleOf: 0.01
+          description: Decimal exacto; hasta 12 enteros y 2 decimales.
+        plazoCreditoDias: &id009
+          type: integer
+          minimum: 0
+          maximum: 32767
+    Cliente:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - codigo
+      - nombreRazonSocial
+      - limiteCredito
+      - plazoCreditoDias
+      - activo
+      properties:
+        id: *id001
+        codigo: *id002
+        nombreRazonSocial: *id003
+        identificadorFiscal: *id004
+        correo: *id005
+        telefono: *id006
+        direccion: *id007
+        limiteCredito: *id008
+        plazoCreditoDias: *id009
+        activo:
+          type: boolean
+    EstadoCliente:
+      type: object
+      required:
+      - activo
+      properties:
+        activo:
+          type: boolean
+    LineaComercialWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - productoId
+      - cantidad
+      - precioUnitario
+      - descuentoPct
+      - tasaImpuesto
+      properties:
+        productoId: *id001
+        cantidad: &id011
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Decimal exacto; hasta 11 enteros y 3 decimales.
+          exclusiveMinimum: true
+        precioUnitario: *id008
+        descuentoPct: &id010
+          type: number
+          minimum: 0
+          maximum: 100
+          multipleOf: 0.01
+        tasaImpuesto: *id010
+    CotizacionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - clienteId
+      - vigenciaHasta
+      - claveIdempotencia
+      - detalles
+      properties:
+        clienteId: *id001
+        vigenciaHasta: &id012
+          type: string
+          format: date
+          description: Fecha de negocio America/Mexico_City; inclusión del último día propuesta, pendiente de validación.
+        claveIdempotencia: &id013
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 'Propuesta: clave global, recortada; repetir contenido equivalente devuelve el documento
+            existente.'
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/LineaComercialWrite'
+    CotizacionLinea:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - productoId
+      - cantidad
+      - precioUnitario
+      - descuentoPct
+      - tasaImpuesto
+      properties:
+        id: *id001
+        productoId: *id001
+        cantidad: *id011
+        precioUnitario: *id008
+        descuentoPct: *id010
+        tasaImpuesto: *id010
+    Cotizacion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - folio
+      - clienteId
+      - vendedorUsuarioId
+      - fecha
+      - vigenciaHasta
+      - estado
+      - subtotal
+      - impuestos
+      - total
+      - detalles
+      properties:
+        id: *id001
+        folio:
+          type: string
+          minLength: 1
+          maxLength: 30
+        clienteId: *id001
+        fecha:
+          type: string
+          format: date-time
+        vigenciaHasta: *id012
+        estado:
+          type: string
+          enum:
+          - BORRADOR
+          - VIGENTE
+          - ACEPTADA
+          - VENCIDA
+          - CANCELADA
+        subtotal: *id008
+        impuestos: *id008
+        total: *id008
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CotizacionLinea'
+        vendedorUsuarioId: *id001
+    PedidoCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - cotizacionId
+      - almacenId
+      - modalidad
+      - claveIdempotencia
+      properties:
+        cotizacionId: *id001
+        almacenId: *id001
+        modalidad:
+          type: string
+          enum:
+          - CONTADO
+        claveIdempotencia: *id013
+    PedidoLinea:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - productoId
+      - cantidad
+      - precioUnitario
+      - descuentoPct
+      - tasaImpuesto
+      - cantidadReservada
+      - cantidadDespachada
+      properties:
+        id: *id001
+        productoId: *id001
+        cantidad: *id011
+        precioUnitario: *id008
+        descuentoPct: *id010
+        tasaImpuesto: *id010
+        cantidadReservada: &id014
+          type: number
+          minimum: 0
+          maximum: 99999999999.999
+          multipleOf: 0.001
+          description: Decimal exacto; hasta 11 enteros y 3 decimales.
+        cantidadDespachada: *id014
+    Pedido:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - folio
+      - cotizacionId
+      - clienteId
+      - almacenId
+      - creadoPorUsuarioId
+      - modalidad
+      - estado
+      - fecha
+      - subtotal
+      - impuestos
+      - total
+      - detalles
+      - vendedorUsuarioId
+      properties:
+        id: *id001
+        folio:
+          type: string
+          minLength: 1
+          maxLength: 30
+        cotizacionId: *id001
+        clienteId: *id001
+        almacenId: *id001
+        creadoPorUsuarioId: *id001
+        modalidad:
+          type: string
+          enum:
+          - CONTADO
+          description: Modalidad comercial; no acredita pago.
+        estado:
+          type: string
+          enum:
+          - BORRADOR
+          - CONFIRMADO
+          - PARCIALMENTE_DESPACHADO
+          - DESPACHADO
+          - CANCELADO
+        fecha:
+          type: string
+          format: date-time
+        subtotal: *id008
+        impuestos: *id008
+        total: *id008
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PedidoLinea'
+        vendedorUsuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Vendedor de la cotización; se conserva al convertir.
+    DespachoLineaWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - detallePedidoId
+      - cantidad
+      properties:
+        detallePedidoId: *id001
+        cantidad: *id011
+    DespachoCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - pedidoId
+      - claveIdempotencia
+      - detalles
+      properties:
+        pedidoId: *id001
+        claveIdempotencia: *id013
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DespachoLineaWrite'
+    DespachoLinea:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - detallePedidoId
+      - cantidad
+      - costoUnitario
+      properties:
+        id: *id001
+        detallePedidoId: *id001
+        cantidad: *id011
+        costoUnitario:
+          type: number
+          minimum: 0
+          maximum: 999999999999.9999
+          multipleOf: 0.0001
+          description: Nulo hasta confirmar; numeric(16,4) al aplicar.
+          nullable: true
+    Despacho:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - folio
+      - pedidoId
+      - almacenId
+      - registradoPorUsuarioId
+      - fecha
+      - estado
+      - detalles
+      properties:
+        id: *id001
+        folio:
+          type: string
+          minLength: 1
+          maxLength: 30
+        pedidoId: *id001
+        almacenId: *id001
+        registradoPorUsuarioId: *id001
+        fecha:
+          type: string
+          format: date-time
+        estado:
+          type: string
+          enum:
+          - BORRADOR
+          - CONFIRMADO
+          - CANCELADO
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DespachoLinea'
+    CancelarRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - motivo
+      properties:
+        motivo:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    ClientePage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cliente'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    CotizacionPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cotizacion'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    PedidoPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pedido'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    DespachoPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Despacho'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0

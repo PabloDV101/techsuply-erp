@@ -14,16 +14,21 @@ la [guía de integración para frontend](guia-sprint-1.md), la [documentación d
 
 [`openapi-sprint-2-inventario.yaml`](openapi-sprint-2-inventario.yaml) documenta las rutas implementadas de conteos, ajustes, lectura de movimientos y alertas globales calculadas. El estado `implemented` se refiere a esas rutas, no a la totalidad de Inventario ni al contrato separado de Reportería. La consulta de existencias implementada permanece en el contrato del sprint 1. Las decisiones y diferencias con Reportería están en el [diseño de Inventario](../fase-3/SPRINT_2_DISENO_INVENTARIO.md); ver la [guía de consumo](guia-sprint-2-inventario.md).
 
+## Sprint 3 de la Fase 3
+
+[`openapi-sprint-3-ventas.yaml`](openapi-sprint-3-ventas.yaml) y la [guía propuesta](guia-sprint-3-ventas.md) describen tres rutas de clientes **implementadas** y 13 rutas de cotizaciones, pedidos y despachos **en diseño**. El contrato global permanece `design-only` porque Ventas aún no está disponible; la fecha en Ciudad de México, modalidad de contado, conservación del precio acordado y cancelación del saldo son decisiones acordadas, con detalles aún por definir en el [diseño de Ventas](../fase-3/SPRINT_3_DISENO_VENTAS.md). No se proponen rutas activas de facturación o crédito.
+
 Para validar la estructura y las referencias de todos los contratos, instalar el
 validador temporalmente fuera del repositorio y ejecutar:
 
 ```bash
 npm install --prefix /tmp/techsupply-openapi-tools --no-save --ignore-scripts @apidevtools/swagger-parser@10.1.1
 SWAGGER_PARSER_PATH=/tmp/techsupply-openapi-tools/node_modules/@apidevtools/swagger-parser node docs/api/validar-openapi.cjs
+SWAGGER_PARSER_PATH=/tmp/techsupply-openapi-tools/node_modules/@apidevtools/swagger-parser node docs/api/validar-ejemplos-sprint3.cjs
 ```
 
-Esta validación comprueba OpenAPI, no sustituye las pruebas HTTP ni demuestra
-que las rutas de reportería estén implementadas.
+La comprobación adicional de ejemplos usa Ajv incluido en el validador temporal y no valida formatos (como fechas) ni la precisión decimal del backend. Estas validaciones comprueban el diseño, no sustituyen las pruebas HTTP ni demuestran
+que las rutas de reportería o las propuestas de Ventas estén implementadas.
 
 ## Contratos implementados en la Fase 2
 
