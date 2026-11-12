@@ -3,7 +3,7 @@ package com.techsupply.erp_backend.ventas.domain.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 
-/** Mapeo del esquema V11. La escritura y las transiciones se incorporan con sus casos de uso. */
+/** Documento de despacho; la confirmación se incorpora en su caso de uso. */
 @Entity @Table(name = "despachos")
 public class Despacho {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
@@ -16,6 +16,20 @@ public class Despacho {
     @Column(name = "estado", nullable = false, length = 15) private EstadoDespacho estado;
     @Column(name = "clave_idempotencia", nullable = false, length = 100) private String claveIdempotencia;
     protected Despacho() {}
+    public Despacho(String folio, Long pedidoId, Long almacenId, Long actor, Instant fecha, String clave) {
+        this.folio = java.util.Objects.requireNonNull(folio); this.pedidoId = java.util.Objects.requireNonNull(pedidoId);
+        this.almacenId = java.util.Objects.requireNonNull(almacenId); this.registradoPorUsuarioId = java.util.Objects.requireNonNull(actor);
+        this.fecha = java.util.Objects.requireNonNull(fecha); this.claveIdempotencia = java.util.Objects.requireNonNull(clave);
+        this.estado = EstadoDespacho.BORRADOR;
+    }
+    public void confirmar() {
+        if (estado != EstadoDespacho.BORRADOR) throw new IllegalStateException("Despacho no confirmable");
+        estado = EstadoDespacho.CONFIRMADO;
+    }
+    public void cancelar() {
+        if (estado != EstadoDespacho.BORRADOR) throw new IllegalStateException("Despacho no cancelable");
+        estado = EstadoDespacho.CANCELADO;
+    }
     public Long getId() { return id; }
     public String getFolio() { return folio; }
     public Long getPedidoId() { return pedidoId; }

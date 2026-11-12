@@ -11,7 +11,7 @@ start
 :Calcular subtotal, impuestos y total;
 |Cliente / Responsable de ventas|
 :Enviar cotizacion al cliente;
-if (¿Cliente acepta?) then (Si)
+if (¿Cliente acepta y cotización vigente?) then (Si)
   |Sistema ERP|
   :Convertir cotizacion en pedido;
   |Responsable de ventas|
@@ -41,12 +41,16 @@ if (¿Cliente acepta?) then (Si)
       :Registrar auditoria;
       :Confirmar transaccion;
       if (¿Pedido totalmente despachado?) then (Si)
+        |Responsable de ventas|
+        :Solicitar emisión de factura comercial;
+        |Sistema ERP|
         :Generar factura comercial unica del pedido;
         :Enviar factura y referencia al modulo contable;
         stop
       else (No)
         :Mantener pedido PARCIALMENTE_DESPACHADO;
         if (¿Cancelar saldo pendiente?) then (Sí)
+          :Cancelar despachos en borrador;
           :Liberar reserva del saldo pendiente;
           :Conservar despachos confirmados y auditar;
         else (No)

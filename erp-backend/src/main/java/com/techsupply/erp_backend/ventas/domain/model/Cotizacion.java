@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/** Mapeo del esquema V11. La escritura y las transiciones se incorporan con sus casos de uso. */
+/** Cotización comercial; sus transiciones se coordinan en una transacción de aplicación. */
 @Entity @Table(name = "cotizaciones")
 public class Cotizacion {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
@@ -21,6 +21,32 @@ public class Cotizacion {
     @Column(name = "total", nullable = false, precision = 14, scale = 2) private BigDecimal total;
     @Column(name = "clave_idempotencia", nullable = false, length = 100) private String claveIdempotencia;
     protected Cotizacion() {}
+    public Cotizacion(String folio, Long clienteId, Long vendedorUsuarioId, Instant fecha,
+            LocalDate vigenciaHasta, String clave, CalculoCotizacion.Totales totales) {
+        this.folio = java.util.Objects.requireNonNull(folio);
+        this.clienteId = java.util.Objects.requireNonNull(clienteId);
+        this.vendedorUsuarioId = java.util.Objects.requireNonNull(vendedorUsuarioId);
+        this.fecha = java.util.Objects.requireNonNull(fecha);
+        this.vigenciaHasta = java.util.Objects.requireNonNull(vigenciaHasta);
+        this.claveIdempotencia = java.util.Objects.requireNonNull(clave);
+        this.subtotal = totales.subtotal(); this.impuestos = totales.impuestos(); this.total = totales.total();
+        this.estado = EstadoCotizacion.BORRADOR;
+    }
+    public void emitir(LocalDate fechaNegocio) {
+        if (estado != EstadoCotizacion.BORRADOR || !VigenciaCotizacion.vigente(vigenciaHasta, fechaNegocio))
+            throw new IllegalStateException("Cotización no emitible");
+        estado = EstadoCotizacion.VIGENTE;
+    }
+    public void aceptar(LocalDate fechaNegocio) {
+        if (estado != EstadoCotizacion.VIGENTE || !VigenciaCotizacion.vigente(vigenciaHasta, fechaNegocio))
+            throw new IllegalStateException("Cotización no aceptable");
+        estado = EstadoCotizacion.ACEPTADA;
+    }
+    public void cancelar() {
+        if (estado != EstadoCotizacion.BORRADOR && estado != EstadoCotizacion.VIGENTE)
+            throw new IllegalStateException("La cotización no se puede cancelar en su estado actual");
+        estado = EstadoCotizacion.CANCELADA;
+    }
     public Long getId() { return id; }
     public String getFolio() { return folio; }
     public Long getClienteId() { return clienteId; }

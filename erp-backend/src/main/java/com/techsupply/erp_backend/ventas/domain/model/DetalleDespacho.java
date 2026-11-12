@@ -3,7 +3,7 @@ package com.techsupply.erp_backend.ventas.domain.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-/** Mapeo del esquema V11. La escritura y las transiciones se incorporan con sus casos de uso. */
+/** Línea de despacho vinculada a una línea del pedido. */
 @Entity @Table(name = "detalles_despacho")
 public class DetalleDespacho {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
@@ -12,6 +12,11 @@ public class DetalleDespacho {
     @Column(name = "cantidad", nullable = false, precision = 14, scale = 3) private BigDecimal cantidad;
     @Column(name = "costo_unitario", precision = 16, scale = 4) private BigDecimal costoUnitario;
     protected DetalleDespacho() {}
+    public DetalleDespacho(Long despachoId, Long detallePedidoId, BigDecimal cantidad) {
+        this.despachoId = java.util.Objects.requireNonNull(despachoId);
+        this.detallePedidoId = java.util.Objects.requireNonNull(detallePedidoId);
+        this.cantidad = ValoresVenta.cantidadPositiva(cantidad);
+    }
     public Long getId() { return id; }
     public Long getDespachoId() { return despachoId; }
     public Long getDetallePedidoId() { return detallePedidoId; }

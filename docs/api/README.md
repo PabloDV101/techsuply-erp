@@ -16,7 +16,7 @@ la [guía de integración para frontend](guia-sprint-1.md), la [documentación d
 
 ## Sprint 3 de la Fase 3
 
-[`openapi-sprint-3-ventas.yaml`](openapi-sprint-3-ventas.yaml) y la [guía propuesta](guia-sprint-3-ventas.md) describen tres rutas de clientes **implementadas** y 13 rutas de cotizaciones, pedidos y despachos **en diseño**. El contrato global permanece `design-only` porque Ventas aún no está disponible; la fecha en Ciudad de México, modalidad de contado, conservación del precio acordado y cancelación del saldo son decisiones acordadas, con detalles aún por definir en el [diseño de Ventas](../fase-3/SPRINT_3_DISENO_VENTAS.md). No se proponen rutas activas de facturación o crédito.
+[`openapi-sprint-3-ventas.yaml`](openapi-sprint-3-ventas.yaml) y la [guía de Ventas](guia-sprint-3-ventas.md) describen 18 rutas implementadas de clientes, cotizaciones, pedidos, despachos y facturas comerciales internas. `implemented` se refiere a este contrato concreto: CFDI, cuentas por cobrar, crédito, cobros, portal y devoluciones siguen fuera de estas rutas. El campo y los datos de cancelación están explicados en [cancelaciones](../fase-3/SPRINT_3_CANCELACIONES.md).
 
 Para validar la estructura y las referencias de todos los contratos, instalar el
 validador temporalmente fuera del repositorio y ejecutar:
@@ -28,7 +28,7 @@ SWAGGER_PARSER_PATH=/tmp/techsupply-openapi-tools/node_modules/@apidevtools/swag
 ```
 
 La comprobación adicional de ejemplos usa Ajv incluido en el validador temporal y no valida formatos (como fechas) ni la precisión decimal del backend. Estas validaciones comprueban el diseño, no sustituyen las pruebas HTTP ni demuestran
-que las rutas de reportería o las propuestas de Ventas estén implementadas.
+que las rutas de reportería u otras capacidades de Ventas fuera de este contrato estén implementadas.
 
 ## Contratos implementados en la Fase 2
 

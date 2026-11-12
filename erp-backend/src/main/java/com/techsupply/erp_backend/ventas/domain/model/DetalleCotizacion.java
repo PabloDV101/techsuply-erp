@@ -14,6 +14,12 @@ public class DetalleCotizacion {
     @Column(name = "descuento_pct", nullable = false, precision = 5, scale = 2) private BigDecimal descuentoPct;
     @Column(name = "tasa_impuesto", nullable = false, precision = 5, scale = 2) private BigDecimal tasaImpuesto;
     protected DetalleCotizacion() {}
+    public DetalleCotizacion(Long cotizacionId, Long productoId, ValoresVenta.Linea linea) {
+        this.cotizacionId = java.util.Objects.requireNonNull(cotizacionId);
+        this.productoId = java.util.Objects.requireNonNull(productoId);
+        this.cantidad = linea.cantidad(); this.precioUnitario = linea.precioUnitario();
+        this.descuentoPct = linea.descuentoPct(); this.tasaImpuesto = linea.tasaImpuesto();
+    }
     public Long getId() { return id; }
     public Long getCotizacionId() { return cotizacionId; }
     public Long getProductoId() { return productoId; }

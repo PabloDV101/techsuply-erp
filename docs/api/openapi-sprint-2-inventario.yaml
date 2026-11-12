@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: TechSupply ERP — Inventario, sprint 2
-  version: 0.1.0
+  version: 0.2.0
   description: 'Contrato implementado para consulta de movimientos, conteos, ajustes y alertas globales calculadas. Reglas y limitaciones: docs/fase-3/SPRINT_2_DISENO_INVENTARIO.md.
     La ruta de stock existente permanece en el contrato del sprint 1.'
 servers:
@@ -581,6 +581,7 @@ components:
           enum:
           - RECEPCION_COMPRA
           - AJUSTE
+          - DESPACHO_VENTA
         cantidad:
           type: number
           minimum: 0
@@ -607,6 +608,11 @@ components:
           minimum: 1
           nullable: true
         detalleAjusteId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        detalleDespachoId:
           type: integer
           format: int64
           minimum: 1

@@ -87,10 +87,11 @@ class MovimientoConsultaIT extends PostgresIntegrationSupport {
             .andExpect(jsonPath("content[0].tipo").value("ENTRADA")).andExpect(jsonPath("content[0].cantidad").value(1))
             .andExpect(jsonPath("content[0].costoUnitario").value(10)).andExpect(jsonPath("content[0].usuarioId").value(f.user()))
             .andExpect(jsonPath("content[0].fecha").isString()).andExpect(jsonPath("content[0].detalleAjusteId").value(adjustmentDetail))
-            .andExpect(jsonPath("content[0].detalleRecepcionId").value(nullValue()));
+            .andExpect(jsonPath("content[0].detalleRecepcionId").value(nullValue())).andExpect(jsonPath("content[0].detalleDespachoId").value(nullValue()));
         http.perform(get(url).header("Authorization", "Bearer " + reader).param("productoId", Long.toString(f.product())).param("almacenId", Long.toString(f.warehouse())).param("size", "1").param("page", "1"))
             .andExpect(status().isOk()).andExpect(jsonPath("content[0].id").value(received)).andExpect(jsonPath("content[0].motivo").value("RECEPCION_COMPRA"))
-            .andExpect(jsonPath("content[0].detalleRecepcionId").value(receivedDetail)).andExpect(jsonPath("content[0].detalleAjusteId").value(nullValue()));
+            .andExpect(jsonPath("content[0].detalleRecepcionId").value(receivedDetail)).andExpect(jsonPath("content[0].detalleAjusteId").value(nullValue()))
+            .andExpect(jsonPath("content[0].detalleDespachoId").value(nullValue()));
         http.perform(get(url).header("Authorization", "Bearer " + reader).param("productoId", Long.toString(f.product())))
             .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(2));
         http.perform(get(url).header("Authorization", "Bearer " + reader).param("almacenId", Long.toString(other.warehouse())))

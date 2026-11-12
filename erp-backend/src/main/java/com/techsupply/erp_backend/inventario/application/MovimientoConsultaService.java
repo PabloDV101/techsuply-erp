@@ -36,6 +36,6 @@ public class MovimientoConsultaService {
 
     private static MovimientoResponse response(MovimientoInventario m) {
         return new MovimientoResponse(m.getId(), m.getProductoId(), m.getAlmacenId(), m.getTipo(), m.getMotivo(),
-            m.getCantidad(), m.getCostoUnitario(), m.getFecha(), m.getUsuarioId(), m.getDetalleRecepcionId(), m.getDetalleAjusteId());
+            m.getCantidad(), m.getCostoUnitario(), m.getFecha(), m.getUsuarioId(), m.getDetalleRecepcionId(), m.getDetalleAjusteId(), m.getDetalleDespachoId());
     }
 }

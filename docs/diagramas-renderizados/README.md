@@ -10,7 +10,12 @@ Los archivos SVG permiten ampliar los diagramas sin perder calidad. Las fuentes 
 - [TSS Paquetes Java](arquitectura/TSS_Paquetes_Java.svg)
 - [TSS Secuencia Auth](arquitectura/TSS_Secuencia_Auth.svg)
 - [TSS Secuencia Contabilizacion](arquitectura/TSS_Secuencia_Contabilizacion.svg)
+- [TSS Secuencia Cancelación Ventas](arquitectura/TSS_Secuencia_Cancelacion_Ventas.svg)
+- [TSS Secuencia Confirmación Reserva](arquitectura/TSS_Secuencia_Confirmacion_Reserva.svg)
+- [TSS Secuencia Conversión Pedido](arquitectura/TSS_Secuencia_Conversion_Pedido.svg)
+- [TSS Secuencia Factura Comercial](arquitectura/TSS_Secuencia_Factura_Comercial.svg)
 - [TSS Secuencia Despacho](arquitectura/TSS_Secuencia_Despacho.svg)
+- [TSS Secuencia Registro Despacho](arquitectura/TSS_Secuencia_Registro_Despacho.svg)
 - [TSS Secuencia Recepcion](arquitectura/TSS_Secuencia_Recepcion.svg)
 
 ## Casos de uso

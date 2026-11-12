@@ -29,7 +29,7 @@ class ClienteOpenApiContractTest {
         Path file = Path.of(System.getProperty("basedir", "."), "..", "docs", "api", "openapi-sprint-3-ventas.yaml");
         Map<String,Object> root;
         try (var stream = Files.newInputStream(file)) { root = new Yaml(new SafeConstructor(options)).load(stream); }
-        assertThat(root.get("x-implementation-status")).isEqualTo("design-only");
+        assertThat(root.get("x-implementation-status")).isEqualTo("implemented");
         Map<String,Object> paths = map(root.get("paths"));
         Set<String> actual = Arrays.stream(ClienteController.class.getDeclaredMethods())
             .map(method -> AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class))
@@ -47,6 +47,6 @@ class ClienteOpenApiContractTest {
         Map<String,Object> customer = map(paths.get("/customers"));
         assertThat(map(map(customer.get("post")).get("responses"))).containsKeys("201", "400", "401", "403", "409");
         assertThat(map(map(customer.get("get")).get("responses"))).containsKeys("200", "400", "401", "403");
-        assertThat(map(paths.get("/sales/quotes")).get("x-implementation-status")).isEqualTo("design-only");
+        assertThat(map(paths.get("/sales/orders/{id}/cancel")).get("x-implementation-status")).isEqualTo("implemented");
     }
 }

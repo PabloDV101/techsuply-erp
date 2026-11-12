@@ -1,15 +1,15 @@
 openapi: 3.0.3
 info:
   title: TechSupply ERP — Clientes y Ventas sprint 3
-  version: 0.2.0
-  description: 'Clientes implementado; las rutas de Ventas siguen en diseño. Decisiones del usuario:
+  version: 0.5.0
+  description: 'Clientes, cotizaciones y creación/consulta y confirmación de pedidos y registro, consulta, confirmación cancelaciones y facturas comerciales internas implementadas. Decisiones del usuario:
     CONTADO sin acreditar pago, zona America/Mexico_City, respetar precio cotizado y permitir cancelar saldo tras
     despacho parcial. Detalles señalados como pendientes requieren decisión.'
 servers:
 - url: /api/v1
 security:
 - bearerAuth: []
-x-implementation-status: design-only
+x-implementation-status: implemented
 paths:
   /customers:
     x-implementation-status: implemented
@@ -165,18 +165,18 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/quotes:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     get:
       operationId: listSalesQuotes
       summary: Listar cotizaciones
-      description: 'Permiso propuesto: VENTAS_COTIZACIONES_LEER. Orden propuesto por id descendente.'
+      description: 'Permiso: VENTAS_COTIZACIONES_LEER. Orden por id descendente.'
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/Size'
       - $ref: '#/components/parameters/ClienteId'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Cotización o página de cotizaciones
           content:
             application/json:
               schema:
@@ -194,8 +194,9 @@ paths:
     post:
       operationId: createSalesQuote
       summary: Crear cotización
-      description: 'Permiso propuesto: VENTAS_COTIZACIONES_REGISTRAR. No reserva existencias. Redondeo de venta
-        pendiente de aprobación.'
+      description: 'Permiso: VENTAS_COTIZACIONES_REGISTRAR. No reserva existencias. Base e impuesto se redondean
+        por línea a dos decimales con HALF_UP; el impuesto se calcula sobre la base sin redondear.
+        Un reintento solo es equivalente si corresponde al mismo vendedor autenticado.'
       requestBody:
         required: true
         content:
@@ -214,7 +215,7 @@ paths:
                 tasaImpuesto: 16
       responses:
         '201':
-          description: Resultado propuesto
+          description: Cotización o página de cotizaciones
           content:
             application/json:
               schema:
@@ -242,16 +243,16 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/quotes/{id}:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     get:
       operationId: getSalesQuote
       summary: Consultar cotización
-      description: 'Permiso propuesto: VENTAS_COTIZACIONES_LEER. '
+      description: 'Permiso: VENTAS_COTIZACIONES_LEER. '
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Cotización o página de cotizaciones
           content:
             application/json:
               schema:
@@ -267,16 +268,16 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/quotes/{id}/issue:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: IssueSalesQuote
       summary: Emitir cotización
-      description: 'Permiso propuesto: VENTAS_COTIZACIONES_ADMIN. Pasa de BORRADOR a VIGENTE.'
+      description: 'Permiso: VENTAS_COTIZACIONES_ADMIN. Pasa de BORRADOR a VIGENTE.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Cotización o página de cotizaciones
           content:
             application/json:
               schema:
@@ -292,17 +293,17 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/quotes/{id}/accept:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: AcceptSalesQuote
       summary: Aceptar cotización
-      description: 'Permiso propuesto: VENTAS_COTIZACIONES_ADMIN. Acepta una cotización vigente dentro de su vigencia;
-        la fecha usa America/Mexico_City.'
+      description: 'Permiso: VENTAS_COTIZACIONES_ADMIN. Acepta una cotización vigente dentro de su vigencia;
+        la fecha usa America/Mexico_City y la aceptación interna la registra un usuario autorizado.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Cotización o página de cotizaciones
           content:
             application/json:
               schema:
@@ -318,17 +319,17 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/quotes/{id}/cancel:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: CancelSalesQuote
       summary: Cancelar cotización
-      description: 'Permiso propuesto: VENTAS_COTIZACIONES_ADMIN. Cancela desde BORRADOR o VIGENTE; no elimina el
-        documento.'
+      description: 'Permiso: VENTAS_COTIZACIONES_ADMIN. Cancela desde BORRADOR o VIGENTE; no elimina el
+        documento. Repetir la cancelación devuelve 409.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Cotización o página de cotizaciones
           content:
             application/json:
               schema:
@@ -344,18 +345,18 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/orders:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     get:
       operationId: listSalesOrders
       summary: Listar pedidos
-      description: 'Permiso propuesto: VENTAS_PEDIDOS_LEER. Orden propuesto por id descendente.'
+      description: 'Permiso: VENTAS_PEDIDOS_LEER. Orden por id descendente.'
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/Size'
       - $ref: '#/components/parameters/ClienteId'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -373,8 +374,10 @@ paths:
     post:
       operationId: createSalesOrder
       summary: Convertir cotización en pedido
-      description: 'Permiso propuesto: VENTAS_PEDIDOS_REGISTRAR. Cotización aceptada y vigente; crea BORRADOR y
-        no reserva stock.'
+      description: 'Permiso: VENTAS_PEDIDOS_REGISTRAR. Crea BORRADOR desde cotización aceptada y vigente, sin reservar stock.
+        Requiere cliente, almacén y productos activos. Un reintento equivalente del mismo actor devuelve el pedido
+        existente aun si posteriormente venció la cotización; otra clave para la misma cotización o un contenido
+        distinto para la clave devuelve 409. El último día de vigencia es inclusivo en Ciudad de México.'
       requestBody:
         required: true
         content:
@@ -388,7 +391,7 @@ paths:
               claveIdempotencia: ped-2026-001
       responses:
         '201':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -416,16 +419,16 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/orders/{id}:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     get:
       operationId: getSalesOrder
       summary: Consultar pedido
-      description: 'Permiso propuesto: VENTAS_PEDIDOS_LEER. '
+      description: 'Permiso: VENTAS_PEDIDOS_LEER.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -441,18 +444,18 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/orders/{id}/confirm:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: confirmSalesOrder
       summary: Validar y confirmar pedido
-      description: 'Permiso propuesto: VENTAS_PEDIDOS_CONFIRMAR. Reserva todas las líneas en una transacción. Repetir
-        éxito devuelve 200. Se respeta el precio acordado; la autorización de descuentos y excepciones sigue pendiente.'
-      x-decision-status: pending
+      description: 'Permiso: VENTAS_PEDIDOS_CONFIRMAR. Cotización aceptada y vigente; valida cliente, almacén, productos
+        y condiciones pactadas. Reserva todas las líneas en una transacción sin movimiento de kardex. Repetir
+        la confirmación de un pedido confirmado devuelve 200 sin duplicar efectos. Se respetan precio y descuento aceptados.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -468,14 +471,14 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/orders/{id}/cancel:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: cancelSalesOrder
       summary: Cancelar pedido y liberar reserva
-      description: 'Permiso propuesto: VENTAS_PEDIDOS_CANCELAR. Cancela el saldo pendiente y libera su reserva,
-        conservando despachos confirmados. Tratamiento de despachos en borrador pendiente; repetición exitosa propuesta
-        devuelve 200 sin duplicar liberación.'
-      x-decision-status: pending
+      description: 'Permiso: VENTAS_PEDIDOS_CANCELAR. Cancela borrador, confirmado o parcialmente despachado; rechaza si
+        hay despachos en borrador, libera la reserva pendiente y conserva despachos y movimientos confirmados. El motivo
+        se recorta; reintento con el mismo motivo devuelve 200, uno distinto o una cancelación histórica sin metadatos
+        devuelve 409. No se cancelan pedidos completamente despachados.
       parameters:
       - $ref: '#/components/parameters/Id'
       requestBody:
@@ -484,9 +487,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CancelarRequest'
+            example:
+              motivo: Solicitud del cliente
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -502,18 +507,18 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/dispatches:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     get:
       operationId: listSalesDispatches
       summary: Listar despachos
-      description: 'Permiso propuesto: VENTAS_DESPACHOS_LEER. Orden propuesto por id descendente.'
+      description: 'Permiso: VENTAS_DESPACHOS_LEER. Orden por id descendente.'
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/Size'
       - $ref: '#/components/parameters/PedidoId'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -531,8 +536,10 @@ paths:
     post:
       operationId: createSalesDispatch
       summary: Registrar despacho pendiente
-      description: 'Permiso propuesto: VENTAS_DESPACHOS_REGISTRAR. No modifica existencias; costo se establece al
-        confirmar.'
+      description: 'Permiso: VENTAS_DESPACHOS_REGISTRAR. Pedido confirmado o parcialmente despachado; cada cantidad debe
+        caber en la reserva y el saldo de la línea descontando otros despachos en borrador. No modifica existencias;
+        el costo se fija al confirmar. Clave recortada única entre despachos: reintento con mismo actor, pedido y
+        líneas equivalentes devuelve 200; clave con distinto contenido o actor devuelve 409.'
       requestBody:
         required: true
         content:
@@ -547,7 +554,7 @@ paths:
                 cantidad: 2
       responses:
         '201':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -575,16 +582,16 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/dispatches/{id}:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     get:
       operationId: getSalesDispatch
       summary: Consultar despacho
-      description: 'Permiso propuesto: VENTAS_DESPACHOS_LEER. '
+      description: 'Permiso: VENTAS_DESPACHOS_LEER.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -600,17 +607,17 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/dispatches/{id}/confirm:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: confirmSalesDispatch
       summary: Confirmar despacho
-      description: 'Permiso propuesto: VENTAS_DESPACHOS_CONFIRMAR. Actualiza físico, reserva, costo, movimiento,
-        pedido y auditoría atómicamente. Repetir éxito devuelve 200.'
+      description: 'Permiso: VENTAS_DESPACHOS_CONFIRMAR. Valida el borrador y registra el costo promedio vigente, salida,
+        reserva, pedido y auditoría en una transacción. Repetir una confirmación exitosa devuelve 200 sin duplicar efectos.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -626,16 +633,16 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/dispatches/{id}/cancel:
-    x-implementation-status: design-only
+    x-implementation-status: implemented
     post:
       operationId: cancelSalesDispatch
       summary: Cancelar despacho pendiente
-      description: 'Permiso propuesto: VENTAS_DESPACHOS_REGISTRAR. Solo BORRADOR; no libera la reserva del pedido.'
+      description: 'Permiso: VENTAS_DESPACHOS_REGISTRAR. Cancela solo BORRADOR y libera su asignación para otros despachos; no libera la reserva del pedido. Reintentar devuelve 200.'
       parameters:
       - $ref: '#/components/parameters/Id'
       responses:
         '200':
-          description: Resultado propuesto
+          description: Resultado
           content:
             application/json:
               schema:
@@ -650,6 +657,96 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /sales/invoices:
+    x-implementation-status: implemented
+    get:
+      operationId: listSalesInvoices
+      summary: Listar facturas comerciales internas
+      description: 'Permiso: VENTAS_FACTURAS_LEER. Orden por identificador descendente.'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/ClienteId'
+      responses:
+        '200':
+          description: Página de facturas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacturaPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: emitSalesInvoice
+      summary: Emitir factura comercial interna
+      description: 'Permiso: VENTAS_FACTURAS_EMITIR. Pedido completamente despachado y respaldado por salidas confirmadas.
+        No genera CFDI, cobro, cuenta por cobrar ni asiento. Una factura por pedido. Misma clave, actor y pedido devuelve
+        200; clave con otro contenido o pedido ya facturado con otra clave devuelve 409.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacturaCreate'
+            example:
+              pedidoId: 1
+              claveIdempotencia: factura-2026-001
+      responses:
+        '201':
+          description: Factura emitida
+          headers:
+            Location:
+              description: URI del recurso creado
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Factura'
+        '200':
+          description: Reintento equivalente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Factura'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/invoices/{id}:
+    x-implementation-status: implemented
+    get:
+      operationId: getSalesInvoice
+      summary: Consultar factura comercial interna
+      description: 'Permiso: VENTAS_FACTURAS_LEER.'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Factura emitida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Factura'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -812,7 +909,6 @@ components:
           type: boolean
     LineaComercialWrite:
       type: object
-      additionalProperties: false
       required:
       - productoId
       - cantidad
@@ -837,7 +933,6 @@ components:
         tasaImpuesto: *id010
     CotizacionCreate:
       type: object
-      additionalProperties: false
       required:
       - clienteId
       - vigenciaHasta
@@ -848,13 +943,13 @@ components:
         vigenciaHasta: &id012
           type: string
           format: date
-          description: Fecha de negocio America/Mexico_City; inclusión del último día propuesta, pendiente de validación.
+          description: Fecha de negocio America/Mexico_City; el último día es inclusivo.
         claveIdempotencia: &id013
           type: string
           minLength: 1
           maxLength: 100
-          description: 'Propuesta: clave global, recortada; repetir contenido equivalente devuelve el documento
-            existente.'
+          description: 'Clave única por tipo de documento y recortada; el reintento con contenido equivalente devuelve el documento
+            existente y el contenido distinto produce conflicto.'
         detalles:
           type: array
           minItems: 1
@@ -905,6 +1000,7 @@ components:
         vigenciaHasta: *id012
         estado:
           type: string
+          description: Última transición guardada; la fecha de vencimiento no cambia el estado automáticamente.
           enum:
           - BORRADOR
           - VIGENTE
@@ -916,13 +1012,12 @@ components:
         total: *id008
         detalles:
           type: array
-          minItems: 1
+          description: Puede estar vacío si procede de datos preexistentes incompletos; emitir o aceptar requiere líneas.
           items:
             $ref: '#/components/schemas/CotizacionLinea'
         vendedorUsuarioId: *id001
     PedidoCreate:
       type: object
-      additionalProperties: false
       required:
       - cotizacionId
       - almacenId
@@ -980,6 +1075,9 @@ components:
       - total
       - detalles
       - vendedorUsuarioId
+      - motivoCancelacion
+      - canceladoPorUsuarioId
+      - canceladoEn
       properties:
         id: *id001
         folio:
@@ -1011,9 +1109,21 @@ components:
         total: *id008
         detalles:
           type: array
-          minItems: 1
           items:
             $ref: '#/components/schemas/PedidoLinea'
+        motivoCancelacion:
+          type: string
+          nullable: true
+          maxLength: 1000
+        canceladoPorUsuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        canceladoEn:
+          type: string
+          format: date-time
+          nullable: true
         vendedorUsuarioId:
           type: integer
           format: int64
@@ -1021,7 +1131,6 @@ components:
           description: Vendedor de la cotización; se conserva al convertir.
     DespachoLineaWrite:
       type: object
-      additionalProperties: false
       required:
       - detallePedidoId
       - cantidad
@@ -1030,7 +1139,6 @@ components:
         cantidad: *id011
     DespachoCreate:
       type: object
-      additionalProperties: false
       required:
       - pedidoId
       - claveIdempotencia
@@ -1094,12 +1202,81 @@ components:
           - CANCELADO
         detalles:
           type: array
-          minItems: 1
           items:
             $ref: '#/components/schemas/DespachoLinea'
-    CancelarRequest:
+    FacturaCreate:
+      type: object
+      required: [pedidoId, claveIdempotencia]
+      properties:
+        pedidoId: *id001
+        claveIdempotencia: *id013
+    FacturaLinea:
       type: object
       additionalProperties: false
+      required: [id, detallePedidoId, productoId, cantidad, precioUnitario, descuentoPct, tasaImpuesto, subtotal, impuestos, total]
+      properties:
+        id: *id001
+        detallePedidoId: *id001
+        productoId: *id001
+        cantidad: *id011
+        precioUnitario: *id008
+        descuentoPct: *id010
+        tasaImpuesto: *id010
+        subtotal: *id008
+        impuestos: *id008
+        total: *id008
+    Factura:
+      type: object
+      additionalProperties: false
+      required: [id, folio, pedidoId, clienteId, emitidaPorUsuarioId, fechaEmision, fechaVencimiento, subtotal, impuestos, total, estado, detalles]
+      properties:
+        id: *id001
+        folio:
+          type: string
+          minLength: 1
+          maxLength: 30
+        pedidoId: *id001
+        clienteId: *id001
+        emitidaPorUsuarioId: *id001
+        fechaEmision:
+          type: string
+          format: date
+          description: Fecha de negocio en America/Mexico_City.
+        fechaVencimiento:
+          type: string
+          format: date
+          description: Igual a emisión para el incremento de contado.
+        subtotal: *id008
+        impuestos: *id008
+        total: *id008
+        estado:
+          type: string
+          enum: [EMITIDA]
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FacturaLinea'
+    FacturaPage:
+      type: object
+      additionalProperties: false
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Factura'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    CancelarRequest:
+      type: object
       required:
       - motivo
       properties:

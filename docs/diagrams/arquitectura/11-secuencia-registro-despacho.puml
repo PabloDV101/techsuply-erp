@@ -1,0 +1,34 @@
+@startuml TSS_Secuencia_Registro_Despacho
+!include ../_estilo.iuml
+title Registro de despacho a partir de un pedido reservado
+hide footbox
+actor "Responsable de almacén" as Usuario
+boundary "DespachoController" as API
+control "DespachoService" as Servicio
+entity "Pedido y detalles" as Pedido
+entity "Despachos" as Despachos
+entity "EventoAuditoria" as Auditoria
+
+Usuario -> API : registrar despacho
+API -> Servicio : crear(datos, identidad)
+group Transacción
+  Servicio -> Servicio : autorizar y serializar clave
+  alt reintento equivalente
+    Servicio -> Despachos : obtener despacho existente
+    Despachos --> Servicio : despacho
+  else solicitud nueva
+    Servicio -> Pedido : bloquear pedido y validar estado
+    Servicio -> Despachos : consultar cantidades en borradores
+    Despachos --> Servicio : cantidades asignadas
+    Servicio -> Servicio : validar reserva disponible por línea
+    alt líneas válidas
+      Servicio -> Despachos : registrar borrador y detalles
+      Servicio -> Auditoria : registrar creación
+    else validación o escritura fallida
+      Servicio -> Servicio : revertir transacción
+    end
+  end
+end
+Servicio --> API : resultado o error
+API --> Usuario : HTTP 201, 200 o error
+@enduml

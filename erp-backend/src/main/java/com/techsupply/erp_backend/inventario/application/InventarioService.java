@@ -47,6 +47,137 @@ public class InventarioService {
                 e.getCantidadReservada(), e.getCantidadFisica().subtract(e.getCantidadReservada())));
     }
 
+    /** Reserve an order line; the caller must confirm its parent in this same transaction. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    @PreAuthorize("hasAuthority('VENTAS_PEDIDOS_CONFIRMAR')")
+    public void reservarLineaPedido(long detalleId) {
+        var sources = db.query("""
+            select d.producto_id,p.almacen_id,d.cantidad,d.cantidad_reservada,d.cantidad_despachada,
+                   p.estado,w.activo as almacen_activo,pr.activo as producto_activo
+            from detalles_pedido d join pedidos_venta p on p.id=d.pedido_id
+            join almacenes w on w.id=p.almacen_id join productos pr on pr.id=d.producto_id
+            where d.id=? for update of p,d for share of w,pr
+            """, (rs,row)->new FuenteReserva(rs.getLong("producto_id"),rs.getLong("almacen_id"),
+                rs.getBigDecimal("cantidad"),rs.getBigDecimal("cantidad_reservada"),rs.getBigDecimal("cantidad_despachada"),
+                rs.getString("estado"),rs.getBoolean("almacen_activo"),rs.getBoolean("producto_activo")), detalleId);
+        if (sources.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Detalle de pedido no encontrado");
+        FuenteReserva source=sources.getFirst();
+        if (!source.estado().equals("BORRADOR") || !source.almacenActivo() || !source.productoActivo()
+                || source.cantidad().signum()<=0 || source.reservada().signum()!=0 || source.despachada().signum()!=0)
+            throw reservaConflicto();
+        var stocks=db.query("select cantidad_fisica,cantidad_reservada,version from existencias where producto_id=? and almacen_id=? for update",
+            (rs,row)->new ReservaStock(rs.getBigDecimal(1),rs.getBigDecimal(2),rs.getInt(3)),source.producto(),source.almacen());
+        if (stocks.isEmpty()) throw reservaConflicto();
+        ReservaStock stock=stocks.getFirst();
+        if (stock.version()==Integer.MAX_VALUE || stock.fisica().subtract(stock.reservada()).compareTo(source.cantidad())<0)
+            throw reservaConflicto();
+        db.update("update existencias set cantidad_reservada=cantidad_reservada+?,version=version+1 where producto_id=? and almacen_id=?",
+            source.cantidad(),source.producto(),source.almacen());
+        db.update("update detalles_pedido set cantidad_reservada=cantidad where id=?",detalleId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void beforeCommit(boolean readOnly) {
+                Boolean valid=db.queryForObject("""
+                    select exists(select 1 from detalles_pedido d join pedidos_venta p on p.id=d.pedido_id
+                    where d.id=? and p.estado='CONFIRMADO' and d.cantidad_reservada=d.cantidad and d.cantidad_despachada=0)
+                    """,Boolean.class,detalleId);
+                if (!Boolean.TRUE.equals(valid)) throw new IllegalStateException("El pedido debe confirmarse en la misma transacción");
+            }
+        });
+    }
+    private static ResponseStatusException reservaConflicto() { return new ResponseStatusException(HttpStatus.CONFLICT,"Pedido o disponibilidad incompatible"); }
+    private record FuenteReserva(long producto,long almacen,BigDecimal cantidad,BigDecimal reservada,BigDecimal despachada,
+            String estado,boolean almacenActivo,boolean productoActivo) {}
+    private record ReservaStock(BigDecimal fisica,BigDecimal reservada,int version) {}
+
+    /** Release the outstanding reservation; caller must cancel the order in this transaction. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    @PreAuthorize("hasAuthority('VENTAS_PEDIDOS_CANCELAR')")
+    public void liberarReservaPedido(long detalleId) {
+        var sources=db.query("""
+            select d.producto_id,p.almacen_id,d.cantidad,d.cantidad_reservada,d.cantidad_despachada,p.estado
+            from detalles_pedido d join pedidos_venta p on p.id=d.pedido_id
+            where d.id=? for update of p,d
+            """,(rs,row)->new FuenteLiberacion(rs.getLong("producto_id"),rs.getLong("almacen_id"),rs.getBigDecimal("cantidad"),
+                rs.getBigDecimal("cantidad_reservada"),rs.getBigDecimal("cantidad_despachada"),rs.getString("estado")),detalleId);
+        if (sources.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Detalle de pedido no encontrado");
+        FuenteLiberacion f=sources.getFirst();
+        if (!(f.estado().equals("CONFIRMADO") || f.estado().equals("PARCIALMENTE_DESPACHADO")) || f.reservada().signum()<=0
+                || f.reservada().compareTo(f.cantidad().subtract(f.despachada()))!=0) throw liberacionConflicto();
+        var stocks=db.query("select cantidad_fisica,cantidad_reservada,version from existencias where producto_id=? and almacen_id=? for update",
+            (rs,row)->new ReservaStock(rs.getBigDecimal(1),rs.getBigDecimal(2),rs.getInt(3)),f.producto(),f.almacen());
+        if (stocks.isEmpty() || stocks.getFirst().version()==Integer.MAX_VALUE || stocks.getFirst().reservada().compareTo(f.reservada())<0)
+            throw liberacionConflicto();
+        db.update("update existencias set cantidad_reservada=cantidad_reservada-?,version=version+1 where producto_id=? and almacen_id=?",
+            f.reservada(),f.producto(),f.almacen());
+        db.update("update detalles_pedido set cantidad_reservada=0 where id=?",detalleId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void beforeCommit(boolean readOnly) {
+                Boolean valid=db.queryForObject("""
+                    select exists(select 1 from detalles_pedido d join pedidos_venta p on p.id=d.pedido_id
+                    where d.id=? and p.estado='CANCELADO' and d.cantidad_reservada=0 and d.cantidad_despachada=?)
+                    """,Boolean.class,detalleId,f.despachada());
+                if (!Boolean.TRUE.equals(valid)) throw new IllegalStateException("El pedido debe cancelarse en la misma transacción");
+            }
+        });
+    }
+    private static ResponseStatusException liberacionConflicto() { return new ResponseStatusException(HttpStatus.CONFLICT,"Reserva o pedido incompatible"); }
+    private record FuenteLiberacion(long producto,long almacen,BigDecimal cantidad,BigDecimal reservada,BigDecimal despachada,String estado) {}
+
+    /** Register one reserved sale exit; its dispatch must be confirmed in the same transaction. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    @PreAuthorize("hasAuthority('VENTAS_DESPACHOS_CONFIRMAR')")
+    public void registrarSalidaDespacho(long detalleId) {
+        Long actor=users.currentUser().orElseThrow(()->new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Autenticación requerida")).usuarioId();
+        var sources=db.query("""
+            select d.cantidad,d.costo_unitario,d.detalle_pedido_id,l.producto_id,l.cantidad as pedida,
+                   l.cantidad_reservada,l.cantidad_despachada,s.almacen_id,s.estado as despacho_estado,
+                   p.estado as pedido_estado,w.activo as almacen_activo,pr.activo as producto_activo
+            from detalles_despacho d join despachos s on s.id=d.despacho_id
+            join detalles_pedido l on l.id=d.detalle_pedido_id and l.pedido_id=s.pedido_id
+            join pedidos_venta p on p.id=s.pedido_id and p.almacen_id=s.almacen_id
+            join almacenes w on w.id=s.almacen_id join productos pr on pr.id=l.producto_id
+            where d.id=? for update of p,s,d,l for share of w,pr
+            """,(rs,row)->new FuenteDespacho(rs.getBigDecimal("cantidad"),rs.getBigDecimal("costo_unitario"),
+                rs.getLong("detalle_pedido_id"),rs.getLong("producto_id"),rs.getBigDecimal("pedida"),
+                rs.getBigDecimal("cantidad_reservada"),rs.getBigDecimal("cantidad_despachada"),rs.getLong("almacen_id"),
+                rs.getString("despacho_estado"),rs.getString("pedido_estado"),rs.getBoolean("almacen_activo"),rs.getBoolean("producto_activo")),detalleId);
+        if (sources.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Detalle de despacho no encontrado");
+        FuenteDespacho f=sources.getFirst();
+        if (!f.despachoEstado().equals("BORRADOR") || !(f.pedidoEstado().equals("CONFIRMADO") || f.pedidoEstado().equals("PARCIALMENTE_DESPACHADO"))
+                || !f.almacenActivo() || !f.productoActivo() || f.costo()!=null || f.cantidad().signum()<=0
+                || f.cantidad().compareTo(f.reservada())>0 || f.cantidad().compareTo(f.pedida().subtract(f.despachada()))>0)
+            throw despachoConflicto();
+        if (Boolean.TRUE.equals(db.queryForObject("select exists(select 1 from movimientos_inventario where detalle_despacho_id=?)",Boolean.class,detalleId)))
+            throw despachoConflicto();
+        var stock=db.query("select cantidad_fisica,cantidad_reservada,costo_promedio,version from existencias where producto_id=? and almacen_id=? for update",
+            (rs,row)->new StockActual(rs.getBigDecimal(1),rs.getBigDecimal(2),rs.getBigDecimal(3),rs.getInt(4)),f.producto(),f.almacen());
+        if (stock.isEmpty()) throw despachoConflicto();
+        StockActual current=stock.getFirst();
+        if (current.version()==Integer.MAX_VALUE || current.fisica().compareTo(f.cantidad())<0 || current.reservada().compareTo(f.cantidad())<0)
+            throw despachoConflicto();
+        db.update("update detalles_despacho set costo_unitario=? where id=?",current.promedio(),detalleId);
+        db.update("update existencias set cantidad_fisica=cantidad_fisica-?,cantidad_reservada=cantidad_reservada-?,version=version+1 where producto_id=? and almacen_id=?",
+            f.cantidad(),f.cantidad(),f.producto(),f.almacen());
+        db.update("update detalles_pedido set cantidad_reservada=cantidad_reservada-?,cantidad_despachada=cantidad_despachada+? where id=?",
+            f.cantidad(),f.cantidad(),f.detallePedido());
+        db.update("insert into movimientos_inventario(producto_id,almacen_id,tipo,motivo,cantidad,costo_unitario,usuario_id,detalle_despacho_id,clave_operacion) values (?,?,'SALIDA','DESPACHO_VENTA',?,?,?,?,?)",
+            f.producto(),f.almacen(),f.cantidad(),current.promedio(),actor,detalleId,"DESPACHO:"+detalleId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void beforeCommit(boolean readOnly) {
+                Boolean valid=db.queryForObject("""
+                    select exists(select 1 from detalles_despacho d join despachos s on s.id=d.despacho_id
+                    join pedidos_venta p on p.id=s.pedido_id join movimientos_inventario m on m.detalle_despacho_id=d.id
+                    where d.id=? and s.estado='CONFIRMADO' and p.estado in ('PARCIALMENTE_DESPACHADO','DESPACHADO')
+                    and d.costo_unitario=m.costo_unitario and d.cantidad=m.cantidad)
+                    """,Boolean.class,detalleId);
+                if (!Boolean.TRUE.equals(valid)) throw new IllegalStateException("El despacho y el pedido deben actualizarse en la misma transacción");
+            }
+        });
+    }
+    private static ResponseStatusException despachoConflicto() { return new ResponseStatusException(HttpStatus.CONFLICT,"Despacho o existencia incompatible"); }
+    private record FuenteDespacho(BigDecimal cantidad,BigDecimal costo,long detallePedido,long producto,BigDecimal pedida,
+            BigDecimal reservada,BigDecimal despachada,long almacen,String despachoEstado,String pedidoEstado,boolean almacenActivo,boolean productoActivo) {}
+
     /** The caller confirms and audits the receipt in this same transaction. */
     @Transactional(propagation = Propagation.MANDATORY)
     @PreAuthorize("hasAuthority('COMPRAS_RECEPCIONES_CONFIRMAR')")

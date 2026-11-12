@@ -153,11 +153,46 @@ for (const [, name, body] of v11Tables) {
   assert.ok(target && target.note.includes('SQL V11'), `${name}: missing SQL V11 status`);
   const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
     .filter(c => c && !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT'].includes(c[1]));
-  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V11 columns differ`);
+  const v12Fields = name === 'pedidos_venta' ? ['motivo_cancelacion', 'cancelado_por_usuario_id', 'cancelado_en'] : [];
+  assert.deepEqual(target.fields.map(f => f.name).sort(), [...columns.map(c => c[1]), ...v12Fields].sort(), `${name}: V11/V12 columns differ`);
   for (const [, column, type, constraints] of columns) {
     const field = target.fields.find(f => f.name === column);
     assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: V11 type differs`);
     assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: V11 nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: missing primary key`);
+    if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: missing uniqueness`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: missing FK`);
+  }
+  for (const part of splitSqlColumns(body)) {
+    const unique = part.match(/^UNIQUE\s*\(([^)]+)\)/);
+    if (!unique) continue;
+    const fields = unique[1].split(',').map(x => x.trim()).sort();
+    assert.ok(target.indexes.some(i => i.unique && JSON.stringify(i.columns.map(c => c.value).sort()) === JSON.stringify(fields)), `${name}: missing composite uniqueness`);
+  }
+}
+const v12 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V12__sales_order_cancellation_metadata.sql'), 'utf8');
+const orderV12 = schema.tables.find(t => t.name === 'pedidos_venta');
+for (const [field, sqlType] of [['motivo_cancelacion', 'text'], ['cancelado_por_usuario_id', 'bigint'], ['cancelado_en', 'timestamptz']]) {
+  assert.match(v12, new RegExp(`ADD COLUMN ${field} ${sqlType}\\b`));
+  const column = orderV12.fields.find(f => f.name === field);
+  assert.equal(normalize(column.type.type_name), sqlType);
+  assert.equal(Boolean(column.not_null), false);
+}
+assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === 'pedidos_venta.cancelado_por_usuario_id>usuarios.id'));
+const v13 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V13__sales_commercial_invoices.sql'), 'utf8');
+const v13Tables = [...v13.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.equal(v13Tables.length, 2, 'Review V13 table count');
+for (const [, name, body] of v13Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target && target.note.includes('SQL V13'), `${name}: missing SQL V13 status`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V13 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: V13 type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: V13 nullability differs`);
     if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: missing primary key`);
     if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: missing uniqueness`);
     const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
@@ -181,12 +216,13 @@ for (const groupName of new Set(implementationGroups.values())) {
     [...implementationGroups.values()].filter(g => g === groupName).length);
 }
 for (const table of schema.tables) {
-  assert.ok(implemented.has(table.name) || v9Tables.some(t => t[1] === table.name) || v11Tables.some(t => t[1] === table.name) || table.note.includes('OBJETIVO'), `${table.name}: missing target status`);
+  assert.ok(implemented.has(table.name) || v9Tables.some(t => t[1] === table.name) || v11Tables.some(t => t[1] === table.name) || v13Tables.some(t => t[1] === table.name) || table.note.includes('OBJETIVO'), `${table.name}: missing target status`);
 }
 assert.ok(!/\buuid\b|gen_random_uuid/i.test(primary), 'Stale UUID policy');
 console.log(`DBML OK: ${schema.tables.length} tables, ${schema.refs.length} relationships; both copies identical.`);
 console.log(`Implemented schema matches V1/V3/V4/V5/V6: ${tables.length} tables, column types/nullability, PK/unique constraints and ${expectedRefs.length} foreign keys.`);
 console.log('V7 partial target comparison with V8 type alterations: 6 tables; non-V7 fields include the separately validated V9 adjustment source and future fields.');
 console.log('V9 inventory documents: 4 tables plus the adjustment movement source; columns, types, nullability, uniqueness and foreign keys.');
-console.log('V11 sales: 7 tables and dispatch movement source; columns, types, nullability, uniqueness and foreign keys.');
+console.log('V11/V12 sales: 7 tables, dispatch movement source and cancellation metadata; columns, types, nullability, uniqueness and foreign keys.');
+console.log('V13 sales invoices: 2 tables; columns, types, nullability, uniqueness and foreign keys.');
 console.log('CHECK, triggers and partial indexes are described in notes; executable authority remains Flyway SQL.');
