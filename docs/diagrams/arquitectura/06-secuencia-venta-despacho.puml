@@ -14,17 +14,21 @@
 
  User -> API : confirmarDespacho(id)
  API -> Service : confirmar(id, usuario)
+ Service -> Documents : bloquear pedido y despacho
  Service -> Service : validar permiso, estado e idempotencia
  alt validaciones y escrituras exitosas
   group Unidad transaccional: pedido, stock, movimiento y auditoría
-  Service -> Documents : validar reserva y cantidad pendiente por linea
+  Service -> Documents : comprobar reserva y cantidad pendiente
   Documents --> Service : cantidades autorizadas a despachar
-  Service -> Inventory : despachar por DetalleDespacho
-  Inventory -> Stock : bloquear/leer existencia producto-almacen
-  Stock --> Inventory : cantidad fisica y reservada
-  Inventory -> Stock : reducir fisica y reservada en igual cantidad
-  Inventory -> Movement : insertar salida con detalle_despacho_id
-  Service -> Documents : actualizar cantidades y estado del pedido
+  loop líneas en orden de producto
+   Service -> Inventory : registrarSalidaDespacho(detalleId)
+   Inventory -> Stock : bloquear y leer existencia y costo promedio
+   Stock --> Inventory : física, reserva y costo promedio
+   Inventory -> Documents : guardar costo y actualizar cantidades de línea
+   Inventory -> Stock : reducir física y reserva; aumentar versión
+   Inventory -> Movement : insertar salida con detalle_despacho_id
+  end
+  Service -> Documents : confirmar despacho y actualizar estado del pedido
   Service -> Audit : registrar despacho confirmado
   end
   Service --> API : resultado confirmado

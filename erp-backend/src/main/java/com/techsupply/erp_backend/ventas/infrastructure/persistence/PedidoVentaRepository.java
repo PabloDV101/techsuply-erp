@@ -10,12 +10,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
-/** No delete or save until the business operation is implemented. */
+/** Persistencia de pedidos sin borrado físico. */
 public interface PedidoVentaRepository extends Repository<PedidoVenta, Long> {
+    <S extends PedidoVenta> S save(S pedido);
+    void flush();
     Optional<PedidoVenta> findById(Long id);
     Optional<PedidoVenta> findByClaveIdempotencia(String claveIdempotencia);
     Optional<PedidoVenta> findByCotizacionId(Long cotizacionId);
     Page<PedidoVenta> findAll(Pageable pageable);
+    Page<PedidoVenta> findByClienteId(Long clienteId, Pageable pageable);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select d from PedidoVenta d where d.id = :id")
     Optional<PedidoVenta> bloquearPorId(@Param("id") Long id);

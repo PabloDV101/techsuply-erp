@@ -6,7 +6,7 @@ const Ajv = require(require.resolve('ajv', { paths: [path.dirname(parserFile)] }
 
 (async () => {
   const api = await parser.dereference(path.join(__dirname, 'openapi-sprint-3-ventas.yaml'));
-  if (api['x-implementation-status'] !== 'design-only') throw new Error('El contrato debe permanecer marcado como diseño');
+  if (api['x-implementation-status'] !== 'implemented') throw new Error('El contrato debe estar marcado como implementado');
   // OpenAPI 3.0 uses a boolean exclusiveMinimum; Ajv draft 7 uses a number.
   const seen = new WeakSet();
   function adapt(value) {
@@ -22,7 +22,7 @@ const Ajv = require(require.resolve('ajv', { paths: [path.dirname(parserFile)] }
   const ajv = new Ajv({ strict: false, validateFormats: false });
   let checked = 0;
   for (const [route, item] of Object.entries(api.paths)) {
-    const expectedStatus = route.startsWith('/customers') ? 'implemented' : 'design-only';
+    const expectedStatus = 'implemented';
     if (item['x-implementation-status'] !== expectedStatus) throw new Error(`${route}: estado esperado ${expectedStatus}`);
     for (const operation of Object.values(item)) {
       const json = operation?.requestBody?.content?.['application/json'];

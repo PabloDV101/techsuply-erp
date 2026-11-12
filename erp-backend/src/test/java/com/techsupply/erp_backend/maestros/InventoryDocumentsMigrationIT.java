@@ -45,7 +45,7 @@ class InventoryDocumentsMigrationIT extends PostgresIntegrationSupport {
         Flyway upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
             .locations("classpath:db/migration").target("9").load();
         assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
-        assertThat(currentFlyway.info().applied()).hasSize(11);
+        assertThat(currentFlyway.info().applied()).hasSize(13);
         assertThat(db.queryForObject("select costo_promedio from " + p + "existencias", BigDecimal.class)).isEqualByComparingTo("999999999999.9900");
         assertThat(db.queryForObject("select costo_unitario from " + p + "movimientos_inventario where motivo='RECEPCION_COMPRA'", BigDecimal.class)).isEqualByComparingTo("999999999999.9900");
         assertThat(db.queryForObject("select count(*) from information_schema.tables where table_schema=? and table_name in ('conteos_inventario','detalles_conteo','ajustes_inventario','detalles_ajuste_inventario')", Integer.class, schema)).isEqualTo(4);

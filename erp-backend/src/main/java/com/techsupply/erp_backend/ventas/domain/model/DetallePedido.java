@@ -3,7 +3,7 @@ package com.techsupply.erp_backend.ventas.domain.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-/** Mapeo del esquema V11. La escritura y las transiciones se incorporan con sus casos de uso. */
+/** Instantánea comercial de una línea de cotización. */
 @Entity @Table(name = "detalles_pedido")
 public class DetallePedido {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
@@ -16,6 +16,11 @@ public class DetallePedido {
     @Column(name = "descuento_pct", nullable = false, precision = 5, scale = 2) private BigDecimal descuentoPct;
     @Column(name = "tasa_impuesto", nullable = false, precision = 5, scale = 2) private BigDecimal tasaImpuesto;
     protected DetallePedido() {}
+    public DetallePedido(Long pedidoId, DetalleCotizacion linea) {
+        this.pedidoId = java.util.Objects.requireNonNull(pedidoId); this.productoId = linea.getProductoId();
+        this.cantidad = linea.getCantidad(); this.cantidadReservada = BigDecimal.ZERO; this.cantidadDespachada = BigDecimal.ZERO;
+        this.precioUnitario = linea.getPrecioUnitario(); this.descuentoPct = linea.getDescuentoPct(); this.tasaImpuesto = linea.getTasaImpuesto();
+    }
     public Long getId() { return id; }
     public Long getPedidoId() { return pedidoId; }
     public Long getProductoId() { return productoId; }

@@ -5,4 +5,4 @@ import java.time.Instant;
 
 public record MovimientoResponse(Long id, Long productoId, Long almacenId, String tipo, String motivo,
                                  BigDecimal cantidad, BigDecimal costoUnitario, Instant fecha, Long usuarioId,
-                                 Long detalleRecepcionId, Long detalleAjusteId) {}
+                                 Long detalleRecepcionId, Long detalleAjusteId, Long detalleDespachoId) {}

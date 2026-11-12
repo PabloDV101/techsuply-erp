@@ -1,14 +1,13 @@
 package com.techsupply.erp_backend.compras.domain.model;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.Objects;
+import com.techsupply.erp_backend.common.domain.CalculoImportes;
 
 /** Deterministic calculation: no persistence, clock or mutable state. */
 public final class CalculoOrden {
     private static final BigDecimal CIEN = new BigDecimal("100");
-    private static final BigDecimal MAX_TOTAL = new BigDecimal("999999999999.99");
     private CalculoOrden() {}
 
     public record Linea(BigDecimal cantidad, BigDecimal precioUnitario, BigDecimal descuentoPct, BigDecimal tasaImpuesto) {
@@ -24,19 +23,9 @@ public final class CalculoOrden {
     public static Totales calcular(List<Linea> lineas) {
         Objects.requireNonNull(lineas, "lineas");
         if (lineas.isEmpty()) throw new IllegalArgumentException("La orden debe tener líneas");
-        BigDecimal subtotal = BigDecimal.ZERO.setScale(2);
-        BigDecimal impuestos = BigDecimal.ZERO.setScale(2);
-        for (Linea linea : lineas) {
-            Objects.requireNonNull(linea, "linea");
-            BigDecimal bruto = linea.cantidad().multiply(linea.precioUnitario());
-            BigDecimal base = bruto.subtract(bruto.multiply(linea.descuentoPct()).movePointLeft(2));
-            subtotal = subtotal.add(base.setScale(2, RoundingMode.HALF_UP));
-            impuestos = impuestos.add(base.multiply(linea.tasaImpuesto()).movePointLeft(2).setScale(2, RoundingMode.HALF_UP));
-        }
-        BigDecimal total = subtotal.add(impuestos);
-        if (subtotal.compareTo(MAX_TOTAL) > 0 || impuestos.compareTo(MAX_TOTAL) > 0 || total.compareTo(MAX_TOTAL) > 0)
-            throw new IllegalArgumentException("Importe excede numeric(14,2)");
-        return new Totales(subtotal, impuestos, total);
+        var value = CalculoImportes.calcular(lineas.stream().map(line -> new CalculoImportes.Linea(
+            line.cantidad(), line.precioUnitario(), line.descuentoPct(), line.tasaImpuesto())).toList());
+        return new Totales(value.subtotal(), value.impuestos(), value.total());
     }
 
     public static BigDecimal pendiente(BigDecimal ordenada, BigDecimal aceptada) {

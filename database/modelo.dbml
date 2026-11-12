@@ -434,7 +434,7 @@ Table cotizaciones [headercolor: #8E44AD] {
   subtotal numeric(14,2) [not null, default: 0]
   impuestos numeric(14,2) [not null, default: 0]
   total numeric(14,2) [not null, default: 0]
-  Note: 'SQL V11 y mapeo JPA; reglas de vigencia, escritura y API pendientes.'
+  Note: 'SQL V11, JPA y API de cotizaciones; fecha de negocio Ciudad de México y límite inclusivo.'
 }
 
 Table detalles_cotizacion [headercolor: #8E44AD] {
@@ -446,7 +446,7 @@ Table detalles_cotizacion [headercolor: #8E44AD] {
   descuento_pct numeric(5,2) [not null, default: 0]
   tasa_impuesto numeric(5,2) [not null]
   indexes { (cotizacion_id, producto_id) [unique] }
-  Note: 'SQL V11 y mapeo JPA; escritura y cálculo de Ventas pendientes.'
+  Note: 'SQL V11, JPA y API de cotizaciones; líneas comerciales inmutables tras creación.'
 }
 
 Table pedidos_venta [headercolor: #8E44AD] {
@@ -466,7 +466,10 @@ Table pedidos_venta [headercolor: #8E44AD] {
   total numeric(14,2) [not null, default: 0]
   clave_idempotencia varchar(100) [not null, unique]
   observaciones text
-  Note: 'SQL V11 y mapeo JPA; escritura y API pendientes. La confirmación y reserva aún no existen; crédito queda fuera de este incremento.'
+  motivo_cancelacion text
+  cancelado_por_usuario_id bigint
+  cancelado_en timestamptz
+  Note: 'SQL V11 y V12: una cotización por pedido; V12 registra motivo, actor y fecha de cancelación. Los pedidos cancelados históricos pueden carecer de metadatos; V12 protege cabeceras y detalles cancelados frente a DML ordinario.'
 }
 
 Table detalles_pedido [headercolor: #8E44AD] {
@@ -480,7 +483,7 @@ Table detalles_pedido [headercolor: #8E44AD] {
   descuento_pct numeric(5,2) [not null, default: 0]
   tasa_impuesto numeric(5,2) [not null]
   indexes { (pedido_id, producto_id) [unique] }
-  Note: 'SQL V11 y mapeo JPA: reservada más despachada no excede cantidad. Actualización transaccional y API pendientes.'
+  Note: 'SQL V11: reservada más despachada no excede cantidad. La confirmación de pedido reserva por línea; la confirmación de despacho actualiza reserva y cantidad despachada.'
 }
 
 Table despachos [headercolor: #8E44AD] {
@@ -492,7 +495,7 @@ Table despachos [headercolor: #8E44AD] {
   fecha timestamptz [not null, default: `now()`]
   estado varchar(15) [not null, note: 'BORRADOR, CONFIRMADO, CANCELADO']
   clave_idempotencia varchar(100) [not null, unique]
-  Note: 'SQL V11 y mapeo JPA; escritura, confirmación y API pendientes. V11 protege fuentes referenciadas por movimientos.'
+  Note: 'SQL V11/V12 y API de registro, consulta, confirmación y cancelación. V11 protege fuentes con movimiento; V12 protege documentos cancelados.'
 }
 
 Table detalles_despacho [headercolor: #8E44AD] {
@@ -502,7 +505,7 @@ Table detalles_despacho [headercolor: #8E44AD] {
   cantidad numeric(14,3) [not null]
   costo_unitario numeric(16,4) [note: 'Nullable en borrador; debe coincidir con el movimiento de salida.']
   indexes { (despacho_id, detalle_pedido_id) [unique] }
-  Note: 'SQL V11 y mapeo JPA; costo se fija al confirmar por aplicación futura.'
+  Note: 'SQL V11 y API de borradores; las cantidades se validan contra la reserva y otros borradores. Costo se fija al confirmar al promedio vigente de la existencia.'
 }
 
 Table facturas_venta [headercolor: #8E44AD] {
@@ -510,13 +513,18 @@ Table facturas_venta [headercolor: #8E44AD] {
   folio varchar(30) [not null, unique]
   pedido_id bigint [not null, unique, note: 'MVP: una factura comercial por pedido al despacharlo completamente.']
   cliente_id bigint [not null]
+  emitida_por_usuario_id bigint [not null]
   fecha_emision date [not null]
   fecha_vencimiento date [not null]
   subtotal numeric(14,2) [not null]
   impuestos numeric(14,2) [not null]
   total numeric(14,2) [not null]
-  estado varchar(20) [not null, note: 'EMITIDA, PARCIALMENTE_PAGADA, PAGADA, VENCIDA, CANCELADA']
-  Note: 'OBJETIVO: tabla aún no implementada. Documento comercial interno; no equivale a CFDI ni tiene timbrado SAT en el MVP.'
+  estado varchar(20) [not null, note: 'SQL V13: BORRADOR transitorio, EMITIDA; estados de pago y cancelación pendientes.']
+  clave_idempotencia varchar(100) [not null, unique]
+  indexes {
+    (cliente_id, fecha_emision, id) [name: 'idx_facturas_venta_cliente_fecha', note: 'SQL: fecha_emision e id descendentes']
+  }
+  Note: 'SQL V13: documento comercial interno único por pedido despachado; no acredita cobro, CFDI ni asiento contable.'
 }
 
 // ==================== CONTABILIDAD ====================
@@ -843,8 +851,11 @@ Table detalles_factura_venta [headercolor: #8E44AD] {
   subtotal numeric(14,2) [not null]
   impuestos numeric(14,2) [not null]
   total numeric(14,2) [not null]
-  indexes { (factura_venta_id, detalle_pedido_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Copia de la línea comercial acordada; preserva cantidades, precios, descuentos e impuestos aunque cambie el catálogo.'
+  indexes {
+    (factura_venta_id, detalle_pedido_id) [unique]
+    (detalle_pedido_id) [name: 'idx_detalles_factura_venta_pedido']
+  }
+  Note: 'SQL V13: copia histórica de la línea comercial acordada; conserva cantidades, precios, descuentos, impuestos e importes.'
 }
 
 Table detalles_devolucion_proveedor [headercolor: #28B463] {
@@ -1026,6 +1037,7 @@ Ref: pedidos_venta.vendedor_usuario_id > usuarios.id
 Ref: pedidos_venta.cotizacion_id > cotizaciones.id
 Ref: pedidos_venta.almacen_id > almacenes.id
 Ref: pedidos_venta.creado_por_usuario_id > usuarios.id
+Ref: pedidos_venta.cancelado_por_usuario_id > usuarios.id
 Ref: detalles_pedido.pedido_id > pedidos_venta.id
 Ref: detalles_pedido.producto_id > productos.id
 Ref: despachos.pedido_id > pedidos_venta.id
@@ -1035,6 +1047,7 @@ Ref: detalles_despacho.despacho_id > despachos.id
 Ref: detalles_despacho.detalle_pedido_id > detalles_pedido.id
 Ref: facturas_venta.pedido_id > pedidos_venta.id
 Ref: facturas_venta.cliente_id > clientes.id
+Ref: facturas_venta.emitida_por_usuario_id > usuarios.id
 Ref: detalles_factura_venta.factura_venta_id > facturas_venta.id
 Ref: detalles_factura_venta.detalle_pedido_id > detalles_pedido.id
 Ref: detalles_factura_venta.producto_id > productos.id

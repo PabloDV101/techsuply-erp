@@ -1,0 +1,31 @@
+@startuml TSS_Secuencia_Conversion_Pedido
+!include ../_estilo.iuml
+title Conversión de cotización en pedido
+hide footbox
+actor "Responsable de ventas" as Usuario
+boundary "PedidoController" as API
+control "PedidoService" as Servicio
+entity "Cotización y detalles" as Cotizacion
+entity "Catálogos" as Catalogos
+entity "Pedido y detalles" as Pedido
+entity "EventoAuditoria" as Auditoria
+
+Usuario -> API : solicitar conversión
+API -> Servicio : crear(datos, identidad)
+group Transacción
+  Servicio -> Servicio : autorizar y serializar clave
+  alt reintento equivalente
+    Servicio -> Pedido : obtener pedido existente
+    Pedido --> Servicio : pedido
+  else conversión nueva
+    Servicio -> Cotizacion : bloquear y comprobar aceptación y vigencia
+    Cotizacion --> Servicio : datos comerciales
+    Servicio -> Catalogos : comprobar cliente, almacén y productos activos
+    Catalogos --> Servicio : validación
+    Servicio -> Pedido : registrar pedido y copiar detalles
+    Servicio -> Auditoria : registrar creación
+  end
+end
+Servicio --> API : pedido creado o existente
+API --> Usuario : HTTP 201 o 200
+@enduml

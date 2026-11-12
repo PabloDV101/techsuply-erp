@@ -34,6 +34,9 @@
   -subtotal: Decimal
   -impuestos: Decimal
   -total: Decimal
+  -motivoCancelacion: String [0..1]
+  -canceladoEn: DateTime [0..1]
+  -canceladoPorUsuarioId: Long [0..1]
   +confirmar()
   +cancelar()
 }
@@ -53,6 +56,7 @@
   -estado: EstadoDespacho
   -claveIdempotencia: String
   +confirmar()
+  +cancelar()
 }
   class DetalleDespacho {
   -id: Long
@@ -113,6 +117,7 @@
  Cliente "1" <-- "0..*" PedidoVenta
  Usuario "1" <-- "0..*" PedidoVenta : creador
  Usuario "1" <-- "0..*" PedidoVenta : vendedor
+ Usuario "0..1" <-- "0..*" PedidoVenta : cancelador
  PedidoVenta "1" *-- "0..*" DetallePedido
  DetallePedido "0..*" --> "1" Producto
  PedidoVenta "1" -- "0..*" Despacho

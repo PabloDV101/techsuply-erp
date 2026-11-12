@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/** Mapeo del esquema V11. La escritura y las transiciones se incorporan con sus casos de uso. */
+/** Pedido originado en una cotización; las transiciones posteriores se incorporan con sus casos de uso. */
 @Entity @Table(name = "pedidos_venta")
 public class PedidoVenta {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
@@ -26,7 +26,36 @@ public class PedidoVenta {
     @Column(name = "total", nullable = false, precision = 14, scale = 2) private BigDecimal total;
     @Column(name = "clave_idempotencia", nullable = false, length = 100) private String claveIdempotencia;
     @Column(name = "observaciones", columnDefinition = "text") private String observaciones;
+    @Column(name = "motivo_cancelacion", columnDefinition = "text") private String motivoCancelacion;
+    @Column(name = "cancelado_por_usuario_id") private Long canceladoPorUsuarioId;
+    @Column(name = "cancelado_en") private Instant canceladoEn;
     protected PedidoVenta() {}
+    public PedidoVenta(String folio, Cotizacion cotizacion, Long almacenId, Long actor, Instant fecha, String clave) {
+        this.folio = java.util.Objects.requireNonNull(folio);
+        this.clienteId = cotizacion.getClienteId(); this.vendedorUsuarioId = cotizacion.getVendedorUsuarioId();
+        this.cotizacionId = cotizacion.getId(); this.almacenId = java.util.Objects.requireNonNull(almacenId);
+        this.creadoPorUsuarioId = java.util.Objects.requireNonNull(actor); this.fecha = java.util.Objects.requireNonNull(fecha);
+        this.canal = CanalVenta.INTERNO; this.modalidad = ModalidadVenta.CONTADO; this.estado = EstadoPedidoVenta.BORRADOR;
+        this.subtotal = cotizacion.getSubtotal(); this.impuestos = cotizacion.getImpuestos(); this.total = cotizacion.getTotal();
+        this.claveIdempotencia = java.util.Objects.requireNonNull(clave);
+    }
+    public void confirmar() {
+        if (estado != EstadoPedidoVenta.BORRADOR) throw new IllegalStateException("Pedido no confirmable");
+        estado = EstadoPedidoVenta.CONFIRMADO;
+    }
+    public void registrarDespacho(boolean completo) {
+        if (estado != EstadoPedidoVenta.CONFIRMADO && estado != EstadoPedidoVenta.PARCIALMENTE_DESPACHADO)
+            throw new IllegalStateException("Pedido no despachable");
+        estado = completo ? EstadoPedidoVenta.DESPACHADO : EstadoPedidoVenta.PARCIALMENTE_DESPACHADO;
+    }
+    public void cancelar(String motivo, Long actor, Instant instante) {
+        if (estado != EstadoPedidoVenta.BORRADOR && estado != EstadoPedidoVenta.CONFIRMADO && estado != EstadoPedidoVenta.PARCIALMENTE_DESPACHADO)
+            throw new IllegalStateException("Pedido no cancelable");
+        if (motivo == null || motivo.isBlank() || motivo.length()>1000 || !motivo.equals(motivo.trim()))
+            throw new IllegalArgumentException("Motivo inválido");
+        motivoCancelacion=motivo; canceladoPorUsuarioId=java.util.Objects.requireNonNull(actor);
+        canceladoEn=java.util.Objects.requireNonNull(instante); estado=EstadoPedidoVenta.CANCELADO;
+    }
     public Long getId() { return id; }
     public String getFolio() { return folio; }
     public Long getClienteId() { return clienteId; }
@@ -43,4 +72,7 @@ public class PedidoVenta {
     public BigDecimal getTotal() { return total; }
     public String getClaveIdempotencia() { return claveIdempotencia; }
     public String getObservaciones() { return observaciones; }
+    public String getMotivoCancelacion() { return motivoCancelacion; }
+    public Long getCanceladoPorUsuarioId() { return canceladoPorUsuarioId; }
+    public Instant getCanceladoEn() { return canceladoEn; }
 }

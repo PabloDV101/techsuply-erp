@@ -9,10 +9,13 @@ package "Ventas" {
     -folio: String
     -fechaEmision: Date
     -fechaVencimiento: Date
+    -emitidaPorUsuarioId: Long
+    -claveIdempotencia: String
     -subtotal: Decimal
     -impuestos: Decimal
     -total: Decimal
     -estado: EstadoFactura
+    +emitir()
   }
   class DetalleFacturaVenta {
     -id: Long
@@ -25,6 +28,7 @@ package "Ventas" {
     -total: Decimal
   }
   enum EstadoFactura {
+    BORRADOR
     EMITIDA
     PARCIALMENTE_PAGADA
     PAGADA
@@ -38,6 +42,7 @@ package "Referencias" {
   class Producto
   class Cliente
   class CuentaPorCobrar
+  class Usuario
 }
 EstadoFactura -[hidden]-> FacturaVenta
 PedidoVenta "1" -- "0..1" FacturaVenta : origen
@@ -45,6 +50,7 @@ FacturaVenta "1" *-- "1..*" DetalleFacturaVenta
 DetalleFacturaVenta "0..*" --> "1" DetallePedido : línea original
 DetalleFacturaVenta "0..*" --> "1" Producto
 FacturaVenta "0..*" --> "1" Cliente
+FacturaVenta "0..*" --> "1" Usuario : emisor
 FacturaVenta "1" -- "0..1" CuentaPorCobrar : genera cuenta
 note bottom of FacturaVenta
   Una factura comercial por pedido totalmente despachado.

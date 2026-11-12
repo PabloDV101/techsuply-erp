@@ -232,7 +232,7 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-MAE-04 — Clientes (Alta).** El sistema deberá gestionar clientes, información de contacto, estado y límite de crédito.  
 *Criterio:* pedidos nuevos requieren cliente activo y, cuando la venta sea a crédito, se aplica el límite y saldo según política configurada.
 
-*Estado parcial (sprint 3, parte 5):* el catálogo de clientes tiene API, permisos y auditoría; el consumo por pedidos, la validación crediticia y el portal siguen pendientes. Evidencia: `ClienteApiIT` y [documentación](fase-3/SPRINT_3_CLIENTES.md).
+*Estado parcial (sprint 3, parte 5):* el catálogo de clientes tiene API, permisos y auditoría; la creación de pedidos requiere cliente activo; la validación crediticia y el portal siguen pendientes. Evidencia: `ClienteApiIT` y [documentación](fase-3/SPRINT_3_CLIENTES.md).
 
 **RF-MAE-05 — Estructura interna (Media).** El sistema deberá mantener empleados, departamentos, puestos y almacenes, con códigos identificables y estado.  
 *Criterio:* registros operativos enlazan al empleado responsable y/o almacén correspondiente.
@@ -282,6 +282,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-INV-03 — Reserva de ventas (Alta).** Al confirmar un pedido, el sistema deberá reservar cantidades disponibles dentro de una transacción.  
 *Criterio:* las reservas concurrentes no permiten comprometer más unidades que las disponibles.
 
+*Estado (sprint 3, parte 8):* la confirmación reserva en la misma transacción; `ConfirmarPedidoIT` comprueba concurrencia y rollback. El despacho se implementó en la parte 10 y la liberación por cancelación en la parte 11.
+
 **RF-INV-04 — Despacho (Alta).** El sistema deberá registrar despachos completos o parciales. La confirmación restará cantidad física y reservada, registrará movimiento y actualizará el estado del pedido de forma atómica.  
 *Criterio:* la cantidad despachada no supera la reservada ni la pendiente y el reintento no duplica la salida.
 
@@ -302,22 +304,32 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 
 ### 5.5 Ventas
 
-*Sprint 3: API de clientes implementada; Ventas aún sin API ni servicios.* V11 incorporó el esquema base de clientes y Ventas; por decisión del responsable, el incremento considera únicamente modalidad de contado sin afirmar que se haya cobrado, usa la zona `America/Mexico_City`, conserva el precio acordado de la cotización aceptada y permite cancelar el saldo pendiente tras un despacho parcial conservando el despacho confirmado. Reglas operativas y su alcance están en el [diseño propuesto](fase-3/SPRINT_3_DISENO_VENTAS.md); el crédito, cobros y portal no se dan por implementados.
+*Sprint 3: API de clientes y cotizaciones y conversión a pedido implementadas; confirmación y reserva implementadas; registro, consulta y confirmación de despachos, cancelaciones y factura comercial interna implementados.* V11 incorporó el esquema base de clientes y Ventas; V12 agrega metadatos de cancelación y protege sus documentos cancelados; V13 incorpora facturas comerciales internas. Por decisión del responsable, el incremento considera únicamente modalidad de contado sin afirmar que se haya cobrado, usa la zona `America/Mexico_City`, conserva el precio acordado de la cotización aceptada y acordó permitir la cancelación del saldo pendiente tras un despacho parcial conservando el despacho confirmado; esta cancelación se implementó en la parte 11. Reglas operativas y su alcance están en el [diseño propuesto](fase-3/SPRINT_3_DISENO_VENTAS.md); el crédito, cobros y portal no se dan por implementados.
 
 **RF-VEN-01 — Cotizaciones (Alta).** El sistema deberá crear y consultar cotizaciones con productos, cantidades, precio, descuentos, impuestos, vigencia y estado.  
 *Criterio:* una cotización vencida no puede convertirse directamente en pedido sin revalidación.
 
+*Estado parcial (sprint 3, parte 6):* la API de cotizaciones implementa creación, consulta, emisión, aceptación y cancelación; la conversión a pedido está implementada en la parte 7. Detalles y evidencia en [cotizaciones](fase-3/SPRINT_3_COTIZACIONES.md).
+
 **RF-VEN-02 — Pedido de venta (Alta).** El sistema deberá convertir una cotización aceptada en pedido, conservando los detalles y datos comerciales.  
 *Criterio:* la conversión no duplica detalles y el pedido dispone de folio y estados definidos.
+
+*Estado parcial (sprint 3, partes 7 y 8):* conversión, consultas, confirmación y cancelación implementadas. Evidencia: `PedidoApiIT` y [documentación](fase-3/SPRINT_3_PEDIDOS.md).
 
 **RF-VEN-03 — Validar pedido (Alta).** Antes de confirmar un pedido, el backend deberá validar cliente activo, precios, descuentos, disponibilidad y crédito cuando aplique.  
 *Criterio:* cualquier fallo impide la confirmación y no deja una reserva parcial.
 
+*Estado parcial (sprint 3, parte 8):* validación y reserva de contado implementadas; crédito, excepciones y cobros no están habilitados. Véase [confirmación y reserva](fase-3/SPRINT_3_RESERVAS.md).
+
 **RF-VEN-04 — Despachos parciales (Alta).** El sistema deberá permitir preparar y confirmar uno o varios despachos de un pedido.  
 *Criterio:* cada despacho confirmado genera salidas y libera sus reservas correspondientes; el pedido conserva el estado parcial mientras existan cantidades pendientes.
 
+*Estado parcial (sprint 3, partes 9 y 10):* se registran, consultan y confirman despachos parciales o completos, actualizando inventario, kardex y estado del pedido en una transacción. La cancelación de borradores y saldos pendientes se implementó en la parte 11. Evidencia en [confirmación de despacho](fase-3/SPRINT_3_CONFIRMACION_DESPACHOS.md).
+
 **RF-VEN-05 — Factura comercial (Alta).** El sistema deberá emitir una factura comercial vinculada al pedido cuando este se encuentre completamente despachado. En el MVP se establece una factura por pedido.  
 *Criterio:* no se emite una segunda factura del mismo pedido y se mantiene explícito que no hay timbrado CFDI salvo que se implemente después.
+
+*Estado backend (sprint 3, parte 12):* emisión explícita y consulta de factura comercial interna por pedido totalmente despachado, con instantáneas, unicidad y auditoría. Cuentas por cobrar, contabilidad, CFDI y frontend integrado siguen pendientes. Evidencia en [factura comercial](fase-3/SPRINT_3_FACTURAS.md).
 
 **RF-VEN-06 — Pagos de clientes (Media).** El sistema deberá registrar cobros y aplicarlos a una o varias cuentas por cobrar mediante aplicaciones explícitas.  
 *Criterio:* solo cobros confirmados reducen saldos; ninguna aplicación supera el saldo de factura o monto disponible del cobro.
@@ -629,13 +641,15 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 
 | Grupo de requisitos | Caso de uso/proceso | Clases principales | Prueba sugerida |
 |---|---|---|---|
-| RF-MAE-04 (parcial) | Gestionar clientes | Cliente, ClienteService, ClienteController | `ClienteApiIT`, `ClienteOpenApiContractTest`; cliente activo y crédito en pedidos pendientes |
+| RF-MAE-04 (parcial) | Gestionar clientes | Cliente, ClienteService, ClienteController | `ClienteApiIT`, `ClienteOpenApiContractTest`, `PedidoApiIT`; cliente activo en conversión, crédito pendiente |
 | RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT y MasterCatalogApiIT; consulta de productos por categoría |
 | RF-COM-03/04/05, RN-07/08/18 | Orden y recepción parcial | OrdenCompra, RecepcionCompra, InventarioService | `ConfirmarRecepcionIT`: CA-01, reintento, concurrencia y rollback |
 | RF-COM-01/02/06/07/08 | Requisición, factura y devolución | RequisicionCompra, FacturaProveedor y devolución | Pendiente de implementación y pruebas |
 | RF-INV-01/02/05/06/07 (parcial según alcance) | Existencia, movimiento, conteo, ajuste y alerta global | Existencia, MovimientoInventario, ConteoInventario, AjusteInventario | `FlujoCompraInventarioIT`, `AplicarAjusteIT`, `AlertaStockIT`; CA-01/06 |
-| RF-INV-03/04 y restantes de RF-INV-02/07 | Reservas, despachos y reportes | Inventario y módulos fuente futuros | CA-02/03 e informes: pendientes de implementación |
-| RF-VEN-01 a RF-VEN-09 | Cotización, portal, pedido y despacho | Cotizacion, PedidoVenta, Despacho, FacturaVenta | CA-02, CA-03 |
+| RF-INV-03/04 y restantes de RF-INV-02/07 | Reservas, despachos y reportes | Inventario y Ventas | CA-02: `ConfirmarPedidoIT`; CA-03: `ConfirmarDespachoIT`; informes pendientes |
+| RF-VEN-01 a RF-VEN-04 | Cotización, pedido y despacho | Cotizacion, PedidoVenta, Despacho | `ConfirmarPedidoIT`, `ConfirmarDespachoIT`; CA-02 y CA-03 |
+| RF-VEN-05 | Factura comercial interna | FacturaVenta, DetalleFacturaVenta | `FacturaApiIT`, `FacturaMigrationIT`, `FacturaOpenApiContractTest` |
+| RF-VEN-06 a RF-VEN-09 | Cobros, historial, portal y comisiones | Módulos futuros | Pendiente de implementación y pruebas |
 | RF-CON-01 a RF-CON-08 | Contabilidad y aplicaciones | AsientoContable, DetalleAsiento, CuentaPorCobrar/Pagar, aplicaciones | CA-04, CA-05 |
 | RF-RH-01 a RF-RH-04 | RR. HH. y nómina | ExpedienteLaboral, SolicitudVacaciones, Nomina, DetalleNomina | CA-07 |
 | RF-SEG-01 a RF-SEG-04 | Seguridad | Usuario, Rol, Permiso, EventoAuditoria | CA-06, CA-08 |

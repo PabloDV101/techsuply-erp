@@ -24,10 +24,10 @@ class SalesMigrationIT extends PostgresIntegrationSupport {
     private void fails(String sql, Object... args) { assertThatThrownBy(() -> db.update(sql, args)).isInstanceOf(DataIntegrityViolationException.class); }
 
     @Test void cleanSchemaHasSalesTablesAndPermissions() {
-        assertThat(flyway.info().applied()).hasSize(11);
+        assertThat(flyway.info().applied()).hasSize(13);
         assertThat(db.queryForObject("select count(*) from information_schema.tables where table_schema=current_schema() and table_name in ('clientes','cotizaciones','detalles_cotizacion','pedidos_venta','detalles_pedido','despachos','detalles_despacho')", Integer.class)).isEqualTo(7);
-        assertThat(db.queryForObject("select count(*) from permisos where codigo like 'VENTAS_%' or codigo like 'MAESTROS_CLIENTES_%'", Integer.class)).isEqualTo(13);
-        assertThat(db.queryForObject("select count(*) from roles_permisos rp join roles r on r.id=rp.rol_id join permisos p on p.id=rp.permiso_id where r.codigo='ADMINISTRADOR' and (p.codigo like 'VENTAS_%' or p.codigo like 'MAESTROS_CLIENTES_%')", Integer.class)).isEqualTo(13);
+        assertThat(db.queryForObject("select count(*) from permisos where codigo like 'VENTAS_%' or codigo like 'MAESTROS_CLIENTES_%'", Integer.class)).isEqualTo(15);
+        assertThat(db.queryForObject("select count(*) from roles_permisos rp join roles r on r.id=rp.rol_id join permisos p on p.id=rp.permiso_id where r.codigo='ADMINISTRADOR' and (p.codigo like 'VENTAS_%' or p.codigo like 'MAESTROS_CLIENTES_%')", Integer.class)).isEqualTo(15);
         assertThat(db.queryForObject("select count(*) from pg_indexes where schemaname=current_schema() and indexname in ('idx_clientes_activo_codigo','idx_cotizaciones_cliente_fecha','idx_cotizaciones_estado_fecha','idx_detalles_cotizacion_producto','idx_pedidos_cliente_fecha','idx_pedidos_estado_fecha','idx_detalles_pedido_producto','idx_despachos_pedido','idx_despachos_estado_fecha','idx_detalles_despacho_pedido')", Integer.class)).isEqualTo(10);
         assertThat(db.queryForObject("select count(*) from information_schema.referential_constraints where constraint_schema=current_schema() and constraint_name in (select constraint_name from information_schema.key_column_usage where table_schema=current_schema() and table_name='usuarios' and column_name='cliente_id')", Integer.class)).isZero();
     }
