@@ -1,0 +1,35 @@
+@startuml TSS_Secuencia_Confirmacion_Reserva
+!include ../_estilo.iuml
+title Confirmación de pedido y reserva de inventario
+hide footbox
+actor "Responsable de ventas" as Usuario
+boundary "PedidoController" as API
+control "PedidoService" as Ventas
+control "InventarioService" as Inventario
+entity "Pedido y cotización" as Pedido
+entity "Existencia" as Stock
+entity "EventoAuditoria" as Audit
+
+Usuario -> API : confirmarPedido(id)
+API -> Ventas : confirmar(id)
+group Transacción
+  Ventas -> Pedido : bloquear pedido y validar condiciones
+  alt pedido ya confirmado
+    Pedido --> Ventas : pedido existente
+  else pedido válido
+    loop líneas en orden de producto
+      Ventas -> Inventario : reservarLineaPedido(detalleId)
+      Inventario -> Stock : bloquear y validar disponibilidad
+      Stock --> Inventario : física, reservada y versión
+      Inventario -> Stock : aumentar reserva y versión
+      Inventario -> Pedido : vincular cantidad reservada al detalle
+    end
+    Ventas -> Pedido : confirmar pedido
+    Ventas -> Audit : registrar confirmación
+  else validación o escritura fallida
+    Ventas -> Ventas : revertir la transacción
+  end
+end
+Ventas --> API : resultado o error
+API --> Usuario : HTTP 200 o error
+@enduml

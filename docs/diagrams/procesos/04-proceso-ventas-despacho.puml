@@ -1,19 +1,6 @@
 @startuml TS04_Proceso_Ventas
+!include ../_estilo.iuml
 title ERP TechSupply Solutions - Cotizacion, Pedido y Despacho
-skinparam shadowing false
-skinparam defaultFontName Arial
-skinparam defaultFontSize 13
-skinparam activity {
-  BackgroundColor #F8FAFC
-  BorderColor #526780
-  FontColor #172B4D
-  DiamondBackgroundColor #FFF2CC
-  DiamondBorderColor #B7950B
-  StartColor #2F855A
-  EndColor #526780
-  BarColor #526780
-}
-skinparam ArrowColor #526780
 
 |Cliente / Responsable de ventas|
 start
@@ -24,14 +11,15 @@ start
 :Calcular subtotal, impuestos y total;
 |Cliente / Responsable de ventas|
 :Enviar cotizacion al cliente;
-if (¿Cliente acepta?) then (Si)
+if (¿Cliente acepta y cotización vigente?) then (Si)
   |Sistema ERP|
   :Convertir cotizacion en pedido;
   |Responsable de ventas|
   :Revisar pedido;
   |Sistema ERP|
-  :Validar cliente activo y condiciones;
-  :Consultar disponibilidad y credito si aplica;
+  :Validar cliente activo y condiciones comerciales;
+  :Conservar el precio acordado en la cotización;
+  :Consultar disponibilidad y crédito cuando aplique;
   if (¿Pedido valido y stock suficiente?) then (Si)
     :Iniciar transaccion;
     :Reservar existencias por producto y almacen;
@@ -53,12 +41,21 @@ if (¿Cliente acepta?) then (Si)
       :Registrar auditoria;
       :Confirmar transaccion;
       if (¿Pedido totalmente despachado?) then (Si)
+        |Responsable de ventas|
+        :Solicitar emisión de factura comercial;
+        |Sistema ERP|
         :Generar factura comercial unica del pedido;
         :Enviar factura y referencia al modulo contable;
         stop
       else (No)
         :Mantener pedido PARCIALMENTE_DESPACHADO;
-        :Permitir un despacho posterior del saldo;
+        if (¿Cancelar saldo pendiente?) then (Sí)
+          :Cancelar despachos en borrador;
+          :Liberar reserva del saldo pendiente;
+          :Conservar despachos confirmados y auditar;
+        else (No)
+          :Preparar un despacho posterior del saldo;
+        endif
         stop
       endif
     else (No)

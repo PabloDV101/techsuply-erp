@@ -1,38 +1,29 @@
 @startuml TechSupply_Deployment_Target
- title TechSupply Solutions - Despliegue objetivo escalable
+!include ../_estilo.iuml
+ title TechSupply Solutions - Despliegue con varias instancias
  top to bottom direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam componentStyle rectangle
- skinparam packageStyle rectangle
- skinparam nodesep 35
- skinparam ranksep 42
- skinparam defaultTextAlignment center
 
  actor "Usuario interno o cliente" as User
  cloud "Internet / red corporativa" as Network
 
  node "Zona perimetral" as Edge {
-   component "Nginx\nHTTPS :443\nSPA + reverse proxy" as Nginx
+   node "Nginx · HTTPS :443" as Nginx <<executionEnvironment>>
    artifact "Frontend React + TypeScript\narchivos estáticos" as SPA
  }
 
  node "Red privada de aplicaciones" as AppNet {
    node "Instancia backend A" as AppHostA {
-     artifact "TechSupply API\nSpring Boot / Java 21" as APIA
+     artifact "TechSupply API\nSpring Boot / Java 21 / Flyway" as APIA
    }
    node "Instancia backend B" as AppHostB {
-     artifact "TechSupply API\nSpring Boot / Java 21" as APIB
+     artifact "TechSupply API\nSpring Boot / Java 21 / Flyway" as APIB
    }
  }
 
- node "Red privada de datos" as DataNet {
+ node "Servidor PostgreSQL en red privada" as DataNet {
    database "PostgreSQL\nBase de datos ERP\nPuerto 5432" as DB
  }
 
- node "Release / migraciones" as Release {
-   artifact "Flyway\nmigraciones SQL versionadas" as Flyway
- }
 
  node "Tarea de respaldo" as BackupJob {
    artifact "pg_dump programado\nWAL/PITR si se configura" as BackupTool
@@ -40,24 +31,26 @@
  cloud "Almacenamiento de respaldos\nseparado y cifrado" as BackupStorage
  cloud "Servidor SMTP (opcional)" as SMTP
 
- User --> Network
- Network --> Nginx : HTTPS / TLS :443
- Nginx --> SPA : sirve archivos
- Nginx --> APIA : proxy /api/*\nTLS en red privada
- Nginx --> APIB : proxy /api/*\nTLS en red privada
- APIA --> DB : JDBC / TLS :5432
- APIB --> DB : JDBC / TLS :5432
- Flyway --> DB : ejecutar una vez\nantes del despliegue compatible
- BackupTool --> DB : acceso restringido
- BackupTool --> BackupStorage : copia cifrada
- APIA --> SMTP : SMTP/TLS
- APIB --> SMTP : SMTP/TLS
+ User -- Network
+ Network -- Edge : HTTPS / TLS :443
+ Edge -- AppHostA : proxy /api/*\nTLS en red privada
+ Edge -- AppHostB : proxy /api/*\nTLS en red privada
+ AppHostA -- DataNet : JDBC / TLS :5432
+ AppHostB -- DataNet : JDBC / TLS :5432
+ BackupJob -- DataNet : acceso restringido
+ BackupJob -- BackupStorage : copia cifrada
+ AppHostA -- SMTP : SMTP/TLS
+ AppHostB -- SMTP : SMTP/TLS
 
  note bottom of AppNet
    Ambas instancias ejecutan el mismo monolito modular.
    No se separan los módulos en microservicios.
-   API stateless con autenticación JWT validada
-   en cada instancia; no depender de memoria local.
+   Sesión HTTP stateless; Bearer opaco validado en PostgreSQL.
+   tokens_sesion es estado compartido y permite revocación.
+   Medir carga antes de añadir instancias; no usar JWT como supuesto.
+ end note
+ note bottom of Nginx
+   Sirve el artefacto SPA y distribuye las solicitudes API.
  end note
 
  note right of DB
@@ -66,9 +59,4 @@
    disponibilidad de BD requiere diseño adicional.
  end note
 
- note bottom of Release
-   Ejecutar migraciones como paso controlado del release.
-   Verificar compatibilidad antes de desplegar versiones
-   nuevas en todas las instancias.
- end note
 @enduml

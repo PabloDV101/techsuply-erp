@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 **/.env
+**/application.yaml
 
 # Java / Maven
 erp-backend/target/

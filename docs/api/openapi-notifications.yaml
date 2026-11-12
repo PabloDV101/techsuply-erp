@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP - Bandeja interna de notificaciones
+  version: 1.0.0
+  description: >-
+    Primera entrega de RF-SYS-02: canal APP únicamente. Los módulos publican por
+    una interfaz Java interna; la API HTTP no permite crear notificaciones.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /notifications:
+    get:
+      summary: Listar la bandeja del usuario autenticado
+      description: >-
+        La identidad se obtiene del Bearer. No se acepta usuarioId del cliente.
+        El orden incorpora id como desempate; una página fuera de rango tiene content vacío.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: sort, in: query, schema: { type: string, enum: [creadaEn, id], default: creadaEn } }
+        - { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: leida, in: query, description: Filtro opcional; solo true o false en minúsculas., schema: { type: boolean } }
+      responses:
+        '200':
+          description: Página limitada al destinatario autenticado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notifications/{id}/read:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+    patch:
+      summary: Marcar como leída una notificación propia
+      description: >-
+        Idempotente. Devuelve 404 tanto si el ID no existe como si pertenece a otra persona.
+        No requiere cuerpo. Una repetición conserva leidaEn original.
+      responses:
+        '200':
+          description: Notificación propia con estado LEIDA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    NotificationPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    Notification:
+      type: object
+      required: [id, tipoEvento, modulo, entidad, entidadId, asunto, cuerpo, estado, creadaEn]
+      properties:
+        id: { type: integer, format: int64 }
+        tipoEvento: { type: string, enum: [STOCK_BAJO, APROBACION_PENDIENTE, RESULTADO_OPERACION] }
+        modulo: { type: string }
+        entidad: { type: string }
+        entidadId: { type: integer, format: int64 }
+        asunto: { type: string }
+        cuerpo: { type: string }
+        estado: { type: string, enum: [NO_LEIDA, LEIDA] }
+        creadaEn: { type: string, format: date-time }
+        leidaEn: { type: string, format: date-time, nullable: true }
+    ApiError:
+      type: object
+      required: [status, code, message]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+  responses:
+    BadRequest: { description: Parámetro inválido, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Falta autenticación, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: No existe una notificación propia con ese ID, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }

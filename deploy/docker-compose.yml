@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
 
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5432:5432"
 
     volumes:
       - techsupply_postgres_data:/var/lib/postgresql/data

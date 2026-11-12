@@ -1,0 +1,33 @@
+@startuml TSS_Secuencia_Cancelacion_Ventas
+!include ../_estilo.iuml
+title Cancelación de pedido y liberación de reserva
+hide footbox
+actor "Responsable de ventas" as Usuario
+boundary "PedidoController" as API
+control "PedidoService" as Ventas
+control "InventarioService" as Inventario
+entity "Pedido y despachos" as Documentos
+entity "Existencia" as Stock
+entity "EventoAuditoria" as Audit
+
+Usuario -> API : cancelarPedido(id, motivo)
+API -> Ventas : cancelar(id, motivo)
+group Transacción
+  Ventas -> Documentos : bloquear pedido y comprobar estado
+  alt pedido ya cancelado con el mismo motivo
+    Documentos --> Ventas : pedido existente
+  else hay despachos en borrador
+    Ventas -> Ventas : rechazar; cancelar borradores primero
+  else cancelación válida
+    loop líneas reservadas en orden de producto
+      Ventas -> Inventario : liberarReservaPedido(detalleId)
+      Inventario -> Stock : bloquear y reducir reserva
+      Inventario -> Documentos : poner reserva de línea en cero
+    end
+    Ventas -> Documentos : cancelar con motivo, actor y fecha
+    Ventas -> Audit : registrar cancelación
+  end
+end
+Ventas --> API : resultado o error
+API --> Usuario : HTTP 200 o error
+@enduml

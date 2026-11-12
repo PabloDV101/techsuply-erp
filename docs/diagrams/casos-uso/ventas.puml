@@ -1,57 +1,37 @@
-
 @startuml CU_Ventas
+!include ../_estilo.iuml
+title TechSupply Solutions — Casos de uso de Ventas
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
-
 actor "Responsable de ventas" as Vendedor
 actor "Cliente" as Cliente
 actor "Responsable de almacén" as Almacen
 actor "Contador" as Contador
-
-rectangle "ERP - Gestión de Ventas" {
-  usecase "Consultar catálogo y precios" as Catalogo
-  usecase "Registrar cliente" as RegistrarCliente
-  usecase "Generar cotización" as Cotizacion
-  usecase "Consultar disponibilidad" as Disponibilidad
-  usecase "Registrar pedido" as Pedido
-  usecase "Validar condiciones comerciales" as Condiciones
-  usecase "Validar crédito disponible" as Credito
-  usecase "Confirmar pedido" as Confirmar
-  usecase "Consultar estado del pedido" as Estado
-  usecase "Preparar y despachar pedido" as Despachar
-  usecase "Generar factura" as Factura
-  usecase "Registrar devolución de cliente" as Devolucion
-  usecase "Consultar historial del cliente" as Historial
+rectangle "ERP · Ventas" {
+  usecase "Consultar catálogo\ny precios" as Catalogo
+  usecase "Gestionar clientes" as Clientes
+  usecase "Gestionar cotizaciones" as Cotizaciones
+  usecase "Gestionar pedidos" as Pedidos
+  usecase "Consultar estado\ndel pedido" as Estado
+  usecase "Gestionar despachos" as Despachos
+  usecase "Registrar devolución" as Devolucion
+  usecase "Emitir factura comercial" as Factura
 }
-
-
-Vendedor --> Catalogo
-Vendedor --> RegistrarCliente
-Vendedor --> Cotizacion
-Vendedor --> Pedido
-Vendedor --> Confirmar
-Vendedor --> Estado
-Vendedor --> Factura
-Vendedor --> Historial
-
-Cliente --> Catalogo
-Cliente --> Cotizacion
-Cliente --> Pedido
-Cliente --> Estado
-
-Almacen --> Disponibilidad
-Almacen --> Despachar
-Contador --> Factura
-
-Cotizacion ..> Catalogo : <<include>>
-Pedido ..> Disponibilidad : <<include>>
-Pedido ..> Condiciones : <<include>>
-Confirmar ..> Credito : <<include>>
-Confirmar ..> Disponibilidad : <<include>>
-Despachar ..> Confirmar : <<extend>>
-Factura ..> Confirmar : <<extend>>
-Devolucion ..> Factura : <<extend>>
-Historial ..> RegistrarCliente : <<extend>>
-
+Cliente -- Catalogo
+Cliente -- Cotizaciones
+Cliente -- Pedidos
+Cliente -- Estado
+Vendedor -- Catalogo
+Vendedor -- Clientes
+Vendedor -- Cotizaciones
+Vendedor -- Pedidos
+Vendedor -- Estado
+Vendedor -- Factura
+Vendedor -- Devolucion
+Almacen -- Despachos
+Almacen -- Devolucion
+Contador -- Factura
+note bottom of Pedidos
+  Un pedido se origina en una cotización aceptada.
+  Su confirmación y cancelación se detallan en la vista de validación.
+end note
 @enduml

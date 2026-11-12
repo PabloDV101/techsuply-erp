@@ -1,104 +1,101 @@
 @startuml ERP_04_Contabilidad
- title TechSupply Solutions - Vista logica: Contabilidad y finanzas (v1.1)
+!include ../_estilo.iuml
+ title TechSupply Solutions - Vista logica: Contabilidad y finanzas
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Catalogos contables" {
   class CuentaContable {
-  +id: UUID
-  +codigo: String
-  +nombre: String
-  +tipo: TipoCuenta
-  +naturaleza: NaturalezaCuenta
-  +nivel: Integer
-  +aceptaMovimientos: Boolean
-  +activa: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -tipo: TipoCuenta
+  -naturaleza: NaturalezaCuenta
+  -nivel: Integer
+  -aceptaMovimientos: Boolean
+  -activa: Boolean
 }
   class PeriodoContable {
-  +id: UUID
-  +fechaInicio: Date
-  +fechaFin: Date
-  +estado: EstadoPeriodo
+  -id: Long
+  -fechaInicio: Date
+  -fechaFin: Date
+  -estado: EstadoPeriodo
   +cerrar()
 }
  }
  package "Libro diario y mayor" {
   class AsientoContable {
-  +id: UUID
-  +folio: String
-  +fechaContable: Date
-  +descripcion: String
-  +estado: EstadoAsiento
-  +origenTipo: String
-  +origenId: UUID
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fechaContable: Date
+  -descripcion: String
+  -estado: EstadoAsiento
+  -origenTipo: String
+  -origenId: Long
+  -claveIdempotencia: String
   +validarBalance(): Boolean
   +contabilizar()
   +revertir()
 }
   class DetalleAsiento {
-  +id: UUID
-  +numeroLinea: Integer
-  +debe: Decimal
-  +haber: Decimal
-  +descripcion: String
+  -id: Long
+  -numeroLinea: Integer
+  -debe: Decimal
+  -haber: Decimal
+  -descripcion: String
 }
  }
- package "Control presupuestario (futuro)" {
-  class Presupuesto <<Futura>> {
-    +id: UUID
-    +anio: Integer
-    +mes: Integer
-    +monto: Decimal
+ package "Control presupuestario" {
+  class Presupuesto {
+    -id: Long
+    -anio: Integer
+    -mes: Integer
+    -monto: Decimal
   }
  }
  package "Cuentas auxiliares" {
   class CuentaPorCobrar {
-  +id: UUID
-  +montoOriginal: Decimal
+  -id: Long
+  -montoOriginal: Decimal
   +/saldoPendiente: Decimal
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +estado: EstadoCuentaAuxiliar
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -estado: EstadoCuentaAuxiliar
 }
   class AplicacionCobro {
-  +id: UUID
-  +montoAplicado: Decimal
-  +fechaAplicacion: DateTime
+  -id: Long
+  -montoAplicado: Decimal
+  -fechaAplicacion: DateTime
 }
   class CobroCliente {
-  +id: UUID
-  +folio: String
-  +fecha: DateTime
-  +monto: Decimal
-  +medio: MedioPago
-  +estado: EstadoPago
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -monto: Decimal
+  -medio: MedioPago
+  -estado: EstadoPago
+  -claveIdempotencia: String
 }
   class CuentaPorPagar {
-  +id: UUID
-  +montoOriginal: Decimal
+  -id: Long
+  -montoOriginal: Decimal
   +/saldoPendiente: Decimal
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +estado: EstadoCuentaAuxiliar
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -estado: EstadoCuentaAuxiliar
 }
   class AplicacionPagoProveedor {
-  +id: UUID
-  +montoAplicado: Decimal
-  +fechaAplicacion: DateTime
+  -id: Long
+  -montoAplicado: Decimal
+  -fechaAplicacion: DateTime
 }
   class PagoProveedor {
-  +id: UUID
-  +folio: String
-  +fecha: DateTime
-  +monto: Decimal
-  +medio: MedioPago
-  +estado: EstadoPago
-  +claveIdempotencia: String
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -monto: Decimal
+  -medio: MedioPago
+  -estado: EstadoPago
+  -claveIdempotencia: String
 }
  }
  package "Referencias a otros modulos" {

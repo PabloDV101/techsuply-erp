@@ -1,0 +1,29 @@
+@startuml TSS_Secuencia_Factura_Comercial
+!include ../_estilo.iuml
+title Emisión de factura comercial
+hide footbox
+actor "Responsable de ventas" as Usuario
+boundary "FacturaController" as API
+control "FacturaService" as Servicio
+entity "Pedido y despachos" as Pedido
+entity "Factura y detalles" as Factura
+entity "EventoAuditoria" as Auditoria
+
+Usuario -> API : solicitarFactura(pedido, clave)
+API -> Servicio : emitir(solicitud)
+group Transacción
+  Servicio -> Servicio : autorizar y serializar clave
+  alt reintento equivalente
+    Servicio -> Factura : obtener factura existente
+  else solicitud nueva
+    Servicio -> Pedido : bloquear y validar entrega completa
+    Pedido --> Servicio : líneas e importes acordados
+    Servicio -> Servicio : calcular importes por línea
+    Servicio -> Factura : crear factura y copiar detalles
+    Servicio -> Factura : emitir factura
+    Servicio -> Auditoria : registrar emisión
+  end
+end
+Servicio --> API : factura o error
+API --> Usuario : HTTP 201, 200 o error
+@enduml

@@ -1,150 +1,180 @@
 @startuml ERP_02_Compras_Inventario
- title TechSupply Solutions - Vista logica: Compras e inventario (v1.1)
+!include ../_estilo.iuml
+ title TechSupply Solutions - Vista logica: Compras e inventario
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Compras" {
   class RequisicionCompra {
-  +id: UUID
-  +folio: String
-  +fecha: DateTime
-  +estado: EstadoRequisicion
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -estado: EstadoRequisicion
   +solicitar()
   +aprobar()
   +rechazar()
 }
   class DetalleRequisicion {
-  +id: UUID
-  +cantidadSolicitada: Decimal
-  +cantidadAprobada: Decimal
+  -id: Long
+  -cantidadSolicitada: Decimal
+  -cantidadAprobada: Decimal
 }
   class OrdenCompra {
-  +id: UUID
-  +folio: String
-  +fechaEmision: DateTime
-  +estado: EstadoOrdenCompra
-  +aprobadaEn: DateTime
-  +motivoRechazo: String
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -folio: String
+  -fecha: Instant
+  -estado: EstadoOrdenCompra
+  -aprobadaEn: DateTime
+  -motivoRechazo: String
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
+  +agregarDetalle(detalle)
+  +enviarAprobacion()
+  +aprobar(actor, instante)
+  +registrarEnvio()
 }
   class DetalleOrdenCompra {
-  +id: UUID
-  +cantidad: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
-  +calcularPendiente(): Decimal
+  -id: Long
+  -cantidad: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
 }
+  class CalculoOrden {
+  +calcular(lineas): Totales
+  +pendiente(ordenada, aceptada): BigDecimal
+  }
   class RecepcionCompra {
-  +id: UUID
-  +folio: String
-  +fechaRecepcion: DateTime
-  +claveIdempotencia: String
-  +estado: EstadoRecepcion
-  +confirmar()
+  -id: Long
+  -folio: String
+  -fecha: Instant
+  -claveIdempotencia: String
+  -estado: EstadoRecepcion
+  +confirmar(instante)
 }
   class DetalleRecepcion {
-  +id: UUID
-  +cantidadRecibida: Decimal
-  +cantidadAceptada: Decimal
-  +cantidadRechazada: Decimal
-  +precioUnitarioRecibido: Decimal
+  -id: Long
+  -cantidadRecibida: Decimal
+  -cantidadAceptada: Decimal
+  -cantidadRechazada: Decimal
+  -precioUnitarioRecibido: Decimal
 }
   class FacturaProveedor {
-  +id: UUID
-  +folioInterno: String
-  +numeroFacturaProveedor: String
-  +fechaEmision: Date
-  +fechaVencimiento: Date
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
-  +estado: EstadoFacturaProveedor
+  -id: Long
+  -folioInterno: String
+  -numeroFacturaProveedor: String
+  -fechaEmision: Date
+  -fechaVencimiento: Date
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
+  -estado: EstadoFacturaProveedor
   +validarContraCompra()
 }
   class DetalleFacturaProveedor {
-  +id: UUID
-  +cantidadFacturada: Decimal
-  +precioUnitario: Decimal
-  +descuentoPct: Decimal
-  +tasaImpuesto: Decimal
-  +subtotal: Decimal
-  +impuestos: Decimal
-  +total: Decimal
+  -id: Long
+  -cantidadFacturada: Decimal
+  -precioUnitario: Decimal
+  -descuentoPct: Decimal
+  -tasaImpuesto: Decimal
+  -subtotal: Decimal
+  -impuestos: Decimal
+  -total: Decimal
 }
   class DevolucionProveedor {
-  +id: UUID
-  +folio: String
-  +fecha: DateTime
-  +motivo: String
-  +claveIdempotencia: String
-  +estado: EstadoDevolucion
+  -id: Long
+  -folio: String
+  -fecha: DateTime
+  -motivo: String
+  -claveIdempotencia: String
+  -estado: EstadoDevolucion
   +confirmar()
 }
   class DetalleDevolucionProveedor {
-  +id: UUID
-  +cantidad: Decimal
-  +costoUnitario: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -costoUnitario: Decimal
 }
  }
  package "Inventario" {
   class Existencia {
-  +id: UUID
-  +cantidadFisica: Decimal
-  +cantidadReservada: Decimal
-  +costoPromedio: Decimal
-  +version: Integer
-  +consultarDisponible(): Decimal
+  -id: Long
+  -cantidadFisica: Decimal
+  -cantidadReservada: Decimal
+  -costoPromedio: Decimal
+  -version: Integer
 }
   class MovimientoInventario {
-  +id: UUID
-  +fechaHora: DateTime
-  +tipo: TipoMovimiento
-  +motivo: String
-  +cantidad: Decimal
-  +costoUnitario: Decimal
-  +claveOperacion: String
-  +revertir()
+  -id: Long
+  -fecha: Instant
+  -tipo: String
+  -motivo: String
+  -cantidad: Decimal
+  -costoUnitario: Decimal
+  -claveOperacion: String
 }
+
+note right of MovimientoInventario
+  Cada movimiento identifica producto, almacén y origen.
+end note
+
   class ConteoInventario {
-  +id: UUID
-  +folio: String
-  +fechaProgramada: Date
-  +estado: EstadoConteo
+  -id: Long
+  -folio: String
+  -fechaProgramada: Date
+  -estado: EstadoConteo
+  +capturar(...)
+  +cerrar()
+  +cancelar()
 }
   class DetalleConteo {
-  +id: UUID
-  +cantidadSistema: Decimal
-  +cantidadContada: Decimal
-  +diferencia: Decimal
-  +calcularDiferencia(): Decimal
+  -id: Long
+  -cantidadSistema: Decimal
+  -cantidadContada: Decimal
+  -diferencia: Decimal
+  -existenciaPrevia: boolean
+  -versionExistencia: Integer
 }
-  class AlertaInventario {
-    +id: UUID
-    +tipo: TipoAlerta
-    +estado: EstadoAlerta
-    +generadaEn: DateTime
-    +resueltaEn: DateTime
+
+note right of ConteoInventario
+  La vigencia del conteo se comprueba al aplicar un ajuste.
+end note
+
+  class CalculoConteo <<función pura>> {
+    +diferencia(sistema, contada): BigDecimal
   }
+  class AlertaInventario {
+    -id: Long
+    -tipo: TipoAlerta
+    -estado: EstadoAlerta
+    -generadaEn: DateTime
+    -resueltaEn: DateTime
+  }
+
+note right of AlertaInventario
+  La alerta de stock bajo se calcula con el umbral configurado.
+end note
+
   class AjusteInventario {
-  +id: UUID
-  +folio: String
-  +motivo: String
-  +claveIdempotencia: String
-  +estado: EstadoAjuste
-  +aprobar()
-  +aplicar()
+  -id: Long
+  -folio: String
+  -motivo: String
+  -claveIdempotencia: String
+  -estado: EstadoAjuste
+  +agregarDetalle(...)
+  +aprobar(actor, instante)
+  +rechazar(actor, instante, motivo)
+  +marcarAplicado(instante)
 }
+  note right of AjusteInventario
+    Registro, consulta, autorización y aplicación por API;
+    la aplicación es transaccional.
+  end note
   class DetalleAjusteInventario {
-  +id: UUID
-  +tipo: TipoAjuste
-  +cantidad: Decimal
-  +costoUnitario: Decimal
+  -id: Long
+  -tipo: TipoAjuste
+  -cantidad: Decimal
+  -costoUnitario: Decimal
 }
  }
  package "Referencias de otros modulos" {
@@ -200,12 +230,10 @@
   CANCELADO
 }
  enum EstadoAjuste {
-  BORRADOR
   PENDIENTE
   APROBADO
   APLICADO
   RECHAZADO
-  CANCELADO
 }
  enum TipoAjuste {
   POSITIVO
@@ -235,16 +263,18 @@
  RequisicionCompra "0..*" --> "0..1" Usuario : aprobador
  RequisicionCompra "0..1" <-- "0..*" OrdenCompra : origen opcional
  OrdenCompra "0..*" --> "1" Proveedor
+ OrdenCompra "0..*" --> "1" Departamento
  OrdenCompra "0..*" --> "1" Usuario : creada por
  OrdenCompra "0..*" --> "0..1" Usuario : aprobada por
- OrdenCompra "1" *-- "1..*" DetalleOrdenCompra
+ OrdenCompra "1" *-- "0..*" DetalleOrdenCompra : borrador puede estar vacío
+ OrdenCompra ..> CalculoOrden
  DetalleOrdenCompra "0..*" --> "1" Producto
  OrdenCompra "1" -- "0..*" RecepcionCompra
  RecepcionCompra "0..*" --> "1" Almacen
  RecepcionCompra "0..*" --> "1" Usuario : registrada por
  RecepcionCompra "1" *-- "1..*" DetalleRecepcion
  DetalleRecepcion "0..*" --> "1" DetalleOrdenCompra
- OrdenCompra "1" -- "0..1" FacturaProveedor : maximo una factura en MVP
+ OrdenCompra "1" -- "0..1" FacturaProveedor : maximo una factura
  FacturaProveedor "0..*" --> "1" Proveedor
  FacturaProveedor "1" *-- "1..*" DetalleFacturaProveedor
  DetalleFacturaProveedor "0..*" --> "1" DetalleOrdenCompra
@@ -261,12 +291,13 @@
  ConteoInventario "0..*" --> "1" Usuario : creado por
  Producto "1" -- "0..*" AlertaInventario
  Almacen "0..1" <-- "0..*" AlertaInventario
- ConteoInventario "1" *-- "1..*" DetalleConteo
+ ConteoInventario "1" *-- "0..*" DetalleConteo
+ ConteoInventario ..> CalculoConteo
  DetalleConteo "0..*" --> "1" Producto
  AjusteInventario "0..*" --> "1" Almacen
  AjusteInventario "0..*" --> "1" Usuario : solicitante
  AjusteInventario "0..*" --> "0..1" Usuario : autorizador
- AjusteInventario "1" *-- "1..*" DetalleAjusteInventario
+ AjusteInventario "1" *-- "0..*" DetalleAjusteInventario
  DetalleAjusteInventario "0..*" --> "1" Producto
  DetalleAjusteInventario "0..*" --> "0..1" DetalleConteo
  MovimientoInventario "0..*" --> "1" Producto
@@ -286,14 +317,16 @@
   Reservada no puede superar fisica.
  end note
  note bottom of DetalleRecepcion
-  Aceptadas + rechazadas = recibidas.
+  Al confirmar, aceptadas + rechazadas = recibidas.
   Solo aceptadas aumentan stock al confirmar.
  end note
- note bottom of MovimientoInventario
-  Cada movimiento ordinario referencia exactamente una linea fuente.
-  Una REVERSA referencia al movimiento original.
-  Kardex inmutable, idempotente y transaccional con Existencia.
- end note
+
+note bottom of MovimientoInventario
+  Cada movimiento ordinario referencia una línea fuente.
+  Una reversa referencia el movimiento original.
+  El historial confirmado se protege ante cambios ordinarios.
+end note
+
  note bottom of DetalleDevolucionProveedor
   La cantidad acumulada devuelta no supera las unidades aceptadas
   en recepciones originales menos devoluciones previas.

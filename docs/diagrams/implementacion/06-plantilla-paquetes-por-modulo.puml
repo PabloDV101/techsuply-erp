@@ -1,13 +1,7 @@
 @startuml TechSupply_Module_Package_Template
+!include ../_estilo.iuml
  title TechSupply Solutions - Plantilla interna de un módulo
  left to right direction
- skinparam shadowing false
- skinparam linetype ortho
- skinparam packageStyle rectangle
- skinparam componentStyle uml2
- skinparam nodesep 35
- skinparam ranksep 40
- skinparam defaultTextAlignment center
 
  package "modules.compras" as Module {
    package "api" as API {
@@ -33,19 +27,19 @@
 
  database "PostgreSQL" as DB
 
- Controller --> DTO
- DTO --> CreateOrder
- Controller --> ConfirmReceipt
- CreateOrder --> AppService
- ConfirmReceipt --> AppService
- AppService --> Entities
- Entities --> Rules
+ Controller ..> DTO
+ Controller ..> CreateOrder
+ Controller ..> ConfirmReceipt
+ CreateOrder ..> AppService
+ ConfirmReceipt ..> AppService
+ AppService ..> Entities
+ AppService ..> Rules
  AppService ..> OrderPort
  AppService ..> ReceiptPort
  JPAAdapter ..|> OrderPort : implementa
  JPAAdapter ..|> ReceiptPort : implementa
- JPAAdapter --> JpaEntities
- JpaEntities --> DB : JPA / SQL
+ JPAAdapter ..> JpaEntities
+ JPAAdapter ..> DB : JPA / SQL
 
  note bottom of Domain
    El dominio contiene reglas y contratos,
