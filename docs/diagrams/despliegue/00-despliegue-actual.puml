@@ -1,0 +1,32 @@
+@startuml TSS_Despliegue_Desarrollo
+!include ../_estilo.iuml
+title TechSupply Solutions — Entornos de desarrollo y pruebas
+left to right direction
+actor "Desarrollador" as User
+node "Equipo de desarrollo" as Dev {
+  node "JVM · Java 21" as Runtime {
+    artifact "Backend Spring Boot" as API
+  }
+  node "Docker Compose" as Compose {
+    database "PostgreSQL" as DB
+  }
+}
+node "Ejecución de pruebas" as TestHost {
+  artifact "JUnit / Spring Test\nMockMvc" as Tests
+  node "Testcontainers" as Containers {
+    database "PostgreSQL aislado" as TestDB
+  }
+}
+User -- Runtime : HTTP local
+Runtime -- Compose : JDBC
+User -- TestHost : ejecutar pruebas
+TestHost -- Containers : JDBC
+note bottom of Runtime
+  Flyway aplica migraciones versionadas;
+  Hibernate valida el esquema al arrancar.
+end note
+note bottom of Containers
+  Los datos de prueba son independientes
+  de la base de desarrollo.
+end note
+@enduml

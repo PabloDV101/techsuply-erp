@@ -1,0 +1,49 @@
+@startuml ERP_03b_Devoluciones_Cliente
+!include ../_estilo.iuml
+title TechSupply Solutions — Devoluciones de clientes
+left to right direction
+hide circle
+package "Ventas" {
+  class DevolucionCliente {
+    -id: Long
+    -folio: String
+    -fecha: DateTime
+    -motivo: String
+    -claveIdempotencia: String
+    -estado: EstadoDevolucionCliente
+    +confirmarInspeccion()
+  }
+  class DetalleDevolucionCliente {
+    -id: Long
+    -cantidadRecibida: Decimal
+    -cantidadAceptada: Decimal
+    -cantidadRechazada: Decimal
+  }
+  enum EstadoDevolucionCliente {
+    BORRADOR
+    PENDIENTE_INSPECCION
+    CONFIRMADA
+    RECHAZADA
+    CANCELADA
+  }
+}
+package "Referencias" {
+  class PedidoVenta
+  class DetallePedido
+  class Cliente
+  class Almacen
+  class Usuario
+}
+EstadoDevolucionCliente -[hidden]-> DevolucionCliente
+PedidoVenta "1" -- "0..*" DevolucionCliente : pedido original
+DevolucionCliente "1" *-- "0..*" DetalleDevolucionCliente
+DetalleDevolucionCliente "0..*" --> "1" DetallePedido : línea original
+DevolucionCliente "0..*" --> "1" Cliente
+DevolucionCliente "0..*" --> "1" Almacen : inspección
+DevolucionCliente "0..*" --> "1" Usuario : registrada por
+DevolucionCliente "0..*" --> "0..1" Usuario : autorizada por
+note bottom of DetalleDevolucionCliente
+  Solo las unidades aceptadas en inspección
+  aumentan existencias y generan movimiento.
+end note
+@enduml

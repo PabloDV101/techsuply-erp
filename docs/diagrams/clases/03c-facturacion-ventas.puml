@@ -1,0 +1,53 @@
+@startuml ERP_03c_Facturacion_Ventas
+!include ../_estilo.iuml
+title TechSupply Solutions — Facturación comercial
+left to right direction
+hide circle
+package "Ventas" {
+  class FacturaVenta {
+    -id: Long
+    -folio: String
+    -fechaEmision: Date
+    -fechaVencimiento: Date
+    -subtotal: Decimal
+    -impuestos: Decimal
+    -total: Decimal
+    -estado: EstadoFactura
+  }
+  class DetalleFacturaVenta {
+    -id: Long
+    -cantidad: Decimal
+    -precioUnitario: Decimal
+    -descuentoPct: Decimal
+    -tasaImpuesto: Decimal
+    -subtotal: Decimal
+    -impuestos: Decimal
+    -total: Decimal
+  }
+  enum EstadoFactura {
+    EMITIDA
+    PARCIALMENTE_PAGADA
+    PAGADA
+    VENCIDA
+    CANCELADA
+  }
+}
+package "Referencias" {
+  class PedidoVenta
+  class DetallePedido
+  class Producto
+  class Cliente
+  class CuentaPorCobrar
+}
+EstadoFactura -[hidden]-> FacturaVenta
+PedidoVenta "1" -- "0..1" FacturaVenta : origen
+FacturaVenta "1" *-- "1..*" DetalleFacturaVenta
+DetalleFacturaVenta "0..*" --> "1" DetallePedido : línea original
+DetalleFacturaVenta "0..*" --> "1" Producto
+FacturaVenta "0..*" --> "1" Cliente
+FacturaVenta "1" -- "0..1" CuentaPorCobrar : genera cuenta
+note bottom of FacturaVenta
+  Una factura comercial por pedido totalmente despachado.
+  Su emisión no implica timbrado CFDI/SAT.
+end note
+@enduml

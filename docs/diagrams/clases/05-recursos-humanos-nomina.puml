@@ -1,84 +1,81 @@
 @startuml ERP_05_Recursos_Humanos
- title TechSupply Solutions - Vista logica: Recursos humanos y nomina (v1.1)
+!include ../_estilo.iuml
+ title TechSupply Solutions - Vista logica: Recursos humanos y nomina
  hide circle
- skinparam classAttributeIconSize 0
- skinparam linetype ortho
- skinparam shadowing false
- skinparam packageStyle rectangle
 
  package "Administracion laboral" {
   class ExpedienteLaboral {
-  +id: UUID
-  +numeroContrato: String
-  +fechaInicio: Date
-  +fechaFin: Date
-  +tipoContrato: String
-  +salarioBase: Decimal
-  +estado: EstadoContrato
+  -id: Long
+  -numeroContrato: String
+  -fechaInicio: Date
+  -fechaFin: Date
+  -tipoContrato: String
+  -salarioBase: Decimal
+  -estado: EstadoContrato
 }
   class RegistroAsistencia {
-  +id: UUID
-  +fecha: Date
-  +tipo: TipoAsistencia
-  +observaciones: String
+  -id: Long
+  -fecha: Date
+  -tipo: TipoAsistencia
+  -observaciones: String
 }
   class SolicitudVacaciones {
-  +id: UUID
-  +fechaSolicitud: DateTime
-  +fechaInicio: Date
-  +fechaFin: Date
-  +diasSolicitados: Decimal
-  +estado: EstadoSolicitud
+  -id: Long
+  -fechaSolicitud: DateTime
+  -fechaInicio: Date
+  -fechaFin: Date
+  -diasSolicitados: Decimal
+  -estado: EstadoSolicitud
   +aprobar()
   +rechazar()
 }
  }
  package "Nomina simplificada" {
   class PeriodoNomina {
-  +id: UUID
-  +fechaInicio: Date
-  +fechaFin: Date
-  +fechaPago: Date
-  +frecuencia: FrecuenciaNomina
-  +estado: EstadoPeriodoNomina
+  -id: Long
+  -fechaInicio: Date
+  -fechaFin: Date
+  -fechaPago: Date
+  -frecuencia: FrecuenciaNomina
+  -estado: EstadoPeriodoNomina
 }
   class Nomina {
-  +id: UUID
-  +folio: String
-  +fechaCalculo: DateTime
-  +totalPercepciones: Decimal
-  +totalDeducciones: Decimal
-  +netoPagar: Decimal
-  +estado: EstadoNomina
+  -id: Long
+  -folio: String
+  -fechaCalculo: DateTime
+  -totalPercepciones: Decimal
+  -totalDeducciones: Decimal
+  -netoPagar: Decimal
+  -estado: EstadoNomina
   +calcularTotales()
   +aprobar()
 }
   class DetalleNomina {
-  +id: UUID
-  +salarioBase: Decimal
-  +totalPercepciones: Decimal
-  +totalDeducciones: Decimal
-  +netoPagar: Decimal
+  -id: Long
+  -salarioBase: Decimal
+  -totalPercepciones: Decimal
+  -totalDeducciones: Decimal
+  -netoPagar: Decimal
 }
   class ConceptoNomina {
-  +id: UUID
-  +codigo: String
-  +nombre: String
-  +tipo: TipoConceptoNomina
-  +activo: Boolean
+  -id: Long
+  -codigo: String
+  -nombre: String
+  -tipo: TipoConceptoNomina
+  -activo: Boolean
 }
   class MovimientoNomina {
-  +id: UUID
-  +cantidad: Decimal
-  +importeUnitario: Decimal
-  +importeTotal: Decimal
+  -id: Long
+  -cantidad: Decimal
+  -importeUnitario: Decimal
+  -importeTotal: Decimal
 }
   class PagoNomina {
-  +id: UUID
-  +fechaPago: Date
-  +monto: Decimal
-  +referencia: String
-  +estado: EstadoPagoNomina
+  -id: Long
+  -fechaPago: Date
+  -monto: Decimal
+  -referencia: String
+  -estado: EstadoPagoNomina
 }
  }
  package "Referencias de otros modulos" {
@@ -139,7 +136,7 @@
  RegistroAsistencia "0..*" --> "1" Usuario : registrado por
  Empleado "1" -- "0..*" SolicitudVacaciones
  SolicitudVacaciones "0..*" --> "0..1" Usuario : autorizada por
- PeriodoNomina "1" -- "0..1" Nomina : una nomina por periodo en MVP
+ PeriodoNomina "1" -- "0..1" Nomina : una nomina por periodo
  Nomina "1" *-- "1..*" DetalleNomina
  DetalleNomina "0..*" --> "1" Empleado
  DetalleNomina "0..*" --> "0..1" ExpedienteLaboral : contrato base
@@ -162,8 +159,10 @@
   Totales por empleado congelados para la corrida.
   Neto = percepciones - deducciones.
  end note
- note bottom of PagoNomina
-  Solo se paga una nómina aprobada. MVP: un pago por detalle;
-  reintentos idempotentes y acciones auditadas.
- end note
+
+note bottom of PagoNomina
+  Solo se paga una nómina aprobada; un pago por detalle.
+  Los reintentos son idempotentes y las acciones se auditan.
+end note
+
 @enduml

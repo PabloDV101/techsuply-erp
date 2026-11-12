@@ -1,12 +1,11 @@
 @startuml ERP_00_Vista_Logica_Modulos
+!include ../_estilo.iuml
 title TechSupply Solutions - Vista logica general por modulos
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
-skinparam linetype ortho
 
-package "Gestion maestra y seguridad" as Maestros {
-  [Usuarios / Roles / Permisos]
+package "Seguridad y Gestión maestra" as Maestros {
+  component "Usuarios / Roles / Permisos / TokenSesion" as Auth
+  component "CategoriaProducto" as Category
   [Productos / Proveedores / Clientes]
   [Empleados / Almacenes]
 }
@@ -41,15 +40,15 @@ package "Servicios transversales" as Transversales {
   [Notificaciones opcionales]
 }
 
-Maestros --> Compras : maestros y permisos
-Maestros --> Inventario : productos / almacenes / usuarios
-Maestros --> Ventas : clientes / productos / empleados
-Maestros --> Nomina : empleados / usuarios
-Compras --> Inventario : recepcion / devolucion
-Ventas --> Inventario : reserva / despacho
-Compras --> Contabilidad : factura proveedor / CxP
-Ventas --> Contabilidad : factura venta / CxC
-Nomina --> Contabilidad : nomina aprobada
+Compras ..> Maestros : consulta maestros y permisos
+Inventario ..> Maestros : consulta productos / almacenes / usuarios
+Ventas ..> Maestros : consulta clientes / productos / empleados
+Nomina ..> Maestros : consulta empleados / usuarios
+Compras ..> Inventario : solicita recepción / devolución
+Ventas ..> Inventario : solicita reserva / despacho
+Compras ..> Contabilidad : entrega factura proveedor validada
+Ventas ..> Contabilidad : entrega factura venta validada
+Nomina ..> Contabilidad : entrega nómina aprobada
 Maestros ..> Transversales
 Compras ..> Transversales
 Inventario ..> Transversales
@@ -65,4 +64,10 @@ note bottom of Contabilidad
   Los documentos origen se validan antes de generar
   CxC/CxP y asientos; no contabilizar duplicados.
 end note
+
+note bottom of Maestros
+  Los identificadores usan Long en Java
+  y bigint en PostgreSQL.
+end note
+
 @enduml

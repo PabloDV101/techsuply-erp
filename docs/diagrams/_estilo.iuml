@@ -1,0 +1,76 @@
+' Estilo local compartido. No necesita acceso a temas remotos.
+!ifndef TECHSUPPLY_UML_STYLE
+!define TECHSUPPLY_UML_STYLE
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 12
+skinparam defaultFontColor #243447
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam dpi 120
+skinparam linetype polyline
+skinparam nodesep 45
+skinparam ranksep 55
+skinparam packageStyle rectangle
+skinparam componentStyle uml2
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #46637F
+skinparam ArrowFontColor #344B62
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #163A5F
+skinparam TitleFontSize 19
+skinparam TitleFontStyle bold
+skinparam CaptionFontColor #52687C
+skinparam CaptionFontSize 11
+skinparam FooterFontColor #64748B
+skinparam FooterFontSize 10
+skinparam NoteBackgroundColor #FFF8E8
+skinparam NoteBorderColor #D9B567
+skinparam NoteFontColor #493E2B
+skinparam NoteFontSize 11
+skinparam PackageBackgroundColor #F7F9FC
+skinparam PackageBorderColor #9DAEBF
+skinparam PackageFontColor #163A5F
+skinparam PackageFontStyle bold
+skinparam ClassBackgroundColor #F3F8FD
+skinparam ClassBorderColor #6F8499
+skinparam ClassHeaderBackgroundColor #E7EDF4
+skinparam ClassFontStyle bold
+skinparam ComponentBackgroundColor #EEF5FB
+skinparam ComponentBorderColor #6F8499
+skinparam InterfaceBackgroundColor #E5F4F1
+skinparam InterfaceBorderColor #287B70
+skinparam NodeBackgroundColor #F5F7FA
+skinparam NodeBorderColor #6F8499
+skinparam ArtifactBackgroundColor #FFFFFF
+skinparam ArtifactBorderColor #6F8499
+skinparam DatabaseBackgroundColor #E5F4F1
+skinparam DatabaseBorderColor #287B70
+skinparam ActorBackgroundColor #FFFFFF
+skinparam ActorBorderColor #46637F
+skinparam UsecaseBackgroundColor #EEF5FB
+skinparam UsecaseBorderColor #6F8499
+skinparam ActivityBackgroundColor #F3F7FB
+skinparam ActivityBorderColor #587A9A
+skinparam ActivityDiamondBackgroundColor #FFF3D9
+skinparam ActivityDiamondBorderColor #C39A40
+skinparam ActivityStartColor #163A5F
+skinparam ActivityEndColor #163A5F
+skinparam ActivityBarColor #163A5F
+skinparam SwimlaneBorderColor #C5D0DB
+skinparam SwimlaneTitleBackgroundColor #E7EDF4
+skinparam SwimlaneTitleFontColor #163A5F
+skinparam SequenceParticipantBackgroundColor #E8F2FC
+skinparam SequenceParticipantBorderColor #587A9A
+skinparam SequenceLifeLineBorderColor #9DAEBF
+skinparam SequenceGroupBackgroundColor #F7F9FC
+skinparam SequenceGroupBorderColor #9DAEBF
+skinparam SequenceGroupHeaderFontColor #163A5F
+skinparam SequenceDividerBackgroundColor #E7EDF4
+skinparam SequenceArrowThickness 1
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 70
+hide footbox
+footer TechSupply Solutions ERP
+!endif

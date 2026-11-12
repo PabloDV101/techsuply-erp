@@ -1,0 +1,332 @@
+# Colección manual de Fase 2 para VS Code REST Client (o un cliente compatible con .http).
+# Ejecuta las peticiones en orden. Las referencias {{nombre.response.body.$.campo}}
+# toman IDs y tokens de respuestas anteriores; repite el login si expira el token.
+# Copia este archivo a una ubicación privada antes de reemplazar las contraseñas.
+# No guardes la copia con credenciales ni los tokens en Git. Usa una base local de prueba.
+# La cuenta administradora inicial se crea con el bootstrap opcional descrito en la guía.
+# Los POST de ejemplo crean registros. En una segunda ejecución cambia los códigos y
+# nombres de usuario de demostración o espera respuestas 409 por duplicados.
+# Los errores JSON siguen {"status": número, "code": texto, "message": texto}.
+# La reportería no tiene endpoints ejecutables: su OpenAPI es solo diseño.
+
+@baseUrl = http://localhost:8080
+
+### Salud
+# GET /actuator/health | Esperado: 200, status UP si la API está lista.
+GET {{baseUrl}}/actuator/health
+
+### Autenticación
+# GET /api/v1/auth/me | Esperado: 401 y ApiError, sin Bearer.
+GET {{baseUrl}}/api/v1/auth/me
+
+###
+# POST /api/v1/auth/login | Esperado: 401 y ApiError con contraseña incorrecta.
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identificador": "admin_f2",
+  "password": "CONTRASENA_INCORRECTA"
+}
+
+###
+# POST /api/v1/auth/login | Esperado: 200, accessToken, tokenType Bearer y usuario.
+# @name loginAdmin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identificador": "admin_f2",
+  "password": "<CONTRASENA_ADMIN_LOCAL>"
+}
+
+###
+# GET /api/v1/auth/me | Esperado: 200, identidad admin y permisos efectivos.
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Administración de seguridad
+# GET /api/v1/admin/permissions | Esperado: 200, catálogo con permisos de seguridad, categorías y auditoría.
+GET {{baseUrl}}/api/v1/admin/permissions
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/admin/roles | Esperado: 200, incluye ADMINISTRADOR.
+GET {{baseUrl}}/api/v1/admin/roles
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/admin/users | Esperado: 200, incluye la cuenta administradora inicial.
+GET {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# POST /api/v1/admin/permissions | Esperado: 200, permiso DEMO_F2_VER creado.
+# @name crearPermisoDemo
+POST {{baseUrl}}/api/v1/admin/permissions
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "DEMO_F2_VER",
+  "modulo": "DEMO_F2",
+  "accion": "VER",
+  "descripcion": "Permiso de demostración para pruebas locales"
+}
+
+###
+# POST /api/v1/admin/roles | Esperado: 200, rol con permiso de lectura de categorías.
+# @name crearRolLector
+POST {{baseUrl}}/api/v1/admin/roles
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "LECTOR_CATEGORIAS_F2",
+  "nombre": "Lector de categorías Fase 2",
+  "descripcion": "Rol local para comprobar autorización",
+  "permisos": ["MAESTROS_CATEGORIAS_LEER"]
+}
+
+###
+# PUT /api/v1/admin/roles/{id}/permissions | Esperado: 200, ambos permisos en el rol demo.
+PUT {{baseUrl}}/api/v1/admin/roles/{{crearRolLector.response.body.$.id}}/permissions
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "permisos": ["MAESTROS_CATEGORIAS_LEER", "DEMO_F2_VER"]
+}
+
+###
+# POST /api/v1/admin/users | Esperado: 200, usuario lector activo; la respuesta no incluye password.
+# @name crearUsuarioLector
+POST {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "username": "lector_f2",
+  "correo": "lector_f2@example.test",
+  "password": "<CONTRASENA_LECTOR_LOCAL_12_O_MAS>",
+  "roles": ["LECTOR_CATEGORIAS_F2"],
+  "empleadoId": null,
+  "clienteId": null
+}
+
+###
+# PUT /api/v1/admin/users/{id}/roles | Esperado: 200; reemplazo por el mismo rol demo.
+PUT {{baseUrl}}/api/v1/admin/users/{{crearUsuarioLector.response.body.$.id}}/roles
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "roles": ["LECTOR_CATEGORIAS_F2"]
+}
+
+###
+# POST /api/v1/auth/login | Esperado: 200, token con lectura de categorías y sin administración.
+# @name loginLector
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identificador": "lector_f2",
+  "password": "<CONTRASENA_LECTOR_LOCAL_12_O_MAS>"
+}
+
+###
+# GET /api/v1/categories | Esperado: 200, PageResponse; puede estar vacío antes de crear categorías.
+GET {{baseUrl}}/api/v1/categories?page=0&size=5&sort=codigo&direction=asc
+Authorization: Bearer {{loginLector.response.body.$.accessToken}}
+
+###
+# POST /api/v1/categories | Esperado: 403, el lector no administra categorías.
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{loginLector.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "F2-PROHIBIDA",
+  "nombre": "No debe crearse",
+  "descripcion": null,
+  "categoriaPadreId": null
+}
+
+### Categorías: CRUD y búsqueda
+# POST /api/v1/categories | Esperado: 201, Location e ID de la categoría raíz.
+# @name crearCategoriaRaiz
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "F2-RAIZ",
+  "nombre": "Componentes electrónicos",
+  "descripcion": "Ejemplo local para la Fase 2",
+  "categoriaPadreId": null
+}
+
+###
+# POST /api/v1/categories | Esperado: 409 y ApiError; el código ya existe.
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "F2-RAIZ",
+  "nombre": "Duplicada",
+  "descripcion": null,
+  "categoriaPadreId": null
+}
+
+###
+# POST /api/v1/categories | Esperado: 400 y ApiError; nombre vacío viola validación.
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "F2-INVALIDA",
+  "nombre": "",
+  "descripcion": null,
+  "categoriaPadreId": null
+}
+
+###
+# GET /api/v1/categories/{id} | Esperado: 200, código F2-RAIZ y activa=true.
+GET {{baseUrl}}/api/v1/categories/{{crearCategoriaRaiz.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# POST /api/v1/categories | Esperado: 201, categoría hija vinculada a la raíz.
+# @name crearCategoriaHija
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "F2-HIJA",
+  "nombre": "Conectores",
+  "descripcion": "Ejemplo de jerarquía",
+  "categoriaPadreId": {{crearCategoriaRaiz.response.body.$.id}}
+}
+
+###
+# PUT /api/v1/categories/{id} | Esperado: 200, nombre y descripción actualizados.
+PUT {{baseUrl}}/api/v1/categories/{{crearCategoriaHija.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "codigo": "F2-HIJA",
+  "nombre": "Conectores industriales",
+  "descripcion": "Actualizada en la prueba manual",
+  "categoriaPadreId": {{crearCategoriaRaiz.response.body.$.id}}
+}
+
+###
+# PATCH /api/v1/categories/{id}/status | Esperado: 200, activa=false; no borra la fila.
+PATCH {{baseUrl}}/api/v1/categories/{{crearCategoriaHija.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "activa": false
+}
+
+###
+# GET /api/v1/categories | Esperado: 200, una hija inactiva, totalElements=1.
+GET {{baseUrl}}/api/v1/categories?page=0&size=5&sort=nombre&direction=asc&activa=false&categoriaPadreId={{crearCategoriaRaiz.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/categories | Esperado: 200, content vacío con filtro sin coincidencias.
+GET {{baseUrl}}/api/v1/categories?codigo=F2-SIN-RESULTADOS&page=0&size=5
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/categories | Esperado: 400 y ApiError; tamaño de página inválido.
+GET {{baseUrl}}/api/v1/categories?page=0&size=101
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/categories/{id} | Esperado: 404 y ApiError para ID inexistente.
+GET {{baseUrl}}/api/v1/categories/999999999
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Auditoría
+# GET /api/v1/audit/events | Esperado: 200, PageResponse con eventos de login y escrituras.
+GET {{baseUrl}}/api/v1/audit/events?page=0&size=20&sort=fecha&direction=desc
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/audit/events | Esperado: 200, eventos EXITO de la categoría raíz.
+GET {{baseUrl}}/api/v1/audit/events?modulo=MAESTROS&entidad=CATEGORIA_PRODUCTO&entidadId={{crearCategoriaRaiz.response.body.$.id}}&resultado=EXITO
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/audit/events | Esperado: 400 y ApiError; rango de fechas inválido.
+GET {{baseUrl}}/api/v1/audit/events?desde=2026-10-21T00:00:00Z&hasta=2026-10-20T00:00:00Z
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/audit/events | Esperado: 403 y ApiError; el lector carece de permiso.
+GET {{baseUrl}}/api/v1/audit/events
+Authorization: Bearer {{loginLector.response.body.$.accessToken}}
+
+### Notificaciones APP
+# GET /api/v1/notifications | Esperado: 200, bandeja admin; normalmente content vacío.
+GET {{baseUrl}}/api/v1/notifications?page=0&size=10&sort=creadaEn&direction=desc
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/notifications | Esperado: 200, bandeja propia del lector, normalmente vacía.
+GET {{baseUrl}}/api/v1/notifications?leida=false&page=0&size=10
+Authorization: Bearer {{loginLector.response.body.$.accessToken}}
+
+###
+# GET /api/v1/notifications | Esperado: 400 y ApiError; leida solo admite true o false.
+GET {{baseUrl}}/api/v1/notifications?leida=si
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# PATCH /api/v1/notifications/{id}/read | Esperado: 404 y ApiError: no existe ese ID.
+# Si la bandeja tiene avisos reales, usa su ID propio para comprobar 200 e idempotencia.
+PATCH {{baseUrl}}/api/v1/notifications/999999999/read
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Estado, revocación y cierre
+# PATCH /api/v1/admin/users/{id}/status | Esperado: 200, lector inactivo y sesiones revocadas.
+PATCH {{baseUrl}}/api/v1/admin/users/{{crearUsuarioLector.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "activo": false
+}
+
+###
+# GET /api/v1/auth/me | Esperado: 401 con token del lector después de desactivarlo.
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginLector.response.body.$.accessToken}}
+
+###
+# PATCH /api/v1/admin/users/{id}/status | Esperado: 200, lector activo de nuevo.
+PATCH {{baseUrl}}/api/v1/admin/users/{{crearUsuarioLector.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "activo": true
+}
+
+###
+# POST /api/v1/auth/logout | Esperado: 204 sin cuerpo; revoca el token admin actual.
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+###
+# GET /api/v1/auth/me | Esperado: 401 tras logout; volver a ejecutar loginAdmin para seguir.
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

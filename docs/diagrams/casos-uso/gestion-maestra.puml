@@ -1,8 +1,7 @@
-
 @startuml CU_Gestion_Maestra
+!include ../_estilo.iuml
+title TechSupply Solutions — Gestion maestra
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
 
 actor "Responsable de compras" as Compras
 actor "Responsable de ventas" as Ventas
@@ -11,6 +10,7 @@ actor "Responsable de RR. HH." as RRHH
 actor "Administrador del sistema" as Admin
 
 rectangle "ERP - Gestión Maestra" {
+  usecase "Gestionar categorías\nde producto" as Categorias
   usecase "Gestionar productos" as Productos
   usecase "Consultar productos" as ConsultarProductos
   usecase "Clasificar productos" as ClasificarProductos
@@ -24,30 +24,47 @@ rectangle "ERP - Gestión Maestra" {
   usecase "Consultar catálogos" as Catalogos
 }
 
-Compras --> Proveedores
-Compras --> HistorialProveedores
-Compras --> Productos
+Compras -- Proveedores
+Compras -- HistorialProveedores
+Compras -- Productos
 
-Ventas --> Clientes
-Ventas --> HistorialClientes
-Ventas --> ConsultarProductos
+Ventas -- Clientes
+Ventas -- HistorialClientes
+Ventas -- ConsultarProductos
 
-Almacen --> Productos
-Almacen --> Almacenes
-Almacen --> ClasificarProductos
+Almacen -- Productos
+Almacen -- Almacenes
+Almacen -- ClasificarProductos
 
-RRHH --> Empleados
-RRHH --> Departamentos
+RRHH -- Empleados
+RRHH -- Departamentos
 
-Admin --> Productos
-Admin --> Proveedores
-Admin --> Clientes
-Admin --> Empleados
-Admin --> Almacenes
+Admin -- Productos
+Admin -- Categorias
+Admin -- Proveedores
+Admin -- Clientes
+Admin -- Empleados
+Admin -- Almacenes
 
 ConsultarProductos ..> Catalogos : <<include>>
-ClasificarProductos ..> Productos : <<extend>>
-HistorialProveedores ..> Proveedores : <<extend>>
-HistorialClientes ..> Clientes : <<extend>>
+
+note bottom of HistorialProveedores
+  Los historiales consultan registros existentes.
+  No requieren ejecutar el mantenimiento del catálogo.
+end note
+note bottom of ClasificarProductos
+  Clasificar asigna una categoría a un producto existente.
+  Es un caso independiente de mantener el catálogo de productos.
+end note
+
+note right of Clientes
+  Las operaciones requieren permisos de lectura o administración.
+  Modificar el límite de crédito requiere un permiso adicional.
+end note
+
+note right of Categorias
+  Las categorías se consultan, mantienen y desactivan
+  conservando las referencias de productos.
+end note
 
 @enduml

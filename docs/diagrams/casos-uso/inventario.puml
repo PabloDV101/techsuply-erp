@@ -1,17 +1,17 @@
-
 @startuml CU_Inventario
+!include ../_estilo.iuml
+title TechSupply Solutions — Inventario
 left to right direction
-skinparam packageStyle rectangle
-skinparam shadowing false
 
 actor "Responsable de almacén" as Almacen
 actor "Responsable de compras" as Compras
 actor "Responsable de ventas" as Ventas
 actor "Auditor" as Auditor
+actor "Aprobador autorizado" as Aprobador
+actor "Aplicador autorizado" as Aplicador
 
 rectangle "ERP - Gestión de Inventario" {
   usecase "Consultar existencias" as Existencias
-  usecase "Consultar existencias por almacén" as PorAlmacen
   usecase "Registrar entrada de productos" as Entrada
   usecase "Registrar salida de productos" as Salida
   usecase "Registrar otros movimientos" as Movimientos
@@ -19,35 +19,48 @@ rectangle "ERP - Gestión de Inventario" {
   usecase "Comparar stock físico y registrado" as Comparar
   usecase "Solicitar ajuste de inventario" as SolicitarAjuste
   usecase "Autorizar ajuste" as AutorizarAjuste
+  usecase "Aplicar ajuste aprobado" as AplicarAjuste
   usecase "Consultar historial de movimientos" as Historial
-  usecase "Generar alertas de stock mínimo" as Alertas
+  usecase "Consultar alertas globales de stock mínimo" as Alertas
   usecase "Consultar rotación de productos" as Rotacion
   usecase "Consultar productos obsoletos" as Obsoletos
 }
 
 
-Almacen --> Existencias
-Almacen --> Entrada
-Almacen --> Salida
-Almacen --> Movimientos
-Almacen --> Conteo
-Almacen --> SolicitarAjuste
-Almacen --> Alertas
-Almacen --> Historial
+Almacen -- Existencias
+Almacen -- Entrada
+Almacen -- Salida
+Almacen -- Movimientos
+Almacen -- Conteo
+Almacen -- SolicitarAjuste
+Almacen -- Alertas
+Almacen -- Historial
 
-Compras --> Existencias
-Compras --> Alertas
+Compras -- Existencias
+Compras -- Alertas
 
-Ventas --> Existencias
+Ventas -- Existencias
 
-Auditor --> Historial
+Auditor -- Historial
+Aprobador -- AutorizarAjuste
+Aplicador -- AplicarAjuste
+Almacen -- Rotacion
+Almacen -- Obsoletos
 
-PorAlmacen ..> Existencias : <<extend>>
 Conteo ..> Comparar : <<include>>
-SolicitarAjuste ..> Comparar : <<include>>
-AutorizarAjuste ..> SolicitarAjuste : <<extend>>
-Entrada ..> Historial : <<include>>
-Salida ..> Historial : <<include>>
-Movimientos ..> Historial : <<include>>
 
+note bottom of AutorizarAjuste
+  Precondición: solicitud pendiente y actor autorizado distinto del solicitante.
+  Aprobar/rechazar no aplica el ajuste ni modifica existencias.
+end note
+note bottom of AplicarAjuste
+  Requiere permiso de aplicación; afecta stock y kardex atómicamente.
+end note
+note bottom of Alertas
+  Consulta calculada; no genera órdenes ni notificaciones.
+end note
+note bottom of Existencias
+  El almacén es un criterio de consulta, no una extensión
+  opcional de otro caso de uso.
+end note
 @enduml
