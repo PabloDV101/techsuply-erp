@@ -14,6 +14,8 @@ public interface AuditTrail extends AuthorizationDenialRecorder {
 
     void verifiedLogin(Long userId, Long sessionId);
     void systemBootstrap(Long userId);
+    void systemPasswordRecovery(Long userId);
+    void publicAccountRegistration(Long userId);
     void deniedLoginAfterCommit();
     void logoutAfterCommit(Long userId, Long sessionId);
 }

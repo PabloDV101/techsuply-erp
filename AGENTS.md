@@ -29,7 +29,7 @@ No inventes requisitos empresariales. Consulta la especificación de requisitos 
 
 ## 3. Stack técnico conocido
 
-- Backend: Java 21 y Spring Boot.
+- Backend: Java 25 y Spring Boot.
 - API: REST.
 - Persistencia: Spring Data JPA / Hibernate.
 - Base de datos: PostgreSQL.

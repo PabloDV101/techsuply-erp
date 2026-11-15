@@ -8,9 +8,11 @@ export const API = '/api/v1'
 
 export const PATHS = {
   login: `${API}/auth/login`,
+  register: `${API}/auth/register`,
   logout: `${API}/auth/logout`,
   me: `${API}/auth/me`,
   changePassword: `${API}/auth/password`,
+  localAccountRecovery: `${API}/auth/local-recovery`,
   proveedores: `${API}/proveedores`,
   productos: `${API}/productos`,
   categorias: `${API}/categorias-producto`,
@@ -23,6 +25,12 @@ export const PATHS = {
   conteos: `${API}/conteos-inventario`,
   alertas: `${API}/alertas-stock`,
   rotacion: `${API}/reportes/rotacion`,
+  clientes: `${API}/clientes`,
+  cotizaciones: `${API}/cotizaciones`,
+  pedidos: `${API}/pedidos-venta`,
+  despachos: `${API}/despachos`,
+  facturas: `${API}/facturas`,
+  credito: `${API}/credito`,
 }
 
 /** Nombre del parámetro de búsqueda de texto en los listados. */
@@ -40,6 +48,15 @@ export const PERM = {
   inventarioAjustar: 'INVENTARIO_ADJUST',
   inventarioContar: 'INVENTARIO_COUNT',
   inventarioAdmin: 'INVENTARIO_ADMIN',
+  clienteWrite: 'CLIENTE_WRITE',
+  cotizacionWrite: 'COTIZACION_WRITE',
+  pedidoWrite: 'PEDIDO_WRITE',
+  pedidoConfirm: 'PEDIDO_CONFIRM',
+  despachoWrite: 'DESPACHO_WRITE',
+  despachoConfirm: 'DESPACHO_CONFIRM',
+  facturaCobrar: 'FACTURA_COBRAR',
+  facturaAnular: 'FACTURA_ANULAR',
+  creditoAdmin: 'CREDITO_ADMIN',
 }
 
 /** Roles que lo pueden todo sin revisar permisos individuales. */

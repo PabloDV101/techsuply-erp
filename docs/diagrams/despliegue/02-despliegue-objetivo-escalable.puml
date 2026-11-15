@@ -14,10 +14,10 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
 
  node "Red privada de aplicaciones" as AppNet {
    node "Instancia backend A" as AppHostA {
-     artifact "TechSupply API\nSpring Boot / Java 21" as APIA
+     artifact "TechSupply API\nSpring Boot / Java 25" as APIA
    }
    node "Instancia backend B" as AppHostB {
-     artifact "TechSupply API\nSpring Boot / Java 21" as APIB
+     artifact "TechSupply API\nSpring Boot / Java 25" as APIB
    }
  }
 

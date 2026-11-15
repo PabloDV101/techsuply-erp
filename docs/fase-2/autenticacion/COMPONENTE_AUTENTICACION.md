@@ -1,7 +1,7 @@
 # Componente de autenticación y autorización — TechSupply Solutions
 
 Implementación: `erp-backend/src/main/java/com/techsupply/erp_backend/security`.
-Contrato: `docs/api/openapi-auth.yaml`. Java 21 y Spring Boot 4.1.1.
+Contrato: `docs/api/openapi-auth.yaml`. Java 25 y Spring Boot 4.1.1.
 
 ## 1. Comportamiento y límites
 
@@ -23,6 +23,17 @@ Contrato: `docs/api/openapi-auth.yaml`. Java 21 y Spring Boot 4.1.1.
   incluido un segundo logout. Una solicitud ya autenticada antes del commit de revocación
   puede terminar; no existe cancelación retroactiva de operaciones en curso.
 - `/me` devuelve la identidad y permisos desde persistencia, sin hash de contraseña.
+- `POST /auth/register` crea una cuenta activa con el rol fijo `USUARIO_BASICO`, sin
+  permisos administrativos. El cliente no puede solicitar roles, asociaciones de empleado
+  o cliente, ni permisos. El correo se valida como formato pero no se verifica por SMTP.
+- `POST /auth/password` exige la contraseña actual, guarda la nueva con BCrypt coste 12 y
+  revoca todas las sesiones activas. La nueva contraseña persiste en la base de datos;
+  el usuario puede cambiarla desde el menú de usuario en React.
+- La recuperación sin sesión está desactivada por defecto. Para desarrollo local se puede
+  habilitar `LOCAL_ACCOUNT_RECOVERY_ENABLED` y configurar `LOCAL_ACCOUNT_RECOVERY_KEY`
+  (al menos 32 bytes aleatorios, fuera del repositorio). El endpoint rechaza conexiones
+  no loopback, exige esa clave, no revela si el usuario existe y revoca sus sesiones.
+  No sustituye una recuperación de producción por correo verificado.
 - El filtro se registra solo en Spring Security. Su cadena administra y limpia el contexto.
 
 La mitigación por cuenta no sustituye un limitador por origen/IP ni pruebas de carga.
@@ -30,8 +41,13 @@ No se afirma protección completa contra fuerza bruta o enumeración temporal.
 
 ## 2. Autorización y HTTP
 
-Públicos: `POST /api/v1/auth/login`, `/actuator/health` y preflight `OPTIONS`.
-El resto exige autenticación. `OPTIONS` no configura CORS.
+Públicos: `POST /api/v1/auth/login`, `POST /api/v1/auth/register`,
+`POST /api/v1/auth/local-recovery` (solo con la opción local habilitada y desde loopback),
+`/actuator/health` y preflight `OPTIONS`.
+El resto exige autenticación. CORS aplica solo a `/api/**` y a los orígenes configurados
+en `APP_CORS_ALLOWED_ORIGINS`; por defecto permite `http://localhost:5173` para Vite local.
+Solo admite los métodos REST usados por la API y las cabeceras `Authorization` y
+`Content-Type`; no habilita cookies ni credenciales de navegador.
 
 | Operación | Permiso |
 |---|---|
@@ -68,8 +84,8 @@ El cuerpo anterior se serializa con el record compartido `ApiError`; el esquema
 - `503`: fallo de acceso a datos, sin SQL ni detalle de PostgreSQL en la respuesta.
 
 No hay cookies de autenticación ni sesión HTTP. CSRF está desactivado para Bearer en
-`Authorization`; si se adoptan cookies debe revisarse. CORS y la integración React siguen
-pendientes; este cambio no define orígenes permitidos ni modifica el frontend.
+`Authorization`; si se adoptan cookies debe revisarse. CORS admite orígenes explícitos mediante `APP_CORS_ALLOWED_ORIGINS`; la integración
+funcional de los módulos React con sus APIs sigue pendiente.
 
 ## 3. Esquema y migraciones
 
@@ -79,6 +95,8 @@ Para seguridad, `src/main/resources/db/migration/` contiene:
   valores predeterminados, FK internas y restricciones.
 - `V2__security_catalogs.sql`: rol ADMINISTRADOR y tres permisos administrativos.
   No crea cuentas ni contraseñas.
+- `V6__basic_self_registration_role.sql`: rol USUARIO_BASICO sin permisos. Solo lo asigna
+  el caso de uso de autorregistro; no otorga acceso a funciones administrativas.
 - `V4__audit_events.sql`: tabla de auditoría y permiso `SEGURIDAD_AUDITORIA_LEER`
   asignado al rol ADMINISTRADOR existente. Login, logout, bootstrap y 403 publican
   eventos mediante el componente descrito en `docs/fase-2/auditoria/COMPONENTE_AUDITORIA.md`.
@@ -107,7 +125,7 @@ no crea ni actualiza tablas. No editar migraciones ya aplicadas en entornos comp
 
 ## 4. Compilar, probar y arrancar
 
-Desde `erp-backend/`, con Java 21:
+Desde `erp-backend/`, con Java 25:
 
 ```bash
 ./mvnw -v
@@ -162,9 +180,10 @@ No almacenar esas credenciales en Git. Requiere los catálogos de V2.
 La prueba de contexto anterior dejó de ejecutarse como unitaria para impedir conexiones
 accidentales a la base del desarrollador. Las pruebas de integración no son pruebas E2E de React.
 
-Pendientes fuera de este cambio: auditoría RF-SEG-03, FK de Gestión Maestra, CORS/frontend,
-limitación por origen, rendimiento con carga, política de limpieza de sesiones antiguas y
-adopción del esquema en instalaciones existentes. No se acredita cumplimiento integral de Fase 2.
+Pendientes fuera de este cambio: auditoría RF-SEG-03, FK de Gestión Maestra, integración
+funcional de los módulos React con sus APIs, limitación por origen, rendimiento con carga,
+política de limpieza de sesiones antiguas y adopción del esquema en instalaciones existentes.
+No se acredita cumplimiento integral de Fase 2.
 
 ## 6. Resultado de verificación — 19 de octubre de 2026
 
@@ -192,6 +211,10 @@ esquema de errores y el 409 de protección del último administrador. No sustitu
 completo de OpenAPI ni una prueba exhaustiva de contrato.
 No se midió cobertura porcentual, carga ni seguridad de un despliegue público.
 
+Verificación del runtime — 28 de octubre de 2026: `./mvnw verify` también completó
+**BUILD SUCCESS** con Temurin Java 25.0.5; 40 pruebas unitarias y 49 de integración,
+sin fallos, errores ni omisiones.
+
 ## 7. Contrato HTTP y reproducción de la verificación real
 
 OpenAPI 1.1.1 completa la documentación de las respuestas existentes, sin cambiar rutas,
@@ -205,7 +228,7 @@ RolResponse y PermisoResponse. Los campos presentes pero nulos (`empleadoId`, `c
 esquema de sus elementos. `additionalProperties: false` excluye campos ajenos, como hashes.
 El esquema de error continúa siendo `{status, code, message}`. Logout conserva `204` sin cuerpo.
 
-Desde la raíz del repositorio, con Java 21, Docker, Python 3 y PyYAML disponibles:
+Desde la raíz del repositorio, con Java 25, Docker, Python 3 y PyYAML disponibles:
 
 ```bash
 cd erp-backend

@@ -12,7 +12,7 @@ caption VISTA MIXTA · Seguridad, categorías y errores HTTP comunes implementad
    component "Cliente HTTP\nREST / JSON" as HttpClient <<objetivo>>
  }
 
- package "Backend monolítico modular\nSpring Boot / Java 21" as Backend {
+ package "Backend monolítico modular\nSpring Boot / Java 25" as Backend {
    component "Cadena de filtros\nSpring Security" as Security <<implementado>>
    component "Controladores REST\nDTOs y validación de entrada" as Controllers <<implementado>>
    component "AuthService / UserManagementService\nCategoriaProductoService" as AppServices <<implementado>>

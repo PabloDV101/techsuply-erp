@@ -2,7 +2,7 @@
 // Versión 1.5 — seguridad, categorías, auditoría y bandeja interna actuales; resto modelo objetivo; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
-// Java 21 / Spring Boot (monolito modular) y PostgreSQL.
+// Java 25 / Spring Boot (monolito modular) y PostgreSQL.
 // Las reglas entre varias filas/transacciones se validan en servicios Spring y se documentan en el .md.
 
 Project techsupply_erp {

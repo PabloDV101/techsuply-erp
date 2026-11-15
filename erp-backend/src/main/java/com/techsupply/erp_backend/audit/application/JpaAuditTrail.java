@@ -37,7 +37,8 @@ public class JpaAuditTrail implements AuditTrail {
             AuditState previousState, AuditState newState) {
         if (action == AuditAction.LOGIN_SUCCEEDED || action == AuditAction.LOGIN_DENIED
                 || action == AuditAction.LOGOUT || action == AuditAction.AUTHORIZATION_DENIED
-                || action == AuditAction.ADMIN_BOOTSTRAPPED) {
+                || action == AuditAction.ADMIN_BOOTSTRAPPED || action == AuditAction.PASSWORD_RECOVERED
+                || action == AuditAction.USER_SELF_REGISTERED) {
             throw new IllegalArgumentException("Acción reservada para el flujo de seguridad");
         }
         Long actorId = actors.currentUserId().orElseThrow(() ->
@@ -57,6 +58,20 @@ public class JpaAuditTrail implements AuditTrail {
     @Transactional(propagation = Propagation.MANDATORY)
     public void systemBootstrap(Long userId) {
         repository.saveAndFlush(event(AuditAction.ADMIN_BOOTSTRAPPED, AuditActorType.SISTEMA, null,
+            userId, AuditResult.EXITO, null, Set.of(), null, null));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void systemPasswordRecovery(Long userId) {
+        repository.saveAndFlush(event(AuditAction.PASSWORD_RECOVERED, AuditActorType.SISTEMA, null,
+            userId, AuditResult.EXITO, null, Set.of(), null, null));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void publicAccountRegistration(Long userId) {
+        repository.saveAndFlush(event(AuditAction.USER_SELF_REGISTERED, AuditActorType.ANONIMO, null,
             userId, AuditResult.EXITO, null, Set.of(), null, null));
     }
 

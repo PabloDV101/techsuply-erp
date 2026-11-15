@@ -1,6 +1,8 @@
 package com.techsupply.erp_backend.security.application;
 
 import com.techsupply.erp_backend.audit.application.AuditTrail;
+import com.techsupply.erp_backend.audit.application.AuditAction;
+import com.techsupply.erp_backend.security.application.dto.CambiarContrasenaRequest;
 import com.techsupply.erp_backend.security.application.dto.LoginRequest;
 import com.techsupply.erp_backend.security.application.dto.LoginResponse;
 import com.techsupply.erp_backend.security.application.dto.UsuarioResponse;
@@ -111,6 +113,26 @@ public class AuthService {
         Usuario usuario = usuarioRepository.buscarConRolesYPermisosPorId(actor.usuarioId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La cuenta ya no existe"));
         return usuarioResponse(usuario);
+    }
+
+    @Transactional
+    public void cambiarContrasena(CambiarContrasenaRequest request) {
+        AuthenticatedActor actor = authenticatedUserProvider.currentUser()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticación requerida"));
+        Usuario usuario = usuarioRepository.buscarParaActualizacion(actor.usuarioId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La cuenta ya no existe"));
+
+        if (!passwordEncoder.matches(request.contrasenaActual(), usuario.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña actual es incorrecta");
+        }
+        if (passwordEncoder.matches(request.contrasenaNueva(), usuario.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña nueva debe ser diferente");
+        }
+
+        usuario.setPasswordHash(passwordEncoder.encode(request.contrasenaNueva()));
+        usuarioRepository.save(usuario);
+        tokenSesionRepository.revocarSesionesActivasDeUsuario(actor.usuarioId(), clock.instant());
+        auditTrail.change(AuditAction.PASSWORD_CHANGED, actor.usuarioId());
     }
 
     private ResponseStatusException credencialesInvalidas() {

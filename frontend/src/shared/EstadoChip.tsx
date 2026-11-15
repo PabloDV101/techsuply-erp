@@ -21,6 +21,22 @@ const map: Record<string, { label: string; color: 'default' | 'info' | 'success'
   CRITICO: { label: 'Crítico', color: 'error' },
   BAJO: { label: 'Bajo mínimo', color: 'warning' },
   OK: { label: 'Normal', color: 'success' },
+  ENVIADA: { label: 'Enviada', color: 'info' },
+  ACEPTADA: { label: 'Aceptada', color: 'success' },
+  RECHAZADA: { label: 'Rechazada', color: 'error' },
+  VENCIDA: { label: 'Vencida', color: 'warning' },
+  CONVERTIDA: { label: 'Convertida a pedido', color: 'success' },
+  CONFIRMADO: { label: 'Confirmado', color: 'info' },
+  RETENIDO_CREDITO: { label: 'Retenido por crédito', color: 'warning' },
+  DESPACHO_PARCIAL: { label: 'Despacho parcial', color: 'warning' },
+  DESPACHADO: { label: 'Despachado', color: 'success' },
+  EMITIDA: { label: 'Emitida', color: 'info' },
+  PAGO_PARCIAL: { label: 'Pago parcial', color: 'warning' },
+  PAGADA: { label: 'Pagada', color: 'success' },
+  AL_DIA: { label: 'Al día', color: 'success' },
+  EN_RIESGO: { label: 'En riesgo', color: 'warning' },
+  EXCEDIDO: { label: 'Límite excedido', color: 'error' },
+  BLOQUEADO: { label: 'Bloqueado', color: 'error' },
   ALTA: { label: 'Alta rotación', color: 'success' },
   MEDIA: { label: 'Media', color: 'info' },
   SIN_MOVIMIENTO: { label: 'Sin movimiento', color: 'default' },
@@ -36,4 +52,8 @@ export const ESTADOS_RECEPCION = ['BORRADOR', 'CONFIRMADA', 'ANULADA']
 export const ESTADOS_CONTEO = ['EN_CONTEO', 'APLICADO', 'CANCELADO']
 export const TIPOS_MOVIMIENTO = ['ENTRADA', 'SALIDA', 'TRASLADO', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO']
 export const NIVELES_ALERTA = ['AGOTADO', 'CRITICO', 'BAJO']
+export const ESTADOS_COTIZACION = ['BORRADOR', 'ENVIADA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA', 'CONVERTIDA']
+export const ESTADOS_PEDIDO = ['BORRADOR', 'CONFIRMADO', 'RETENIDO_CREDITO', 'DESPACHO_PARCIAL', 'DESPACHADO', 'CANCELADA']
+export const ESTADOS_FACTURA = ['EMITIDA', 'PAGO_PARCIAL', 'PAGADA', 'ANULADA']
+export const ESTADOS_CREDITO = ['AL_DIA', 'EN_RIESGO', 'EXCEDIDO', 'BLOQUEADO']
 export const estadoLabel = (e: string) => map[e]?.label ?? e

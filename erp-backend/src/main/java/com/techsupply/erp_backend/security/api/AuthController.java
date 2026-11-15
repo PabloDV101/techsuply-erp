@@ -1,8 +1,11 @@
 package com.techsupply.erp_backend.security.api;
 
 import com.techsupply.erp_backend.security.application.AuthService;
+import com.techsupply.erp_backend.security.application.PublicRegistrationService;
+import com.techsupply.erp_backend.security.application.dto.CambiarContrasenaRequest;
 import com.techsupply.erp_backend.security.application.dto.LoginRequest;
 import com.techsupply.erp_backend.security.application.dto.LoginResponse;
+import com.techsupply.erp_backend.security.application.dto.RegistroUsuarioRequest;
 import com.techsupply.erp_backend.security.application.dto.UsuarioResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -18,11 +21,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
     private final AuthService authService;
-    public AuthController(AuthService authService) { this.authService = authService; }
+    private final PublicRegistrationService registrationService;
+    public AuthController(AuthService authService, PublicRegistrationService registrationService) {
+        this.authService = authService;
+        this.registrationService = registrationService;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/register")
+    public UsuarioResponse registrar(@Valid @RequestBody RegistroUsuarioRequest request) {
+        return registrationService.registrar(request);
     }
 
     @PostMapping("/logout")
@@ -34,4 +46,10 @@ public class AuthController {
 
     @GetMapping("/me")
     public UsuarioResponse me() { return authService.me(); }
+
+    @PostMapping("/password")
+    public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody CambiarContrasenaRequest request) {
+        authService.cambiarContrasena(request);
+        return ResponseEntity.noContent().build();
+    }
 }

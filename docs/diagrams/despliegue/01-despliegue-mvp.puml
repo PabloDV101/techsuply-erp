@@ -14,7 +14,7 @@ caption DISEÑO OBJETIVO · Conserva el alcance funcional; no acredita implement
  }
 
  node "Servidor privado de aplicaciones" as AppHost {
-   artifact "erp-backend-0.0.1-SNAPSHOT.jar\nJava 21 + Spring Boot" as API
+   artifact "erp-backend-0.0.1-SNAPSHOT.jar\nJava 25 + Spring Boot" as API
  }
 
  node "Servidor PostgreSQL en red privada" as DataNetwork {

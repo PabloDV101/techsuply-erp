@@ -3,9 +3,12 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, CircularProgress, Paper, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Link, Paper, TextField, Typography } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { errorMessage } from '../../api/http'
+
+const localRecoveryEnabled = import.meta.env.VITE_LOCAL_ACCOUNT_RECOVERY_ENABLED === 'true'
 
 const schema = z.object({
   identificador: z.string().min(1, 'Ingresa tu usuario o correo'),
@@ -84,6 +87,14 @@ export default function LoginPage() {
           <Button type="submit" variant="contained" fullWidth size="large" disabled={isSubmitting} sx={{ mt: 2 }}>
             {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Entrar'}
           </Button>
+          <Link component={RouterLink} to="/registro" underline="hover" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
+            Crear cuenta nueva
+          </Link>
+          {localRecoveryEnabled && (
+            <Link component={RouterLink} to="/recuperar-cuenta" underline="hover" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+              ¿Olvidaste tu contraseña? Recuperar cuenta local
+            </Link>
+          )}
         </Paper>
       </Box>
     </Box>

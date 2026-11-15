@@ -15,7 +15,7 @@ node "Zona perimetral" as DMZ {
 }
 
 node "Red privada de aplicaciones" as AppNet {
-  node "Backend Spring Boot\nJava 21 · MVP: 1 instancia" as Backend {
+  node "Backend Spring Boot\nJava 25 · MVP: 1 instancia" as Backend {
     artifact "TechSupply ERP API\nREST + Spring Security\nJPA/Hibernate + Flyway" as API
   }
   node "Escalado futuro opcional" as Scale {

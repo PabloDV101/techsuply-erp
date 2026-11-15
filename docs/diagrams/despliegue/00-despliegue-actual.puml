@@ -5,7 +5,7 @@ caption IMPLEMENTADO · Entornos alternativos; sin Nginx, TLS ni integración Re
 left to right direction
 actor "Desarrollador" as User
 package "Desarrollo local · configuración existente" {
-  node "JVM local · Java 21" as LocalJvm {
+  node "JVM local · Java 25" as LocalJvm {
     artifact "erp-backend-0.0.1-SNAPSHOT.jar\nSpring Boot 4.1.1\nSERVER_PORT (8080 por defecto)" as API
   }
   node "Contenedor PostgreSQL 17\nDocker Compose" as ComposeHost {

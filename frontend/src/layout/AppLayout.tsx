@@ -17,7 +17,12 @@ import TuneIcon from '@mui/icons-material/Tune'
 import FactCheckIcon from '@mui/icons-material/FactCheckOutlined'
 import NotificationsIcon from '@mui/icons-material/NotificationsActiveOutlined'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import PasswordIcon from '@mui/icons-material/Password'
+import PeopleIcon from '@mui/icons-material/PeopleAltOutlined'
+import RequestQuoteIcon from '@mui/icons-material/RequestQuoteOutlined'
+import ReceiptIcon from '@mui/icons-material/ReceiptLongOutlined'
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
+import ListAltIcon from '@mui/icons-material/ListAlt'
+import CreditScoreIcon from '@mui/icons-material/CreditScoreOutlined'
 import { useAuth } from '../features/auth/AuthContext'
 import { http } from '../api/http'
 import { PATHS } from '../config/contract'
@@ -51,6 +56,17 @@ const groups = [
       { to: '/inventario/rotacion', label: 'Rotación', icon: <TrendingUpIcon /> },
     ],
   },
+  {
+    title: 'Ventas',
+    items: [
+      { to: '/ventas/clientes', label: 'Clientes', icon: <PeopleIcon /> },
+      { to: '/ventas/cotizaciones', label: 'Cotizaciones', icon: <RequestQuoteIcon /> },
+      { to: '/ventas/pedidos', label: 'Órdenes de venta', icon: <ListAltIcon /> },
+      { to: '/ventas/despachos', label: 'Despachos', icon: <LocalShippingOutlinedIcon /> },
+      { to: '/ventas/facturas', label: 'Facturas', icon: <ReceiptIcon /> },
+      { to: '/ventas/credito', label: 'Gestión de crédito', icon: <CreditScoreIcon />, retained: true },
+    ],
+  },
 ]
 
 export default function AppLayout() {
@@ -60,6 +76,11 @@ export default function AppLayout() {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
+  const retained = useQuery({
+    queryKey: ['total', PATHS.pedidos, 'retenidos-menu'],
+    refetchInterval: 120_000,
+    queryFn: async () => normalizePage((await http.get(PATHS.pedidos, { params: { page: 0, size: 1, estado: 'RETENIDO_CREDITO' } })).data).total,
+  })
   const alerts = useQuery({
     queryKey: ['total', PATHS.alertas, 'menu'],
     refetchInterval: 120_000,
@@ -81,7 +102,8 @@ export default function AppLayout() {
               onClick={() => setOpen(false)}
             >
               <ListItemIcon>
-                {'alert' in i && i.alert ? <Badge color="error" badgeContent={alerts.data ?? 0} max={99}>{i.icon}</Badge> : i.icon}
+                {'alert' in i && i.alert ? <Badge color="error" badgeContent={alerts.data ?? 0} max={99}>{i.icon}</Badge>
+                  : 'retained' in i && i.retained ? <Badge color="warning" badgeContent={retained.data ?? 0} max={99}>{i.icon}</Badge> : i.icon}
               </ListItemIcon>
               <ListItemText primary={i.label} />
             </ListItemButton>
@@ -103,10 +125,6 @@ export default function AppLayout() {
           </IconButton>
           <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)}>
             <MenuItem disabled>{user?.roles.join(", ") || "Sin rol"}</MenuItem>
-            <MenuItem component={NavLink} to="/cambiar-contrasena" onClick={() => setAnchor(null)}>
-              <PasswordIcon fontSize="small" sx={{ mr: 1 }} />
-              Cambiar contraseña
-            </MenuItem>
             <MenuItem onClick={logout}>Cerrar sesión</MenuItem>
           </Menu>
         </Toolbar>

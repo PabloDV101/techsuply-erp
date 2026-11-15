@@ -32,10 +32,14 @@ export default function DashboardPage() {
   const parc = useTotal(PATHS.ordenes, { estado: 'PARCIAL' })
   const alertas = useTotal(PATHS.alertas, {})
   const conteos = useTotal(PATHS.conteos, { estado: 'EN_CONTEO' })
+  const cotiz = useTotal(PATHS.cotizaciones, { estado: 'ENVIADA' })
+  const porDespachar = useTotal(PATHS.pedidos, { estado: 'CONFIRMADO' })
+  const retenidos = useTotal(PATHS.pedidos, { estado: 'RETENIDO_CREDITO' })
+  const porCobrar = useTotal(PATHS.facturas, { estado: 'EMITIDA' })
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Hola, {user?.nombre}</Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>Resumen de maestros, compras e inventario.</Typography>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>Resumen de maestros, compras, inventario y ventas.</Typography>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
         <Card to="/proveedores" label="Proveedores activos" value={prov.data} loading={prov.isLoading} />
         <Card to="/productos" label="Productos activos" value={prod.data} loading={prod.isLoading} />
@@ -44,6 +48,10 @@ export default function DashboardPage() {
         <Card to="/recepciones" label="Órdenes con recepción parcial" value={parc.data} loading={parc.isLoading} />
         <Card to="/inventario/alertas" label="Productos bajo el mínimo" value={alertas.data} loading={alertas.isLoading} />
         <Card to="/inventario/conteos" label="Conteos en curso" value={conteos.data} loading={conteos.isLoading} />
+        <Card to="/ventas/cotizaciones" label="Cotizaciones enviadas" value={cotiz.data} loading={cotiz.isLoading} />
+        <Card to="/ventas/pedidos" label="Pedidos por despachar" value={porDespachar.data} loading={porDespachar.isLoading} />
+        <Card to="/ventas/credito" label="Pedidos retenidos por crédito" value={retenidos.data} loading={retenidos.isLoading} />
+        <Card to="/ventas/facturas" label="Facturas por cobrar" value={porCobrar.data} loading={porCobrar.isLoading} />
       </Box>
     </Box>
   )

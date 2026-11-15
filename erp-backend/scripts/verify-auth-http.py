@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real HTTP auth verification. Requires Java 21, Docker, Python 3 + PyYAML and a built backend JAR.
+"""Real HTTP auth verification. Requires Java 25, Docker, Python 3 + PyYAML and a built backend JAR.
 Creates only its own ephemeral PostgreSQL container; does not use any ambient DB_URL or Compose volume.
 Passwords/tokens are generated in memory and redacted from the report. Exit 1 = observed/contract mismatch.
 """

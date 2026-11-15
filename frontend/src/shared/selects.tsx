@@ -39,3 +39,7 @@ export const ProductoSelect = (p: Props) => (
 export const AlmacenSelect = (p: Props) => (
   <LookupSelect {...p} label={p.label ?? 'Almacén'} endpoint={PATHS.almacenes} getLabel={(o) => String(o.nombre ?? o.codigo ?? o.id)} />
 )
+
+export const ClienteSelect = (p: Props) => (
+  <LookupSelect {...p} label={p.label ?? 'Cliente'} endpoint={PATHS.clientes} getLabel={(o) => `${o.codigo ?? ''} — ${o.razonSocial ?? ''}`} />
+)

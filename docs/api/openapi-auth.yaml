@@ -45,6 +45,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthError'
+  /auth/register:
+    post:
+      summary: Crear una cuenta básica
+      description: El rol USUARIO_BASICO lo asigna el servidor; el cliente no puede enviar roles ni permisos. El correo se guarda pero no se verifica.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, correo, password]
+              properties:
+                username: { type: string, maxLength: 60 }
+                correo: { type: string, format: email, maxLength: 150 }
+                password: { type: string, format: password, minLength: 12, maxLength: 72, description: Al menos 12 caracteres y máximo 72 bytes UTF-8 }
+      responses:
+        '200':
+          description: Cuenta creada con rol básico y sin permisos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+        '400':
+          description: Cuerpo o contraseña no válidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '409':
+          description: El username o correo ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
   /auth/logout:
     post:
       summary: Cerrar la sesión actual
@@ -86,6 +127,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthError'
+  /auth/password:
+    post:
+      summary: Cambiar la contraseña del usuario autenticado
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contrasenaActual, contrasenaNueva]
+              properties:
+                contrasenaActual: { type: string, format: password, minLength: 1, maxLength: 72, description: Máximo 72 bytes UTF-8 }
+                contrasenaNueva: { type: string, format: password, minLength: 12, maxLength: 72, description: Al menos 12 caracteres y máximo 72 bytes UTF-8 }
+      responses:
+        '204': { description: Contraseña actualizada; todas las sesiones existentes se revocan }
+        '400':
+          description: Solicitud inválida, contraseña actual incorrecta o contraseña nueva reutilizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Token ausente o no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '503':
+          description: Servicio de datos no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+  /auth/local-recovery:
+    post:
+      summary: Restablecer una cuenta en desarrollo local
+      description: Solo se habilita mediante configuración local, exige una clave aleatoria de al menos 32 bytes y rechaza solicitudes que no provengan de loopback. El resultado no revela si la cuenta existe.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identificador, claveRecuperacion, contrasenaNueva]
+              properties:
+                identificador: { type: string, maxLength: 150 }
+                claveRecuperacion: { type: string, minLength: 32, maxLength: 128 }
+                contrasenaNueva: { type: string, format: password, minLength: 12, maxLength: 72, description: Máximo 72 bytes UTF-8 }
+      responses:
+        '204': { description: Solicitud aceptada sin revelar si la cuenta existe }
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '401':
+          description: Clave de recuperación inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '404': { description: Recuperación local no disponible desde una dirección no local }
   /admin/users:
     get:
       summary: Listar usuarios
@@ -121,7 +227,7 @@ paths:
     post:
       summary: Crear usuario y asignarle roles
       security: [{ bearerAuth: [] }]
-      description: Requiere SEGURIDAD_USUARIOS_ADMIN y SEGURIDAD_ROLES_ADMIN. Solo permite delegar permisos que posee el actor. No hay registro público.
+      description: Requiere SEGURIDAD_USUARIOS_ADMIN y SEGURIDAD_ROLES_ADMIN. Solo permite delegar permisos que posee el actor.
       requestBody:
         required: true
         content:

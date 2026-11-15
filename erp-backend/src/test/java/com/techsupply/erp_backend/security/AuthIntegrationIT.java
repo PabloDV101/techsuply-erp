@@ -16,12 +16,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "app.security.local-account-recovery.enabled=true",
+    "app.security.local-account-recovery.key=integration-test-local-recovery-key-0001"
+})
 @AutoConfigureMockMvc
 class AuthIntegrationIT extends PostgresIntegrationSupport {
     @Autowired MockMvc http;
@@ -47,6 +51,50 @@ class AuthIntegrationIT extends PostgresIntegrationSupport {
         return new Account(id, key, password, role);
     }
 
+    @Test void publicRegistrationCreatesOnlyBasicRoleWithoutPermissions() throws Exception {
+        String username = UUID.randomUUID().toString();
+        String correo = username + "@example.test";
+        String password = UUID.randomUUID().toString();
+        String response = http.perform(post("/api/v1/auth/register")
+                .contentType("application/json")
+                .content(json.writeValueAsString(Map.of("username", username, "correo", correo, "password", password))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("username").value(username))
+            .andExpect(jsonPath("passwordHash").doesNotExist())
+            .andReturn().getResponse().getContentAsString();
+
+        long id = json.readTree(response).get("id").asLong();
+        assertThat(json.readTree(response).get("roles").get(0).asText()).isEqualTo("USUARIO_BASICO");
+        assertThat(json.readTree(response).get("permisos")).isEmpty();
+        assertThat(passwords.matches(password, db.queryForObject(
+            "select password_hash from usuarios where id=?", String.class, id))).isTrue();
+        assertThat(db.queryForObject("select actor_tipo from eventos_auditoria where accion='USER_SELF_REGISTERED' "
+            + "and entidad_id=?", String.class, id)).isEqualTo("ANONIMO");
+        login(username, password).andExpect(status().isOk());
+        String token = json.readTree(login(username, password).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString()).get("accessToken").asText();
+        http.perform(get("/api/v1/admin/users").header("Authorization", "Bearer " + token))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test void publicRegistrationRejectsDuplicateAndInvalidPassword() throws Exception {
+        var existing = account();
+        http.perform(post("/api/v1/auth/register")
+                .contentType("application/json")
+                .content(json.writeValueAsString(Map.of(
+                    "username", existing.username(),
+                    "correo", UUID.randomUUID() + "@example.test",
+                    "password", UUID.randomUUID().toString()))))
+            .andExpect(status().isConflict());
+        http.perform(post("/api/v1/auth/register")
+                .contentType("application/json")
+                .content(json.writeValueAsString(Map.of(
+                    "username", UUID.randomUUID().toString(),
+                    "correo", UUID.randomUUID() + "@example.test",
+                    "password", "short"))))
+            .andExpect(status().isBadRequest());
+    }
+
     private ResultActions login(String identifier, String password) throws Exception {
         return http.perform(post("/api/v1/auth/login").contentType("application/json")
             .content(json.writeValueAsString(Map.of("identificador", identifier, "password", password))));
@@ -64,12 +112,28 @@ class AuthIntegrationIT extends PostgresIntegrationSupport {
         return http.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token));
     }
 
+    @Test void allowsLocalReactOriginToPreflightAuthRequests() throws Exception {
+        http.perform(options("/api/v1/auth/login")
+                .header("Origin", "http://localhost:5173")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+
+        http.perform(options("/api/v1/auth/me")
+                .header("Origin", "http://localhost:5173")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", "authorization"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
     private int failures(Account a) {
         return db.queryForObject("select intentos_fallidos from usuarios where id=?", Integer.class, a.id());
     }
 
     @Test void flywayAndRealPersistenceMatchJpaSchema() throws Exception {
-        assertThat(flyway.info().applied()).hasSize(5);
+        assertThat(flyway.info().applied()).hasSize(6);
         var a = account("SEGURIDAD_USUARIOS_ADMIN");
         String token = login(a);
         assertThat(db.queryForObject("select password_hash from usuarios where id=?", String.class, a.id()))
@@ -143,6 +207,87 @@ class AuthIntegrationIT extends PostgresIntegrationSupport {
         me(token).andExpect(status().isUnauthorized());
         http.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + token))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test void passwordChangeChecksCurrentPasswordAndRevokesAllSessions() throws Exception {
+        var account = account();
+        String oldToken = login(account);
+        String otherToken = login(account);
+        String newPassword = UUID.randomUUID().toString();
+
+        http.perform(post("/api/v1/auth/password").header("Authorization", "Bearer " + oldToken)
+                .contentType("application/json").content(json.writeValueAsString(Map.of(
+                    "contrasenaActual", account.password(), "contrasenaNueva", newPassword))))
+            .andExpect(status().isNoContent());
+
+        me(oldToken).andExpect(status().isUnauthorized());
+        me(otherToken).andExpect(status().isUnauthorized());
+        assertThat(passwords.matches(newPassword, db.queryForObject(
+            "select password_hash from usuarios where id=?", String.class, account.id()))).isTrue();
+        login(account.username(), account.password()).andExpect(status().isUnauthorized());
+        login(account.username(), newPassword).andExpect(status().isOk());
+    }
+
+    @Test void passwordChangeRejectsWrongCurrentAndReuse() throws Exception {
+        var account = account();
+        String token = login(account);
+
+        http.perform(post("/api/v1/auth/password").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(json.writeValueAsString(Map.of(
+                    "contrasenaActual", "incorrecta", "contrasenaNueva", UUID.randomUUID().toString()))))
+            .andExpect(status().isBadRequest());
+        http.perform(post("/api/v1/auth/password").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(json.writeValueAsString(Map.of(
+                    "contrasenaActual", account.password(), "contrasenaNueva", account.password()))))
+            .andExpect(status().isBadRequest());
+
+        me(token).andExpect(status().isOk());
+        assertThat(passwords.matches(account.password(), db.queryForObject(
+            "select password_hash from usuarios where id=?", String.class, account.id()))).isTrue();
+    }
+
+    @Test void localRecoveryResetsPasswordAndRevokesSessions() throws Exception {
+        var account = account();
+        String token = login(account);
+        String newPassword = UUID.randomUUID().toString();
+
+        http.perform(post("/api/v1/auth/local-recovery")
+                .contentType("application/json")
+                .content(json.writeValueAsString(Map.of(
+                    "identificador", account.username(),
+                    "claveRecuperacion", "integration-test-local-recovery-key-0001",
+                    "contrasenaNueva", newPassword))))
+            .andExpect(status().isNoContent());
+
+        me(token).andExpect(status().isUnauthorized());
+        login(account.username(), account.password()).andExpect(status().isUnauthorized());
+        login(account.username(), newPassword).andExpect(status().isOk());
+        assertThat(failures(account)).isZero();
+    }
+
+    @Test void localRecoveryRejectsWrongKeyAndNonLocalRequests() throws Exception {
+        var account = account();
+        String newPassword = UUID.randomUUID().toString();
+        String body = json.writeValueAsString(Map.of(
+            "identificador", account.username(),
+            "claveRecuperacion", "incorrect-local-recovery-key-000000000",
+            "contrasenaNueva", newPassword));
+
+        http.perform(post("/api/v1/auth/local-recovery").contentType("application/json").content(body))
+            .andExpect(status().isUnauthorized());
+        http.perform(post("/api/v1/auth/local-recovery")
+                .with((RequestPostProcessor) request -> {
+                    request.setRemoteAddr("203.0.113.10");
+                    return request;
+                })
+                .contentType("application/json")
+                .content(json.writeValueAsString(Map.of(
+                    "identificador", account.username(),
+                    "claveRecuperacion", "integration-test-local-recovery-key-0001",
+                    "contrasenaNueva", newPassword))))
+            .andExpect(status().isNotFound());
+
+        login(account.username(), account.password()).andExpect(status().isOk());
     }
 
     @Test void missingAuthenticationAndContextIsolation() throws Exception {

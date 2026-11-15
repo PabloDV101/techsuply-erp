@@ -21,8 +21,10 @@ la auditoría de un flujo que todavía no existe.
   jamás debe deshacer un logout ya confirmado ni transformar el rechazo en éxito.
 - `AuditActorProvider` es el puerto de identidad. Su adaptador consulta
   `AuthenticatedUserProvider`; los módulos no reciben ni almacenan el Bearer. Para cambios
-  protegidos, un actor ausente es error. El bootstrap usa `SISTEMA`; el login rechazado usa
-  `ANONIMO`; un 403 conserva el ID del actor solo si está autenticado.
+  protegidos, un actor ausente es error. El bootstrap y la recuperación local de contraseña
+  usan `SISTEMA`; el login rechazado y el autorregistro usan `ANONIMO`; un 403 conserva el ID
+  del actor solo si está autenticado. `USER_SELF_REGISTERED` registra el ID de la cuenta
+  creada como recurso, sin guardar contraseña ni hash.
 - `AuditTrail` implementa `AuthorizationDenialRecorder`, el puerto mínimo usado por el
   manejador HTTP común para anotar un 403. La dependencia queda en dirección
   `audit → common`; `common` no importa clases de `audit`. El manejador de seguridad

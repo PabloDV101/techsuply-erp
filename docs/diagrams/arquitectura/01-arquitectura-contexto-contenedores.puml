@@ -12,7 +12,7 @@ node "Navegador web" as Browser {
   component "Aplicación web / portal\nReact + TypeScript" as Web <<objetivo>>
 }
 
-node "Backend · Java 21 + Spring Boot\nMonolito modular en capas" as Backend {
+node "Backend · Java 25 + Spring Boot\nMonolito modular en capas" as Backend {
   component "API REST de seguridad, categorías, auditoría y bandeja APP\nControladores y DTO" as API <<implementado>>
   component "AuthService / UserManagementService\nCategoriaProductoService" as App <<implementado>>
   package "Módulos de dominio" {

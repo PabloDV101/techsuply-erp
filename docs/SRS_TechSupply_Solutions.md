@@ -4,9 +4,9 @@
 **Identificador:** SRS-TSS-ERP-001  
 **Versión:** 1.1 — propuesta consolidada para validación académica (sincronización documental)
 **Fecha:** 11 de octubre de 2026  
-**Revisión documental:** 19 de octubre de 2026
+**Revisión documental:** 28 de octubre de 2026
 **Estado:** Borrador de trabajo  
-**Tecnologías objetivo:** React + TypeScript, Java 21 + Spring Boot, PostgreSQL  
+**Tecnologías objetivo:** React + TypeScript, Java 25 + Spring Boot, PostgreSQL
 
 > **Nota de alcance documental.** Este SRS integra la narrativa de TechSupply Solutions y las decisiones de diseño acordadas durante el análisis. Los requisitos proceden del caso suministrado; las reglas de arquitectura y los criterios operativos señalados como decisiones propuestas son recomendaciones para volver el alcance desarrollable y deben validarse con el docente/equipo antes de congelar la versión final.
 
@@ -21,7 +21,7 @@
 | Estado | Borrador consolidado para validación |
 | Fuente primaria | Narrativa y especificación académica del proyecto proporcionadas por el usuario |
 | Arquitectura | Monolito modular en capas |
-| Tecnologías | React + TypeScript; Java 21 + Spring Boot; PostgreSQL |
+| Tecnologías | React + TypeScript; Java 25 + Spring Boot; PostgreSQL |
 
 ## 1. Introducción
 
@@ -78,7 +78,7 @@ El ERP funcionará como fuente central de información operativa. Cada módulo s
 
 El producto es una aplicación web empresarial con tres partes principales:
 1. **Frontend:** interfaz React + TypeScript para personal interno y, dentro del alcance previsto, clientes que consulten catálogo y realicen pedidos.
-2. **Backend:** aplicación Java 21 + Spring Boot con API REST, seguridad, servicios de aplicación y módulos de dominio.
+2. **Backend:** aplicación Java 25 + Spring Boot con API REST, seguridad, servicios de aplicación y módulos de dominio.
 3. **Persistencia:** PostgreSQL con un esquema relacional normalizado, restricciones, migraciones versionadas y transacciones.
 
 Nginx podrá servir los archivos estáticos y funcionar como proxy inverso. En desarrollo puede usarse el servidor de React y una instancia local del backend; la topología definitiva de producción dependerá de la infraestructura disponible.
@@ -114,7 +114,7 @@ Un usuario puede tener varios roles. Un empleado no tiene que disponer obligator
 
 - Navegador moderno de escritorio para usuarios internos; interfaz web adaptable como objetivo de usabilidad.
 - React + TypeScript para el frontend.
-- Java 21 y una versión de Spring Boot compatible definida al iniciar implementación.
+- Java 25 y una versión de Spring Boot compatible definida al iniciar implementación.
 - Spring Security para autenticación y autorización.
 - Spring Data JPA/Hibernate para persistencia desde el backend.
 - PostgreSQL como motor relacional.
@@ -457,7 +457,7 @@ Esta decisión limita la complejidad de despliegue y permite operaciones transac
 |---|---|
 | Interfaz | React + TypeScript |
 | Servidor de archivos/proxy | Nginx en despliegue integrado/producción; opcional en desarrollo local |
-| Lenguaje backend | Java 21 |
+| Lenguaje backend | Java 25 |
 | Framework backend | Spring Boot, con versión compatible fijada al iniciar |
 | API | Spring MVC REST + JSON |
 | Seguridad | Spring Security, autenticación y autorización por permisos |

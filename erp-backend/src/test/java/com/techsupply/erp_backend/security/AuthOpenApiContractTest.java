@@ -24,7 +24,8 @@ import static org.assertj.core.api.Assertions.*;
 /** Compares the published contract to actual controller signatures and DTO records; no Spring context or database. */
 class AuthOpenApiContractTest {
     private static Map<String, Object> contract;
-    private static final List<Class<?>> CONTROLLERS = List.of(AuthController.class, AdminUsuariosController.class);
+    private static final List<Class<?>> CONTROLLERS = List.of(
+        AuthController.class, LocalAccountRecoveryController.class, AdminUsuariosController.class);
 
     @BeforeAll
     static void readContract() throws Exception {
