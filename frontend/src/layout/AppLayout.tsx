@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import {
-  AppBar, Avatar, Badge, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, ListSubheader,
+  AppBar, Avatar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, ListSubheader,
   Menu, MenuItem, Toolbar, Typography, useMediaQuery, useTheme,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -23,10 +22,8 @@ import ReceiptIcon from '@mui/icons-material/ReceiptLongOutlined'
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import CreditScoreIcon from '@mui/icons-material/CreditScoreOutlined'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalanceOutlined'
 import { useAuth } from '../features/auth/AuthContext'
-import { http } from '../api/http'
-import { PATHS } from '../config/contract'
-import { normalizePage } from '../shared/api'
 
 const WIDTH = 232
 const groups = [
@@ -52,7 +49,7 @@ const groups = [
       { to: '/inventario/movimientos', label: 'Movimientos', icon: <SwapHorizIcon /> },
       { to: '/inventario/ajustes', label: 'Ajustes', icon: <TuneIcon /> },
       { to: '/inventario/conteos', label: 'Conteos físicos', icon: <FactCheckIcon /> },
-      { to: '/inventario/alertas', label: 'Alertas de stock', icon: <NotificationsIcon />, alert: true },
+      { to: '/inventario/alertas', label: 'Alertas de stock', icon: <NotificationsIcon /> },
       { to: '/inventario/rotacion', label: 'Rotación', icon: <TrendingUpIcon /> },
     ],
   },
@@ -64,7 +61,13 @@ const groups = [
       { to: '/ventas/pedidos', label: 'Órdenes de venta', icon: <ListAltIcon /> },
       { to: '/ventas/despachos', label: 'Despachos', icon: <LocalShippingOutlinedIcon /> },
       { to: '/ventas/facturas', label: 'Facturas', icon: <ReceiptIcon /> },
-      { to: '/ventas/credito', label: 'Gestión de crédito', icon: <CreditScoreIcon />, retained: true },
+      { to: '/ventas/credito', label: 'Gestión de crédito', icon: <CreditScoreIcon /> },
+    ],
+  },
+  {
+    title: 'Contabilidad',
+    items: [
+      { to: '/contabilidad', label: 'Plan, asientos y reportes', icon: <AccountBalanceIcon /> },
     ],
   },
 ]
@@ -76,16 +79,6 @@ export default function AppLayout() {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
-  const retained = useQuery({
-    queryKey: ['total', PATHS.pedidos, 'retenidos-menu'],
-    refetchInterval: 120_000,
-    queryFn: async () => normalizePage((await http.get(PATHS.pedidos, { params: { page: 0, size: 1, estado: 'RETENIDO_CREDITO' } })).data).total,
-  })
-  const alerts = useQuery({
-    queryKey: ['total', PATHS.alertas, 'menu'],
-    refetchInterval: 120_000,
-    queryFn: async () => normalizePage((await http.get(PATHS.alertas, { params: { page: 0, size: 1 } })).data).total,
-  })
 
   const nav = (
     <Box sx={{ width: WIDTH, pb: 2 }}>
@@ -102,8 +95,7 @@ export default function AppLayout() {
               onClick={() => setOpen(false)}
             >
               <ListItemIcon>
-                {'alert' in i && i.alert ? <Badge color="error" badgeContent={alerts.data ?? 0} max={99}>{i.icon}</Badge>
-                  : 'retained' in i && i.retained ? <Badge color="warning" badgeContent={retained.data ?? 0} max={99}>{i.icon}</Badge> : i.icon}
+                {i.icon}
               </ListItemIcon>
               <ListItemText primary={i.label} />
             </ListItemButton>

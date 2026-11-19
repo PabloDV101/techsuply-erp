@@ -1,8 +1,7 @@
 /**
  * CONTRATO CON EL BACKEND.
- * Login/logout/me siguen el diagrama 08 (implementado). Proveedores, productos,
- * órdenes y recepciones son "objetivo" en los diagramas: sus rutas y campos
- * son una propuesta; ajústalos aquí cuando existan los controllers.
+ * Login/logout/me y categorías tienen endpoints implementados. Los demás módulos
+ * operativos siguen pendientes en el backend; no tratar sus rutas como activas.
  */
 export const API = '/api/v1'
 
@@ -15,7 +14,7 @@ export const PATHS = {
   localAccountRecovery: `${API}/auth/local-recovery`,
   proveedores: `${API}/proveedores`,
   productos: `${API}/productos`,
-  categorias: `${API}/categorias-producto`,
+  categorias: `${API}/categories`,
   ordenes: `${API}/ordenes-compra`,
   recepciones: `${API}/recepciones`,
   almacenes: `${API}/almacenes`,
@@ -31,6 +30,14 @@ export const PATHS = {
   despachos: `${API}/despachos`,
   facturas: `${API}/facturas`,
   credito: `${API}/credito`,
+  cuentasContables: `${API}/cuentas-contables`,
+  periodosContables: `${API}/periodos-contables`,
+  asientosContables: `${API}/asientos-contables`,
+  balancePrueba: `${API}/reportes/contabilidad/balance-prueba`,
+  mayorContable: `${API}/reportes/contabilidad/mayor`,
+  estadoResultados: `${API}/reportes/contabilidad/estado-resultados`,
+  balanceGeneral: `${API}/reportes/contabilidad/balance-general`,
+  flujoEfectivo: `${API}/reportes/contabilidad/flujo-efectivo`,
 }
 
 /** Nombre del parámetro de búsqueda de texto en los listados. */

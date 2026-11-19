@@ -21,6 +21,7 @@ import FacturasPage from './features/ventas/facturas/FacturasPage'
 import CreditoPage from './features/credito/CreditoPage'
 import RegisterPage from './features/auth/RegisterPage'
 import LocalAccountRecoveryPage from './features/auth/LocalAccountRecoveryPage'
+import ContabilidadPage from './features/contabilidad/ContabilidadPage'
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="facturas" element={<FacturasPage />} />
             <Route path="credito" element={<CreditoPage />} />
           </Route>
+          <Route path="contabilidad" element={<ContabilidadPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

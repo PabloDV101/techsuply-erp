@@ -27,31 +27,25 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const prov = useTotal(PATHS.proveedores, { activo: true })
   const prod = useTotal(PATHS.productos, { activo: true })
-  const borr = useTotal(PATHS.ordenes, { estado: 'BORRADOR' })
-  const aprob = useTotal(PATHS.ordenes, { estado: 'APROBADA' })
-  const parc = useTotal(PATHS.ordenes, { estado: 'PARCIAL' })
-  const alertas = useTotal(PATHS.alertas, {})
-  const conteos = useTotal(PATHS.conteos, { estado: 'EN_CONTEO' })
-  const cotiz = useTotal(PATHS.cotizaciones, { estado: 'ENVIADA' })
-  const porDespachar = useTotal(PATHS.pedidos, { estado: 'CONFIRMADO' })
-  const retenidos = useTotal(PATHS.pedidos, { estado: 'RETENIDO_CREDITO' })
-  const porCobrar = useTotal(PATHS.facturas, { estado: 'EMITIDA' })
+  const clientes = useTotal(PATHS.clientes, { activo: true })
+  const cuentas = useQuery({
+    queryKey: [PATHS.cuentasContables, 'dashboard-count'],
+    queryFn: async () => (await http.get(PATHS.cuentasContables)).data.length,
+  })
+  const periodos = useQuery({
+    queryKey: [PATHS.periodosContables, 'dashboard-count'],
+    queryFn: async () => (await http.get(PATHS.periodosContables)).data.length,
+  })
   return (
     <Box>
       <Typography variant="h5" gutterBottom>Hola, {user?.nombre}</Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>Resumen de maestros, compras, inventario y ventas.</Typography>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>Resumen de recursos disponibles. Los módulos operativos pendientes se identifican hasta su implementación.</Typography>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' } }}>
         <Card to="/proveedores" label="Proveedores activos" value={prov.data} loading={prov.isLoading} />
         <Card to="/productos" label="Productos activos" value={prod.data} loading={prod.isLoading} />
-        <Card to="/ordenes-compra" label="Órdenes en borrador" value={borr.data} loading={borr.isLoading} />
-        <Card to="/ordenes-compra" label="Órdenes aprobadas sin recibir" value={aprob.data} loading={aprob.isLoading} />
-        <Card to="/recepciones" label="Órdenes con recepción parcial" value={parc.data} loading={parc.isLoading} />
-        <Card to="/inventario/alertas" label="Productos bajo el mínimo" value={alertas.data} loading={alertas.isLoading} />
-        <Card to="/inventario/conteos" label="Conteos en curso" value={conteos.data} loading={conteos.isLoading} />
-        <Card to="/ventas/cotizaciones" label="Cotizaciones enviadas" value={cotiz.data} loading={cotiz.isLoading} />
-        <Card to="/ventas/pedidos" label="Pedidos por despachar" value={porDespachar.data} loading={porDespachar.isLoading} />
-        <Card to="/ventas/credito" label="Pedidos retenidos por crédito" value={retenidos.data} loading={retenidos.isLoading} />
-        <Card to="/ventas/facturas" label="Facturas por cobrar" value={porCobrar.data} loading={porCobrar.isLoading} />
+        <Card to="/ventas/clientes" label="Clientes activos" value={clientes.data} loading={clientes.isLoading} />
+        <Card to="/contabilidad" label="Cuentas contables" value={cuentas.data} loading={cuentas.isLoading} />
+        <Card to="/contabilidad" label="Periodos contables" value={periodos.data} loading={periodos.isLoading} />
       </Box>
     </Box>
   )
