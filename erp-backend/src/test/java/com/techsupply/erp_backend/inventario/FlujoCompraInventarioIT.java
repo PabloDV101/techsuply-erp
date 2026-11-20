@@ -42,6 +42,7 @@ class FlujoCompraInventarioIT extends PostgresIntegrationSupport {
         for (String permission : permissions) db.update("insert into roles_permisos(rol_id,permiso_id) select ?,id from permisos where codigo=?", role, permission);
         long user = id("insert into usuarios(username,correo,password_hash) values (?,?,?) returning id", key, key + "@example.test", passwords.encode(password));
         db.update("insert into usuarios_roles(usuario_id,rol_id) values (?,?)", user, role);
+        configureInventoryAccounting(db, user);
         String response = http.perform(post("/api/v1/auth/login").contentType("application/json")
             .content(json.writeValueAsString(Map.of("identificador",key,"password",password))))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

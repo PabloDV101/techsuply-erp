@@ -59,7 +59,7 @@
   -cantidadRechazada: Decimal
   -precioUnitarioRecibido: Decimal
 }
-  class FacturaProveedor {
+  class FacturaProveedor <<V21>> {
   -id: Long
   -folioInterno: String
   -numeroFacturaProveedor: String
@@ -69,7 +69,9 @@
   -impuestos: Decimal
   -total: Decimal
   -estado: EstadoFacturaProveedor
-  +validarContraCompra()
+  +registrar()
+  +corregirRegistrada()
+  +validarContraOrdenYRecepciones()
 }
   class DetalleFacturaProveedor {
   -id: Long
@@ -207,10 +209,6 @@ end note
  enum EstadoFacturaProveedor {
   REGISTRADA
   VALIDADA
-  PARCIALMENTE_PAGADA
-  PAGADA
-  VENCIDA
-  CANCELADA
  }
  enum EstadoRecepcion {
   PENDIENTE
@@ -274,7 +272,7 @@ end note
  RecepcionCompra "0..*" --> "1" Usuario : registrada por
  RecepcionCompra "1" *-- "1..*" DetalleRecepcion
  DetalleRecepcion "0..*" --> "1" DetalleOrdenCompra
- OrdenCompra "1" -- "0..1" FacturaProveedor : maximo una factura
+ OrdenCompra "1" -- "0..1" FacturaProveedor : V21, maximo una factura
  FacturaProveedor "0..*" --> "1" Proveedor
  FacturaProveedor "1" *-- "1..*" DetalleFacturaProveedor
  DetalleFacturaProveedor "0..*" --> "1" DetalleOrdenCompra

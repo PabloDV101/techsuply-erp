@@ -4,6 +4,7 @@ import com.techsupply.erp_backend.audit.application.AuditAction;
 import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.audit.application.AuditField;
 import com.techsupply.erp_backend.audit.application.AuditState;
+import com.techsupply.erp_backend.contabilidad.application.IntegracionInventarioContableService;
 import com.techsupply.erp_backend.common.api.PageRequests;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.compras.application.dto.CrearRecepcionRequest;
@@ -38,11 +39,13 @@ public class RecepcionCompraService {
     private final AuthenticatedUserProvider users;
     private final AuditTrail audit;
     private final InventarioService inventory;
+    private final IntegracionInventarioContableService accounting;
     public RecepcionCompraService(RecepcionCompraRepository receipts, OrdenCompraRepository orders, CatalogoParaCompras catalog,
-            EntityManager em, JdbcTemplate jdbc, AuthenticatedUserProvider users, AuditTrail audit, InventarioService inventory) {
+            EntityManager em, JdbcTemplate jdbc, AuthenticatedUserProvider users, AuditTrail audit, InventarioService inventory,
+            IntegracionInventarioContableService accounting) {
         this.receipts = receipts; this.orders = orders; this.catalog = catalog; this.em = em;
         this.jdbc = jdbc; this.users = users; this.audit = audit;
-        this.inventory = inventory;
+        this.inventory = inventory; this.accounting = accounting;
     }
     public record Resultado(RecepcionCompraResponse recepcion, boolean creada) {}
 
@@ -124,9 +127,15 @@ public class RecepcionCompraService {
         }
         EstadoOrdenCompra previous = order.getEstado();
         order.registrarRecepcion(complete, anyAccepted);
-        receipt.confirmar(Instant.now());
+        Instant confirmedAt = Instant.now();
+        receipt.confirmar(confirmedAt);
         receipts.saveAndFlush(receipt);
         orders.saveAndFlush(order);
+        if (receipt.getDetalles().stream().anyMatch(d -> d.getCantidadAceptada().signum() > 0)) {
+            em.flush();
+            accounting.contabilizarRecepcion(id, java.time.LocalDate.ofInstant(confirmedAt,
+                java.time.ZoneId.of("America/Mexico_City")));
+        }
         audit.change(AuditAction.PURCHASE_RECEIPT_CONFIRMED, id, Set.of(AuditField.ESTADO), AuditState.PENDIENTE, AuditState.CONFIRMADA);
         if (order.getEstado() != previous) audit.change(AuditAction.PURCHASE_ORDER_RECEIPT_STATUS_CHANGED, order.getId(), Set.of(AuditField.ESTADO),
             AuditState.valueOf(previous.name()), AuditState.valueOf(order.getEstado().name()));

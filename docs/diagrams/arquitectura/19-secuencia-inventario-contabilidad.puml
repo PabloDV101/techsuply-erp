@@ -1,0 +1,46 @@
+@startuml TSS_Secuencia_Integracion_Inventario
+!include ../_estilo.iuml
+title Contabilización transaccional de Compras e Inventario
+hide footbox
+
+actor "Operador autorizado" as Operator
+boundary "API de origen" as API
+control "Servicio de Compras/Ventas/Inventario" as Source
+control "InventarioService" as Stock
+control "IntegracionInventarioContableService" as Integration
+control "AsientoContableService" as Accounting
+database PostgreSQL as DB
+
+Operator -> API : confirmar recepción / despacho / aplicar ajuste
+API -> Source : ejecutar(id)
+Source -> DB : bloquear documento y validar estado
+group Una transacción de origen
+  Source -> Stock : aplicar movimientos de kardex
+  Stock -> DB : guardar existencia, costo y movimiento
+  Source -> DB : cambiar estado del documento
+  Source -> Integration : contabilizar(origen, fecha local)
+  Integration -> DB : leer mapeos y extensiones del kardex
+  alt Cuentas y periodo válidos; importes exactos a centavos
+    Integration -> Accounting : crear asiento idempotente por origen
+    Accounting -> DB : insertar asiento y partidas
+    Accounting -> DB : validar balance y contabilizar
+    Integration -> DB : registrar auditoría
+    DB --> Source : commit conjunto de documento, kardex y asiento
+    Source --> API : documento confirmado/aplicado
+    API --> Operator : 200 OK
+  else Falta mapeo, periodo cerrado o precisión adicional
+    Integration --> Source : error funcional
+    DB --> Source : rollback del documento, existencia, kardex y asiento
+    Source --> API : conflicto; documento reintentable
+    API --> Operator : 409 Conflict
+  end
+end
+
+note over Integration,Accounting
+Recepción: debe Inventario / haber Mercancía recibida no facturada.
+Despacho: debe Costo de ventas / haber Inventario.
+Ajuste positivo: debe Inventario / haber Ganancia por ajuste.
+Ajuste negativo: debe Pérdida por ajuste / haber Inventario.
+No hay redondeo ni factura de proveedor/CxP en este incremento.
+end note
+@enduml

@@ -1,0 +1,1887 @@
+openapi: 3.0.3
+info:
+  title: TechSupply ERP — Contabilidad, sprint 4
+  version: 0.9.0
+  description: Cuentas, periodos, ciclo manual, mayor, balance de prueba, integración de factura de venta, CxC, cobros/aplicaciones e integración transaccional de Compras e Inventario; V21 añade factura de proveedor y CxP, dentro de sus límites documentados.
+servers:
+- url: /api/v1
+security:
+- bearerAuth: []
+x-implementation-status: partial
+paths:
+  /accounting/accounts:
+    get:
+      operationId: listAccountingAccounts
+      summary: Consultar cuentas
+      description: Requiere CONTABILIDAD_CUENTAS_LEER. Paginación limitada y orden estable; incluye cuentas inactivas.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/AccountSort'
+      - $ref: '#/components/parameters/AccountDirection'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CuentaPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createAccountingAccount
+      summary: Crear cuenta
+      description: Requiere CONTABILIDAD_CUENTAS_ADMIN. Código normalizado en mayúsculas; padre activo, agrupador
+        y sin partidas. El nivel se deriva del padre.
+      parameters: []
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cuenta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CuentaCreate'
+    x-implementation-status: implemented
+  /accounting/accounts/{id}:
+    get:
+      operationId: getAccountingAccount
+      summary: Consultar cuenta
+      description: Requiere CONTABILIDAD_CUENTAS_LEER.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cuenta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    x-implementation-status: implemented
+    put:
+      operationId: updateAccountingAccount
+      summary: Actualizar cuenta
+      description: Requiere CONTABILIDAD_CUENTAS_ADMIN. Con partidas solo se permite cambiar el nombre; un padre
+        no acepta movimientos. No se reubica una cuenta con hijas. Un código preexistente conserva su grafía si
+        solo cambia el uso de mayúsculas.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CuentaCreate'
+      responses:
+        '200':
+          description: Cuenta actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cuenta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /accounting/periods:
+    get:
+      operationId: listAccountingPeriods
+      summary: Consultar periodos
+      description: Requiere CONTABILIDAD_PERIODOS_LEER. Paginación limitada y orden estable.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/PeriodSort'
+      - $ref: '#/components/parameters/PeriodDirection'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodoPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createAccountingPeriod
+      summary: Crear periodo
+      description: Requiere CONTABILIDAD_PERIODOS_ADMIN. Fechas pasadas o futuras, límites inclusivos y periodos
+        no solapados; rango invertido 400 y solapamiento 409.
+      parameters: []
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Periodo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PeriodoCreate'
+            example:
+              fechaInicio: '2026-01-01'
+              fechaFin: '2026-01-31'
+    x-implementation-status: implemented
+  /accounting/periods/{id}:
+    get:
+      operationId: getAccountingPeriod
+      summary: Consultar periodo
+      description: Requiere CONTABILIDAD_PERIODOS_LEER.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Periodo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    x-implementation-status: implemented
+  /accounting/periods/{id}/close:
+    post:
+      operationId: closeAccountingPeriod
+      summary: Cerrar periodo
+      description: Requiere CONTABILIDAD_PERIODOS_CERRAR. Rechaza borradores con 409; cierre repetido devuelve el
+        periodo sin nueva auditoría. No existe reapertura.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Periodo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    x-implementation-status: implemented
+  /accounting/periods/{periodId}/accounts/{accountId}/ledger:
+    get:
+      operationId: getAccountingAccountLedger
+      summary: Consultar mayor de una cuenta
+      description: >-
+        Requiere CONTABILIDAD_REPORTES_LEER. Incluye saldo inicial anterior al periodo,
+        partidas contabilizadas/reversadas en orden cronológico y saldo final. Los
+        borradores y cancelados se excluyen; el contraasiento compensa al original reversado.
+      parameters:
+      - $ref: '#/components/parameters/PeriodId'
+      - $ref: '#/components/parameters/AccountId'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Mayor paginado con saldos y totales del periodo completo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibroMayor'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    x-implementation-status: implemented
+  /accounting/entries:
+    get:
+      operationId: listAccountingEntries
+      summary: Consultar asientos
+      description: Requiere CONTABILIDAD_ASIENTOS_LEER. Devuelve el asiento con sus partidas.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/EntrySort'
+      - $ref: '#/components/parameters/EntryDirection'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsientoPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    post:
+      operationId: createAccountingEntry
+      summary: Crear asiento manual en borrador
+      description: Requiere CONTABILIDAD_ASIENTOS_REGISTRAR. La clave equivalente retorna el mismo asiento;
+        contenido incompatible produce 409. El borrador no afecta saldos definitivos. Requiere periodo abierto,
+        fecha incluida y cuentas activas que acepten movimientos. Cada partida debe tener exactamente un lado positivo.
+      parameters: []
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '200':
+          description: Reintento equivalente de creación; devuelve el asiento existente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsientoCreate'
+            example:
+              periodoId: 1
+              fechaContable: '2026-11-12'
+              descripcion: Ejemplo ilustrativo
+              claveIdempotencia: ejemplo-asiento-001
+              partidas:
+              - cuentaId: 1
+                debe: 100.0
+                haber: 0
+              - cuentaId: 2
+                debe: 0
+                haber: 100.0
+    x-implementation-status: implemented
+  /accounting/entries/{id}:
+    get:
+      operationId: getAccountingEntry
+      summary: Consultar asiento
+      description: Requiere CONTABILIDAD_ASIENTOS_LEER. Devuelve el asiento con sus partidas.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    x-implementation-status: implemented
+  /accounting/entries/{id}/cancel:
+    post:
+      operationId: cancelAccountingEntryDraft
+      summary: Cancelar borrador con motivo
+      description: Requiere CONTABILIDAD_ASIENTOS_REGISTRAR. Conserva el asiento y registra actor, instante y motivo.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BorradorCancel'
+      responses:
+        '200':
+          description: Borrador cancelado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    x-implementation-status: implemented
+  /accounting/entries/{id}/edit:
+    put:
+      operationId: editAccountingEntryDraft
+      summary: Editar borrador con motivo
+      description: Requiere CONTABILIDAD_ASIENTOS_REGISTRAR. El periodo no cambia; fecha, descripción y partidas se reemplazan en periodo abierto.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BorradorEdit'
+      responses:
+        '200':
+          description: Borrador actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    x-implementation-status: implemented
+  /accounting/entries/{id}/post:
+    post:
+      operationId: postAccountingEntry
+      summary: Contabilizar asiento
+      description: Requiere CONTABILIDAD_ASIENTOS_CONTABILIZAR. Periodo abierto, fecha incluida, mínimo dos partidas y balance exacto.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    x-implementation-status: implemented
+  /accounting/entries/{id}/reverse:
+    post:
+      operationId: reverseAccountingEntry
+      summary: Revertir asiento mediante contraasiento
+      description: Requiere CONTABILIDAD_ASIENTOS_REVERTIR. Crea contraasiento inmutable; fecha explícita dentro de cualquier periodo abierto; reintento equivalente devuelve el mismo.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asiento'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReversionCreate'
+            example:
+              fechaContable: '2026-11-12'
+              motivo: Ejemplo ilustrativo
+              claveIdempotencia: ejemplo-reversion-001
+    x-implementation-status: implemented
+  /accounting/accounts/{id}/status:
+    x-implementation-status: implemented
+    patch:
+      operationId: setAccountingAccountStatus
+      summary: Cambiar estado de cuenta
+      description: Requiere CONTABILIDAD_CUENTAS_ADMIN. Una cuenta con partidas no puede darse de baja; reintentar
+        el mismo estado no registra un cambio adicional.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CuentaEstado'
+      responses:
+        '200':
+          description: Cuenta actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cuenta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /accounting/integrations/sales-invoices:
+    get:
+      operationId: listPendingSalesInvoiceIntegrations
+      summary: Consultar facturas pendientes de integración contable
+      description: Requiere CONTABILIDAD_INTEGRACIONES_LEER. La señal se persiste en la transacción de emisión; no incluye facturas históricas emitidas antes de V17.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página estable de integraciones pendientes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegracionFacturaVentaPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    x-implementation-status: implemented
+  /accounting/accounts-receivable:
+    get:
+      operationId: listAccountsReceivable
+      summary: Consultar auxiliar de cuentas por cobrar
+      description: >-
+        Requiere CONTABILIDAD_CXC_LEER. Incluye facturas nuevas cuya integración contable quedó contabilizada.
+        El saldo pendiente se deriva del importe original menos aplicaciones confirmadas; como aún no se registran cobros,
+        en esta versión coincide con el importe original. No incluye facturas históricas.
+      parameters:
+      - name: clienteId
+        in: query
+        required: false
+        schema: { type: integer, format: int64, minimum: 1 }
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Página ordenada por fecha de emisión descendente e identificador
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CuentaPorCobrarPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    x-implementation-status: implemented
+  /accounting/accounts-receivable/{id}:
+    get:
+      operationId: getAccountReceivable
+      summary: Consultar cuenta por cobrar
+      description: Requiere CONTABILIDAD_CXC_LEER. El saldo se calcula desde el importe original y las aplicaciones confirmadas.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Auxiliar de la factura contabilizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CuentaPorCobrar' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    x-implementation-status: implemented
+  /accounting/integrations/sales-invoices/accounts:
+    get:
+      operationId: getSalesInvoiceAccountingAccounts
+      summary: Consultar mapeo de cuentas de factura
+      description: Requiere CONTABILIDAD_INTEGRACIONES_ADMIN. Si falta una cuenta, la integración permanece pendiente.
+      responses:
+        '200':
+          description: Configuración actual
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionFacturaVenta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      operationId: configureSalesInvoiceAccountingAccounts
+      summary: Configurar cuentas para factura de venta
+      description: >-
+        Requiere CONTABILIDAD_INTEGRACIONES_ADMIN. Cuentas activas distintas:
+        activo/deudora, ingreso/acreedor y pasivo/acreedor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfiguracionFacturaVentaWrite' }
+      responses:
+        '200':
+          description: Mapeo sustituido de forma atómica
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionFacturaVenta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/integrations/sales-invoices/{invoiceId}:
+    get:
+      operationId: getSalesInvoiceAccountingIntegration
+      summary: Consultar estado contable de una factura
+      description: Requiere CONTABILIDAD_INTEGRACIONES_LEER. Incluye solo estado, contador y código seguro del último fallo.
+      parameters:
+      - { name: invoiceId, in: path, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+      responses:
+        '200':
+          description: Estado de integración
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegracionFacturaVenta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    x-implementation-status: implemented
+  /accounting/integrations/sales-invoices/{invoiceId}/retry:
+    post:
+      operationId: retrySalesInvoiceAccountingIntegration
+      summary: Reintentar contabilización de una factura
+      description: Requiere CONTABILIDAD_INTEGRACIONES_REINTENTAR, CONTABILIDAD_ASIENTOS_REGISTRAR y CONTABILIDAD_ASIENTOS_CONTABILIZAR. Si la fecha de emisión pertenece a un periodo abierto se usa; si no, exige una fecha explícita en cualquier periodo abierto. La factura permanece emitida si falla.
+      parameters:
+      - { name: invoiceId, in: path, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReintentoFacturaVenta' }
+      responses:
+        '200':
+          description: Estado actualizado; repetir una factura ya integrada devuelve el mismo asiento
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegracionFacturaVenta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/customer-receipts:
+    post:
+      operationId: registerCustomerReceipt
+      summary: Registrar cobro pendiente de confirmación
+      description: Requiere CONTABILIDAD_COBROS_REGISTRAR. Idempotente; registrar no acredita recepción de fondos ni modifica CxC.
+      x-implementation-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CobroCreate' }
+      responses:
+        '200': { description: Cobro registrado, content: { application/json: { schema: { $ref: '#/components/schemas/Cobro' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/customer-receipts/{id}:
+    get:
+      operationId: getCustomerReceipt
+      summary: Consultar cobro y monto disponible
+      description: Requiere CONTABILIDAD_COBROS_LEER.
+      x-implementation-status: implemented
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Cobro, content: { application/json: { schema: { $ref: '#/components/schemas/Cobro' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    x-implementation-status: implemented
+  /accounting/customer-receipts/{id}/confirm:
+    post:
+      operationId: confirmCustomerReceipt
+      summary: Confirmar fondos y contabilizar
+      description: Requiere CONTABILIDAD_COBROS_CONFIRMAR y permisos de contabilización. Debita fondos y acredita anticipos por el total. Fecha explícita en periodo abierto.
+      x-implementation-status: implemented
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CobroConfirm' }
+      responses:
+        '200': { description: Cobro confirmado, content: { application/json: { schema: { $ref: '#/components/schemas/Cobro' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/customer-receipts/{id}/applications:
+    post:
+      operationId: applyCustomerReceipt
+      summary: Aplicar cobro a una cuenta por cobrar
+      description: Requiere CONTABILIDAD_COBROS_REGISTRAR y permisos para contabilizar. Exige mismo cliente y saldo/disponible; contabiliza la reclasificación de anticipo a CxC en la fecha explícita.
+      x-implementation-status: implemented
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CobroApplicationCreate' }
+      responses:
+        '200': { description: Aplicación registrada, content: { application/json: { schema: { $ref: '#/components/schemas/Cobro' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/customer-receipts/accounts:
+    get:
+      operationId: getCustomerReceiptAccounts
+      summary: Consultar cuentas de cobro configuradas
+      description: Requiere CONTABILIDAD_COBROS_CONFIGURAR.
+      x-implementation-status: implemented
+      responses:
+        '200':
+          description: Configuración
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CobroAccounts' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      operationId: configureCustomerReceiptAccounts
+      summary: Configurar cuentas para un medio de cobro
+      description: Requiere CONTABILIDAD_COBROS_CONFIGURAR. Fondos ACTIVO/DEUDORA y anticipos PASIVO/ACREEDORA; distintas de sí y de CxC.
+      x-implementation-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CobroAccountsCreate' }
+      responses:
+        '200':
+          description: Configuración actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CobroAccounts' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/inventory-account-mappings:
+    get:
+      operationId: getInventoryAccountingMappings
+      summary: Consultar las cuentas de integración de Inventario
+      description: Requiere CONTABILIDAD_INVENTARIO_LEER.
+      responses:
+        '200':
+          description: Mapeos configurados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionCuentasInventario' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      operationId: configureInventoryAccountingMappings
+      summary: Configurar cuentas para recepción, despacho y ajustes
+      description: Requiere CONTABILIDAD_INVENTARIO_CONFIGURAR. Cuentas activas, de movimiento y de tipo/naturaleza requerida.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfiguracionCuentasInventarioWrite' }
+      responses:
+        '200':
+          description: Mapeos actualizados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionCuentasInventario' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /supplier-invoices:
+    post:
+      operationId: registerSupplierInvoice
+      summary: Registrar factura de proveedor
+      description: Requiere COMPRAS_FACTURAS_PROVEEDOR_REGISTRAR. Una por orden; todavía no crea CxP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FacturaProveedorWrite' }
+      responses:
+        '201':
+          description: Registrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FacturaProveedor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /supplier-invoices/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      operationId: getSupplierInvoice
+      summary: Consultar factura de proveedor
+      description: Requiere COMPRAS_FACTURAS_PROVEEDOR_LEER.
+      responses:
+        '200':
+          description: Factura
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FacturaProveedor' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: editSupplierInvoice
+      summary: Corregir factura registrada
+      description: Requiere COMPRAS_FACTURAS_PROVEEDOR_REGISTRAR. La orden y proveedor son inmutables.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FacturaProveedorWrite' }
+      responses:
+        '200':
+          description: Corregida
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FacturaProveedor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /supplier-invoices/{id}/validate:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      operationId: validateSupplierInvoice
+      summary: Conciliar, contabilizar y crear CxP
+      description: Requiere COMPRAS_FACTURAS_PROVEEDOR_VALIDAR. Conciliación exacta con orden y recepciones; fecha de negocio dentro de periodo abierto; rollback ante cualquier fallo.
+      responses:
+        '200':
+          description: Validada o reintento idempotente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FacturaProveedor' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/payables/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      operationId: getAccountsPayable
+      summary: Consultar auxiliar CxP
+      description: Requiere CONTABILIDAD_CXP_LEER. Sin pagos aplicados, saldo igual al original.
+      responses:
+        '200':
+          description: Auxiliar
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CuentaPorPagar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    x-implementation-status: implemented
+  /accounting/supplier-invoice-accounts:
+    get:
+      operationId: getSupplierInvoiceAccounts
+      summary: Consultar mapeo contable de factura de proveedor
+      description: Requiere CONTABILIDAD_CXP_LEER. Respuesta indexada por concepto contable.
+      responses:
+        '200':
+          description: Mapeos
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: { type: integer, format: int64 } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      operationId: configureSupplierInvoiceAccounts
+      summary: Configurar IVA acreditable y CxP
+      description: Requiere CONTABILIDAD_CXP_CONFIGURAR. Cuentas activas, compatibles y distintas.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfiguracionFacturaProveedorWrite' }
+      responses:
+        '200':
+          description: Configuración
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionFacturaProveedorWrite' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    x-implementation-status: implemented
+  /accounting/supplier-payments:
+    post:
+      operationId: registerSupplierPayment
+      summary: Registrar pago a proveedor
+      description: Requiere CONTABILIDAD_PAGOS_PROVEEDOR_REGISTRAR; la clave de idempotencia identifica los datos del registro.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proveedorId, fechaPago, monto, medio, claveIdempotencia]
+              properties:
+                proveedorId: {type: integer, format: int64, minimum: 1}
+                fechaPago: {type: string, format: date-time}
+                monto: {type: number, minimum: 0.01}
+                medio: {type: string, enum: [TRANSFERENCIA, CHEQUE, EFECTIVO, TARJETA, OTRO]}
+                referencia: {type: string, maxLength: 100, nullable: true}
+                claveIdempotencia: {type: string, minLength: 1, maxLength: 100}
+      responses:
+        '200':
+          description: Pago registrado o reintento idéntico
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PagoProveedor'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /accounting/supplier-payments/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    get:
+      operationId: getSupplierPayment
+      summary: Consultar pago y aplicaciones
+      description: Requiere CONTABILIDAD_PAGOS_PROVEEDOR_LEER.
+      responses:
+        '200':
+          description: Pago y aplicaciones
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PagoProveedor'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /accounting/supplier-payments/{id}/confirm:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    post:
+      operationId: confirmSupplierPayment
+      summary: Confirmar pago y aplicar a cuentas por pagar
+      description: Requiere permiso de confirmación y permisos para registrar y contabilizar asientos. Las aplicaciones deben sumar el pago y pertenecer al mismo proveedor; usa el día actual de Ciudad de México en periodo abierto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [aplicaciones]
+              properties:
+                aplicaciones:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [cuentaPorPagarId, monto]
+                    properties:
+                      cuentaPorPagarId: {type: integer, format: int64, minimum: 1}
+                      monto: {type: number, minimum: 0.01}
+      responses:
+        '200':
+          description: Pago confirmado o reintento idéntico
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PagoProveedor'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /accounting/supplier-payments/accounts:
+    get:
+      operationId: getSupplierPaymentFunds
+      summary: Consultar cuenta de fondos para pagos
+      description: Requiere CONTABILIDAD_PAGOS_PROVEEDOR_CONFIGURAR.
+      responses:
+        '200':
+          description: Cuenta configurada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cuentaFondosId]
+                properties:
+                  cuentaFondosId: {type: integer, format: int64}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      operationId: configureSupplierPaymentFunds
+      summary: Configurar cuenta de fondos para pagos
+      description: Requiere CONTABILIDAD_PAGOS_PROVEEDOR_CONFIGURAR y una cuenta activa de activo deudora que acepte movimientos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cuentaFondosId]
+              properties:
+                cuentaFondosId: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200': {description: Configuración actualizada}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /accounting/cash-flow-classifications/accounts:
+    post:
+      operationId: classifyCashFlowAccount
+      summary: Registrar clasificación de flujo
+      description: Requiere CONTABILIDAD_FLUJO_CLASIFICAR.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cuentaId, clasificacion, desde, hasta]
+              properties:
+                cuentaId: {type: integer}
+                clasificacion: {type: string, enum: [EFECTIVO, CAPITAL_TRABAJO, INVERSION, FINANCIACION, NO_MONETARIO, RESULTADO]}
+                desde: {type: string , format: date}
+                hasta: {type: string , format: date}
+      responses:
+        '200': {description: Identificador de clasificación}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /accounting/cash-flow-classifications/accounts/{id}/void:
+    post:
+      operationId: voidClassifyCashFlowAccount
+      summary: Anular clasificación con motivo
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: integer, format: int64}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: {type: string, minLength: 1, maxLength: 300}
+      responses:
+        '200': {description: Clasificación anulada}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /accounting/cash-flow-classifications/lines:
+    post:
+      operationId: classifyCashFlowLine
+      summary: Registrar clasificación de flujo
+      description: Requiere CONTABILIDAD_FLUJO_CLASIFICAR.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [partidaId, clasificacion]
+              properties:
+                partidaId: {type: integer}
+                clasificacion: {type: string, enum: [OPERACION, INVERSION, FINANCIACION, NO_MONETARIO]}
+      responses:
+        '200': {description: Identificador de clasificación}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /accounting/cash-flow-classifications/lines/{id}/void:
+    post:
+      operationId: voidClassifyCashFlowLine
+      summary: Anular clasificación con motivo
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: integer, format: int64}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: {type: string, minLength: 1, maxLength: 300}
+      responses:
+        '200': {description: Clasificación anulada}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token opaco existente; los permisos contables se definen en migraciones Flyway.
+  parameters:
+    PeriodId:
+      name: periodId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+    EntrySort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [id, folio, fechaContable]
+        default: fechaContable
+    EntryDirection:
+      name: direction
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+    AccountSort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+        - id
+        - codigo
+        - nombre
+        default: codigo
+    AccountDirection:
+      name: direction
+      in: query
+      schema:
+        type: string
+        enum:
+        - asc
+        - desc
+        default: asc
+    PeriodSort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+        - id
+        - fechaInicio
+        - fechaFin
+        default: fechaInicio
+    PeriodDirection:
+      name: direction
+      in: query
+      schema:
+        type: string
+        enum:
+        - asc
+        - desc
+        default: asc
+  responses:
+    BadRequest:
+      description: Entrada inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Autenticación requerida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Permiso insuficiente
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Estado o solicitud incompatible
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    PagoProveedor:
+      type: object
+      required: [id, folio, proveedorId, fechaPago, monto, medio, estado, aplicaciones]
+      properties:
+        id: {type: integer, format: int64}
+        folio: {type: string}
+        proveedorId: {type: integer, format: int64}
+        fechaPago: {type: string, format: date-time}
+        monto: {type: number}
+        medio: {type: string}
+        referencia: {type: string, nullable: true}
+        estado: {type: string, enum: [REGISTRADO, CONFIRMADO]}
+        asientoContableId: {type: integer, format: int64, nullable: true}
+        fechaContable: {type: string, format: date, nullable: true}
+        aplicaciones:
+          type: array
+          items:
+            type: object
+            required: [cuentaPorPagarId, montoAplicado]
+            properties:
+              cuentaPorPagarId: {type: integer, format: int64}
+              montoAplicado: {type: number}
+    FacturaProveedorWrite:
+      type: object
+      required: [ordenCompraId, numeroFacturaProveedor, fechaEmision, fechaVencimiento, detalles]
+      properties:
+        ordenCompraId: { type: integer, format: int64, minimum: 1 }
+        numeroFacturaProveedor: { type: string, minLength: 1, maxLength: 60 }
+        fechaEmision: { type: string, format: date }
+        fechaVencimiento: { type: string, format: date }
+        detalles:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/DetalleFacturaProveedorWrite' }
+    DetalleFacturaProveedorWrite:
+      type: object
+      required: [detalleOrdenCompraId, cantidadFacturada, precioUnitario, descuentoPct, tasaImpuesto]
+      properties:
+        detalleOrdenCompraId: { type: integer, format: int64, minimum: 1 }
+        cantidadFacturada: { type: number, minimum: 0, exclusiveMinimum: true, multipleOf: 0.001 }
+        precioUnitario: { type: number, minimum: 0, multipleOf: 0.01 }
+        descuentoPct: { type: number, minimum: 0, maximum: 100, multipleOf: 0.01 }
+        tasaImpuesto: { type: number, minimum: 0, maximum: 100, multipleOf: 0.01 }
+    FacturaProveedor:
+      allOf:
+      - { $ref: '#/components/schemas/FacturaProveedorWrite' }
+      - type: object
+        required: [id, folioInterno, proveedorId, subtotal, impuestos, total, estado]
+        properties:
+          id: { type: integer, format: int64 }
+          folioInterno: { type: string }
+          proveedorId: { type: integer, format: int64 }
+          subtotal: { type: number, multipleOf: 0.01 }
+          impuestos: { type: number, multipleOf: 0.01 }
+          total: { type: number, multipleOf: 0.01 }
+          estado: { type: string, enum: [REGISTRADA, VALIDADA] }
+          asientoContableId: { type: integer, format: int64, nullable: true }
+    ConfiguracionFacturaProveedorWrite:
+      type: object
+      required: [ivaAcreditableCuentaId, cuentasPorPagarCuentaId]
+      properties:
+        ivaAcreditableCuentaId: { type: integer, format: int64, minimum: 1 }
+        cuentasPorPagarCuentaId: { type: integer, format: int64, minimum: 1 }
+    CuentaPorPagar:
+      type: object
+      required: [id, facturaProveedorId, proveedorId, asientoContableId, montoOriginal, saldoPendiente, fechaEmision, fechaVencimiento]
+      properties:
+        id: { type: integer, format: int64 }
+        facturaProveedorId: { type: integer, format: int64 }
+        proveedorId: { type: integer, format: int64 }
+        asientoContableId: { type: integer, format: int64 }
+        montoOriginal: { type: number, multipleOf: 0.01 }
+        saldoPendiente: { type: number, multipleOf: 0.01 }
+        fechaEmision: { type: string, format: date }
+        fechaVencimiento: { type: string, format: date }
+    ApiError:
+      type: object
+      required:
+      - status
+      - code
+      - message
+      properties:
+        status:
+          type: integer
+        code:
+          type: string
+        message:
+          type: string
+    CuentaCreate:
+      type: object
+      required:
+      - codigo
+      - nombre
+      - tipo
+      - naturaleza
+      - aceptaMovimientos
+      properties:
+        codigo:
+          type: string
+          minLength: 1
+          maxLength: 30
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 150
+        tipo:
+          type: string
+          enum:
+          - ACTIVO
+          - PASIVO
+          - CAPITAL
+          - INGRESO
+          - COSTO
+          - GASTO
+        naturaleza:
+          type: string
+          enum:
+          - DEUDORA
+          - ACREEDORA
+        cuentaPadreId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        aceptaMovimientos:
+          type: boolean
+      description: Código normalizado; cuentaPadreId nulo indica raíz. El nivel se calcula en backend.
+    Cuenta:
+      type: object
+      required:
+      - id
+      - codigo
+      - nombre
+      - tipo
+      - naturaleza
+      - nivel
+      - aceptaMovimientos
+      - activa
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        codigo:
+          type: string
+          minLength: 1
+          maxLength: 30
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 150
+        tipo:
+          type: string
+          enum:
+          - ACTIVO
+          - PASIVO
+          - CAPITAL
+          - INGRESO
+          - COSTO
+          - GASTO
+        naturaleza:
+          type: string
+          enum:
+          - DEUDORA
+          - ACREEDORA
+        cuentaPadreId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        aceptaMovimientos:
+          type: boolean
+        nivel:
+          type: integer
+          minimum: 1
+        activa:
+          type: boolean
+    PeriodoCreate:
+      type: object
+      required:
+      - fechaInicio
+      - fechaFin
+      properties:
+        fechaInicio:
+          type: string
+          format: date
+        fechaFin:
+          type: string
+          format: date
+    Periodo:
+      type: object
+      required:
+      - id
+      - fechaInicio
+      - fechaFin
+      - estado
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        fechaInicio:
+          type: string
+          format: date
+        fechaFin:
+          type: string
+          format: date
+        estado:
+          type: string
+          enum:
+          - ABIERTO
+          - CERRADO
+        cerradoPorUsuarioId:
+          type: integer
+          format: int64
+          nullable: true
+        cerradoEn:
+          type: string
+          format: date-time
+          nullable: true
+    PartidaCreate:
+      type: object
+      required:
+      - cuentaId
+      - debe
+      - haber
+      properties:
+        cuentaId:
+          type: integer
+          format: int64
+          minimum: 1
+        debe:
+          type: number
+          minimum: 0
+          maximum: 999999999999.99
+          multipleOf: 0.01
+          description: Decimal de hasta 12 enteros y 2 decimales; no redondear silenciosamente.
+        haber:
+          type: number
+          minimum: 0
+          maximum: 999999999999.99
+          multipleOf: 0.01
+          description: Decimal de hasta 12 enteros y 2 decimales; no redondear silenciosamente.
+        descripcion:
+          type: string
+          maxLength: 200
+          nullable: true
+    AsientoCreate:
+      type: object
+      required:
+      - periodoId
+      - fechaContable
+      - descripcion
+      - claveIdempotencia
+      - partidas
+      properties:
+        periodoId:
+          type: integer
+          format: int64
+          minimum: 1
+        fechaContable:
+          type: string
+          format: date
+        descripcion:
+          type: string
+          minLength: 1
+          maxLength: 300
+        claveIdempotencia:
+          type: string
+          minLength: 1
+          maxLength: 120
+        partidas:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/PartidaCreate'
+    Asiento:
+      type: object
+      required:
+      - id
+      - folio
+      - fechaContable
+      - periodoId
+      - descripcion
+      - estado
+      - origenModulo
+      - origenTipo
+      - contraasientoDeId
+      - creadoPorUsuarioId
+      - partidas
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        folio:
+          type: string
+        fechaContable:
+          type: string
+          format: date
+        periodoId:
+          type: integer
+          format: int64
+          minimum: 1
+        descripcion:
+          type: string
+        estado:
+          type: string
+          enum:
+          - BORRADOR
+          - CONTABILIZADO
+          - REVERSADO
+          - CANCELADO
+        origenModulo:
+          type: string
+        origenTipo:
+          type: string
+        origenId:
+          type: integer
+          format: int64
+          nullable: true
+        contraasientoDeId:
+          type: integer
+          format: int64
+          nullable: true
+        creadoPorUsuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+        partidas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Partida'
+    Partida:
+      type: object
+      required: [id, numeroLinea, cuentaId, debe, haber]
+      properties:
+        id: { type: integer, format: int64, minimum: 1 }
+        numeroLinea: { type: integer, minimum: 1 }
+        cuentaId: { type: integer, format: int64, minimum: 1 }
+        debe: { type: number, minimum: 0, maximum: 999999999999.99, multipleOf: 0.01 }
+        haber: { type: number, minimum: 0, maximum: 999999999999.99, multipleOf: 0.01 }
+        descripcion: { type: string, maxLength: 200, nullable: true }
+    ReversionCreate:
+      type: object
+      required:
+      - fechaContable
+      - motivo
+      - claveIdempotencia
+      properties:
+        fechaContable:
+          type: string
+          format: date
+        motivo:
+          type: string
+          minLength: 1
+          maxLength: 300
+        claveIdempotencia:
+          type: string
+          minLength: 1
+          maxLength: 120
+    BorradorCancel:
+      type: object
+      required: [motivo]
+      properties:
+        motivo: {type: string, minLength: 1, maxLength: 300}
+    BorradorEdit:
+      type: object
+      required: [fechaContable, descripcion, motivo, partidas]
+      properties:
+        fechaContable: {type: string, format: date}
+        descripcion: {type: string, minLength: 1, maxLength: 300}
+        motivo: {type: string, minLength: 1, maxLength: 300}
+        partidas:
+          type: array
+          minItems: 2
+          items: {$ref: '#/components/schemas/PartidaCreate'}
+    CuentaPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cuenta'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    PeriodoPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Periodo'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    AsientoPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asiento'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    LibroMayorLinea:
+      type: object
+      required: [asientoId, folio, fechaContable, descripcionAsiento, numeroLinea, debe, haber, saldo]
+      properties:
+        asientoId: { type: integer, format: int64 }
+        folio: { type: string }
+        fechaContable: { type: string, format: date }
+        descripcionAsiento: { type: string }
+        numeroLinea: { type: integer, format: int32 }
+        descripcionPartida: { type: string, nullable: true }
+        debe: { type: number, maximum: 999999999999.99, multipleOf: 0.01 }
+        haber: { type: number, maximum: 999999999999.99, multipleOf: 0.01 }
+        saldo: { type: number, multipleOf: 0.01, description: Saldo acumulado deudor positivo y acreedor negativo. }
+    LibroMayor:
+      type: object
+      required: [periodoId, cuentaId, codigoCuenta, nombreCuenta, saldoInicial, movimientoDebe, movimientoHaber, saldoFinal, content, page, size, totalElements, totalPages]
+      properties:
+        periodoId: { type: integer, format: int64 }
+        cuentaId: { type: integer, format: int64 }
+        codigoCuenta: { type: string }
+        nombreCuenta: { type: string }
+        saldoInicial: { type: number, multipleOf: 0.01, description: Saldo deudor positivo y acreedor negativo antes del inicio del periodo. }
+        movimientoDebe: { type: number, multipleOf: 0.01 }
+        movimientoHaber: { type: number, multipleOf: 0.01 }
+        saldoFinal: { type: number, multipleOf: 0.01 }
+        content: { type: array, items: { $ref: '#/components/schemas/LibroMayorLinea' } }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    IntegracionFacturaVenta:
+      type: object
+      required: [facturaVentaId, folio, estado, intentos, emitidaEn]
+      properties:
+        facturaVentaId: { type: integer, format: int64 }
+        folio: { type: string }
+        estado: { type: string, enum: [PENDIENTE, CONTABILIZADA] }
+        asientoContableId: { type: integer, format: int64, nullable: true }
+        fechaContable: { type: string, format: date, nullable: true }
+        intentos: { type: integer, minimum: 0 }
+        ultimaFechaIntentada: { type: string, format: date, nullable: true }
+        ultimoCodigoError: { type: string, nullable: true, enum: [CONFIGURACION_INCOMPLETA, CUENTAS_INVALIDAS, PERIODO_NO_DISPONIBLE, FACTURA_SIN_IMPORTE, ERROR_CONTABLE] }
+        emitidaEn: { type: string, format: date-time }
+        contabilizadaEn: { type: string, format: date-time, nullable: true }
+    IntegracionFacturaVentaPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/IntegracionFacturaVenta' } }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    CuentaPorCobrar:
+      type: object
+      required: [id, facturaVentaId, folio, clienteId, montoOriginal, saldoPendiente, fechaEmision, fechaVencimiento]
+      properties:
+        id: { type: integer, format: int64, minimum: 1 }
+        facturaVentaId: { type: integer, format: int64, minimum: 1 }
+        folio: { type: string }
+        clienteId: { type: integer, format: int64, minimum: 1 }
+        montoOriginal: { type: number, minimum: 0.01, maximum: 999999999999.99, multipleOf: 0.01 }
+        saldoPendiente: { type: number, minimum: 0, maximum: 999999999999.99, multipleOf: 0.01, description: Importe original menos aplicaciones de cobro confirmadas. }
+        fechaEmision: { type: string, format: date }
+        fechaVencimiento: { type: string, format: date }
+    CuentaPorCobrarPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/CuentaPorCobrar' } }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    ConfiguracionFacturaVentaWrite:
+      type: object
+      required: [clientesPorCobrarCuentaId, ventasCuentaId, impuestosTrasladadosCuentaId]
+      properties:
+        clientesPorCobrarCuentaId: { type: integer, format: int64, minimum: 1 }
+        ventasCuentaId: { type: integer, format: int64, minimum: 1 }
+        impuestosTrasladadosCuentaId: { type: integer, format: int64, minimum: 1 }
+    ConfiguracionFacturaVenta:
+      type: object
+      required: [configurada, cuentas]
+      properties:
+        configurada: { type: boolean }
+        cuentas:
+          type: array
+          items:
+            type: object
+            required: [concepto, cuentaId, codigo, nombre]
+            properties:
+              concepto: { type: string, enum: [CLIENTES_POR_COBRAR, VENTAS, IMPUESTOS_TRASLADADOS] }
+              cuentaId: { type: integer, format: int64 }
+              codigo: { type: string }
+              nombre: { type: string }
+    ReintentoFacturaVenta:
+      type: object
+      properties:
+        fechaContable: { type: string, format: date, description: Fecha explícita requerida si la emisión no cae en periodo abierto. }
+    CuentaEstado:
+      type: object
+      required:
+      - activa
+      properties:
+        activa:
+          type: boolean
+
+    CobroCreate:
+      type: object
+      required: [clienteId, fecha, monto, medio, claveIdempotencia]
+      properties:
+        clienteId: { type: integer, format: int64, minimum: 1 }
+        fecha: { type: string, format: date-time }
+        monto: { type: number, minimum: 0.01, maximum: 999999999999.99 }
+        medio: { type: string, enum: [EFECTIVO, TRANSFERENCIA, CHEQUE, TARJETA, OTRO] }
+        referencia: { type: string, maxLength: 100 }
+        claveIdempotencia: { type: string, maxLength: 100 }
+    CobroConfirm:
+      type: object
+      required: [fechaContable]
+      properties:
+        fechaContable: { type: string, format: date }
+    CobroApplicationCreate:
+      type: object
+      required: [cuentaPorCobrarId, monto, claveIdempotencia, fechaContable]
+      properties:
+        cuentaPorCobrarId: { type: integer, format: int64, minimum: 1 }
+        monto: { type: number, minimum: 0.01, maximum: 999999999999.99 }
+        claveIdempotencia: { type: string, maxLength: 100 }
+        fechaContable: { type: string, format: date }
+    Cobro:
+      type: object
+      required: [id, folio, clienteId, fecha, monto, medio, estado, montoAplicado, montoDisponible]
+      properties:
+        id: { type: integer, format: int64 }
+        folio: { type: string }
+        clienteId: { type: integer, format: int64 }
+        fecha: { type: string, format: date-time }
+        monto: { type: number }
+        medio: { type: string }
+        referencia: { type: string, nullable: true }
+        estado: { type: string, enum: [REGISTRADO, CONFIRMADO] }
+        montoAplicado: { type: number }
+        montoDisponible: { type: number }
+        asientoContableId: { type: integer, format: int64, nullable: true }
+        fechaContable: { type: string, format: date, nullable: true }
+    CobroAccountsCreate:
+      type: object
+      required: [medio, cuentaFondosId, cuentaAnticiposId]
+      properties:
+        medio: { type: string, enum: [EFECTIVO, TRANSFERENCIA, CHEQUE, TARJETA, OTRO] }
+        cuentaFondosId: { type: integer, format: int64 }
+        cuentaAnticiposId: { type: integer, format: int64 }
+    CobroAccounts:
+      type: object
+      required: [medios]
+      properties:
+        medios:
+          type: array
+          items:
+            type: object
+            properties:
+              medio: { type: string }
+              cuentaFondosId: { type: integer, format: int64 }
+              codigoFondos: { type: string }
+              cuentaAnticiposId: { type: integer, format: int64 }
+              codigoAnticipos: { type: string }
+    ConfiguracionCuentasInventarioWrite:
+      type: object
+      required: [inventarioCuentaId, mercanciaRecibidaNoFacturadaCuentaId, costoDeVentasCuentaId, ajustePositivoCuentaId, ajusteNegativoCuentaId]
+      properties:
+        inventarioCuentaId: { type: integer, format: int64, minimum: 1 }
+        mercanciaRecibidaNoFacturadaCuentaId: { type: integer, format: int64, minimum: 1, description: Pasivo transitorio; no constituye cuenta por pagar a proveedor. }
+        costoDeVentasCuentaId: { type: integer, format: int64, minimum: 1 }
+        ajustePositivoCuentaId: { type: integer, format: int64, minimum: 1 }
+        ajusteNegativoCuentaId: { type: integer, format: int64, minimum: 1 }
+    ConfiguracionCuentasInventario:
+      type: object
+      required: [completa, cuentas]
+      properties:
+        completa: { type: boolean }
+        cuentas:
+          type: array
+          items:
+            type: object
+            required: [concepto, cuentaId, codigo, nombre]
+            properties:
+              concepto: { type: string, enum: [INVENTARIO, MERCANCIA_RECIBIDA_NO_FACTURADA, COSTO_DE_VENTAS, AJUSTE_INVENTARIO_POSITIVO, AJUSTE_INVENTARIO_NEGATIVO] }
+              cuentaId: { type: integer, format: int64 }
+              codigo: { type: string }
+              nombre: { type: string }

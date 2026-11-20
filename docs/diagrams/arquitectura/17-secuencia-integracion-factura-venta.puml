@@ -1,0 +1,59 @@
+@startuml TSS_Secuencia_Integracion_Factura_Venta
+!include ../_estilo.iuml
+title Emisión durable y reintento explícito de contabilización
+hide footbox
+
+actor "Ventas" as SalesUser
+actor "Contador autorizado" as Accountant
+boundary FacturaController as SalesAPI
+control FacturaService as SalesService
+control IntegracionFacturaVentaService as Integration
+control ProcesadorFacturaVentaContable as Processor
+control AsientoContableService as EntryService
+database PostgreSQL as DB
+
+SalesUser -> SalesAPI : POST /sales/invoices
+SalesAPI -> SalesService : emitir(pedido, idempotencia)
+group Misma transacción de emisión
+  SalesService -> DB : guardar factura y snapshot
+  SalesService -> DB : marcar EMITIDA
+  SalesService -> Integration : registrarEmision(facturaId)
+  Integration -> DB : insertar outbox PENDIENTE
+  Integration -> DB : auditoría de emisión y señal durable
+end
+SalesService --> SalesAPI : factura EMITIDA
+SalesAPI --> SalesUser : 201 Created
+
+Accountant -> Integration : POST /accounting/integrations/sales-invoices/{id}/retry
+Integration -> Processor : procesar(facturaId, fecha opcional)
+Processor -> DB : bloquear outbox; leer factura y configuración
+alt configuración completa y periodo abierto
+  Processor -> EntryService : crearDesdeOrigen(VENTAS, FACTURA_VENTA)
+  EntryService -> DB : insertar asiento y partidas vinculados
+  Processor -> EntryService : contabilizar(asientoId)
+  EntryService -> DB : validar balance y contabilizar
+  Processor -> DB : outbox CONTABILIZADA y asociar asiento
+  Processor -> DB : crear auxiliar CxC desde factura y cliente
+  Processor -> DB : auditoría de cuenta por cobrar y contabilización
+  Processor --> Integration : estado contabilizado
+  Integration --> Accountant : asientoId y fecha contable
+else configuración incompleta o periodo no disponible
+  Processor --> Integration : error funcional seguro
+  Integration -> DB : registrar intento fallido en transacción aparte
+  Integration --> Accountant : 409; factura sigue emitida y pendiente
+end
+
+note over SalesService,DB
+La factura emitida y el outbox se confirman juntos.
+Un fallo posterior de contabilización revierte el asiento y conserva la factura.
+El auxiliar CxC y el asiento se confirman juntos y solo una vez.
+Su saldo se deriva del total menos cobros aplicados confirmados.
+No hay proceso periódico: el reintento lo ejecuta un usuario autorizado.
+end note
+note over Processor
+Debe Clientes por cobrar = total.
+Haber Ventas = subtotal; haber Impuestos trasladados = impuestos.
+Sin efectivo hasta registrar cobro y sin costo de ventas en esta integración.
+Usa fecha de emisión si su periodo está abierto; de lo contrario exige fecha explícita abierta.
+end note
+@enduml

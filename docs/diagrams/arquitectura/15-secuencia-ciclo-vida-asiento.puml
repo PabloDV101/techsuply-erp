@@ -1,0 +1,44 @@
+@startuml TSS_Secuencia_Ciclo_Vida_Asiento
+!include ../_estilo.iuml
+title Contabilización manual, cancelación y contraasiento con auditoría
+hide footbox
+
+actor Contador as User
+boundary AsientoContableController as API
+control AsientoContableService as Service
+database PostgreSQL as DB
+
+alt Contabilizar borrador
+ User -> API : POST /entries/{id}/post
+ API -> Service : validar permiso CONTABILIZAR
+ Service -> DB : bloqueo catálogo de cuentas
+ Service -> DB : bloquear periodo y asiento
+ Service -> DB : comprobar estado, fecha, cuentas y balance
+ Service -> DB : actualizar estado y registrar historial/auditoría
+ DB --> Service : transacción confirmada
+ Service --> API : asiento CONTABILIZADO
+else Editar o cancelar borrador
+ User -> API : PUT /entries/{id}/edit o POST /cancel
+ API -> Service : validar permiso REGISTRAR y motivo
+ Service -> DB : bloquear catálogo, periodo y asiento
+ Service -> DB : validar BORRADOR y conservar periodo
+ Service -> DB : actualizar partidas o cancelar; guardar historial
+ DB --> Service : transacción confirmada
+ Service --> API : borrador actualizado o CANCELADO
+else Revertir asiento contabilizado
+ User -> API : POST /entries/{id}/reverse(fecha, motivo, clave)
+ API -> Service : validar permiso REVERTIR
+ Service -> DB : bloquear clave idempotente
+ Service -> DB : bloquear catálogo y periodo abierto de la fecha
+ Service -> DB : crear contraasiento con partidas invertidas
+ Service -> DB : marcar original REVERSADO y guardar historial
+ DB --> Service : commit atómico; restricciones diferidas verificadas
+ Service --> API : contraasiento CONTABILIZADO
+end
+
+note over Service,DB
+El periodo original no se reabre. La fecha del contraasiento es explícita
+y pertenece a cualquier periodo abierto. El fallo revierte la operación;
+la factura de Ventas no forma parte de este flujo.
+end note
+@enduml

@@ -1,12 +1,12 @@
 # Sprint 3 — Ventas e integración con Inventario, por partes
 
-**Estado: partes 0–14 cerradas con los alcances y anomalías históricas registrados en la bitácora; sigue la parte 15.** La ruta se preparó en `ventas` y las partes 6 a 14 se realizaron en `fix/docs`. El sprint dura una semana y abarca solo backend; el frontend lo realiza un compañero. Las partes son puntos de control, **no días ni promesas de que todo cabrá en una semana**.
+**Estado: partes 0–15 cerradas con los alcances y anomalías históricas registrados en la bitácora y el [cierre](SPRINT_3_CIERRE.md).** La ruta se preparó en `ventas` y las partes posteriores se realizaron en `fix/docs`. El sprint abarcó solo backend; el frontend lo realiza un compañero. Las partes son puntos de control, **no días ni promesas de que todo cabrá en una semana**.
 
 ## Cómo retomar el trabajo
 
 Al recibir «iniciamos parte 0» o «siguiente parte», leer primero este archivo, la [ruta de fase 3](../FASE_3_RUTA_BACKEND.md), [AGENTS.md](../../AGENTS.md), el [SRS](../SRS_TechSupply_Solutions.md), el [modelo DBML](../../database/modelo.dbml), los diagramas y el código relacionado. Revisar rama, Git y cambios sin confirmar; ejecutar la primera parte pendiente, validar la anterior y registrar resultados reales. No pasar a otra parte sin solicitud del usuario. Si una decisión empresarial imprescindible sigue abierta, avanzar en trabajo independiente y pedirla antes de implementar lo que depende de ella; el tiempo transcurrido no constituye aprobación.
 
-El estado base proviene del [cierre de Inventario](SPRINT_2_CIERRE.md): Java 21/Spring Boot, PostgreSQL y Flyway V1–V10; productos, stock, compras/recepciones, conteos, ajustes, kardex parcial y alerta global ya tienen API. La última regresión registrada de la parte 12 del sprint 2 fue 57 Surefire + 101 Failsafe, con una prueba focalizada posterior; la parte 0 la repitió con éxito tras un fallo inicial descrito abajo. **El SQL base y los mapeos JPA de Ventas existen; las transiciones de negocio, servicios y API siguen pendientes.**
+El estado inicial de esta ruta provenía del [cierre de Inventario](SPRINT_2_CIERRE.md): Java 21/Spring Boot, PostgreSQL y Flyway V1–V10; productos, stock, compras/recepciones, conteos, ajustes, kardex parcial y alerta global ya tenían API. La última regresión registrada de la parte 12 del sprint 2 fue 57 Surefire + 101 Failsafe, con una prueba focalizada posterior; la parte 0 la repitió con éxito tras un fallo inicial descrito abajo. Para el estado final de Ventas, consultar su [cierre](SPRINT_3_CIERRE.md).
 
 ## Objetivo y corte de alcance
 

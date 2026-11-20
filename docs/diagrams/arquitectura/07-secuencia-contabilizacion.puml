@@ -1,6 +1,6 @@
 @startuml TSS_Secuencia_Contabilizacion
 !include ../_estilo.iuml
- title Validacion y contabilizacion idempotente
+ title Validacion y contabilizacion idempotente\nDISEÑO OBJETIVO, no implementado\nFactura emitida se conserva ante falla; recuperacion durable por definir
  hide footbox
 
  actor "Contador" as User
@@ -36,5 +36,6 @@
   rollback. Un asiento contabilizado no se edita: se revierte mediante
   contraasiento y las acciones quedan auditadas.
   La transacción confirma al salir sin error; una excepción la revierte.
+  Esta transaccion contable no incluye la emision de factura de venta.
  end note
 @enduml

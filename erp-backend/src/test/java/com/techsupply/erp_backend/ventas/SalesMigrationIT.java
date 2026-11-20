@@ -24,7 +24,7 @@ class SalesMigrationIT extends PostgresIntegrationSupport {
     private void fails(String sql, Object... args) { assertThatThrownBy(() -> db.update(sql, args)).isInstanceOf(DataIntegrityViolationException.class); }
 
     @Test void cleanSchemaHasSalesTablesAndPermissions() {
-        assertThat(flyway.info().applied()).hasSize(13);
+        assertThat(flyway.info().applied()).hasSize(24);
         assertThat(db.queryForObject("select count(*) from information_schema.tables where table_schema=current_schema() and table_name in ('clientes','cotizaciones','detalles_cotizacion','pedidos_venta','detalles_pedido','despachos','detalles_despacho')", Integer.class)).isEqualTo(7);
         assertThat(db.queryForObject("select count(*) from permisos where codigo like 'VENTAS_%' or codigo like 'MAESTROS_CLIENTES_%'", Integer.class)).isEqualTo(15);
         assertThat(db.queryForObject("select count(*) from roles_permisos rp join roles r on r.id=rp.rol_id join permisos p on p.id=rp.permiso_id where r.codigo='ADMINISTRADOR' and (p.codigo like 'VENTAS_%' or p.codigo like 'MAESTROS_CLIENTES_%')", Integer.class)).isEqualTo(15);

@@ -1,0 +1,40 @@
+@startuml TSS_Secuencia_Asiento_Manual
+!include ../_estilo.iuml
+title Crear borrador manual con referencias y protecciones concurrentes
+hide footbox
+
+actor "Contador" as User
+boundary "AsientoContableController" as API
+control "AsientoContableService" as Service
+database "PostgreSQL" as DB
+
+User -> API : POST asiento + partidas
+API -> Service : validar permiso y solicitud
+Service -> DB : bloquear clave de idempotencia
+Service -> DB : buscar clave existente
+alt reintento equivalente
+ DB --> Service : asiento y partidas existentes
+ Service --> API : resultado original (200)
+else clave nueva
+ Service -> DB : bloquear catálogo de cuentas
+ Service -> DB : SELECT periodo FOR UPDATE
+ Service -> DB : validar periodo abierto y fecha inclusiva
+ Service -> DB : validar cuentas activas y de movimiento
+ Service -> DB : insertar encabezado BORRADOR y partidas
+ Service -> DB : registrar auditoría en la transacción
+ alt falla alguna escritura
+  DB --> Service : rollback
+  Service --> API : error sin asiento parcial
+ else commit
+  DB --> Service : asiento guardado
+  Service --> API : borrador creado (201)
+ end
+end
+API --> User : asiento y partidas
+
+note over Service,DB
+ Los borradores pueden estar desbalanceados y no afectan saldos definitivos.
+ Contabilización, reversión y edición no están disponibles.
+ El cierre del periodo toma la misma fila bloqueada y espera la operación.
+end note
+@enduml

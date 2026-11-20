@@ -33,6 +33,16 @@ La fuente canónica del DBML es [`database/modelo.dbml`](../../database/modelo.d
 
 Los SVG generados están organizados en el [índice de diagramas renderizados](../diagramas-renderizados/README.md). Después de modificar una fuente, vuelve a ejecutar el renderizador para actualizar sus imágenes.
 
+La [secuencia de integración de Inventario](arquitectura/19-secuencia-inventario-contabilidad.puml) muestra la confirmación transaccional de recepciones, despachos y ajustes, con rollback ante mapeo, periodo o precisión inválidos.
+
+La [secuencia de factura de proveedor y CxP](arquitectura/20-secuencia-factura-proveedor-cxp.puml) muestra registro, conciliación exacta, liberación del pasivo transitorio y creación atómica del auxiliar.
+
+La [secuencia de pago a proveedor](arquitectura/21-secuencia-pago-proveedor.puml) describe confirmación, aplicaciones y asiento atómico; la parte 14 está cerrada con límites.
+
+La [secuencia de estados financieros](arquitectura/22-secuencia-estados-financieros.puml) muestra la obtención de saldos, la comprobación de clasificaciones y la respuesta ante datos insuficientes.
+
+La integración durable y el reintento de facturas se documentan en [`17-secuencia-integracion-factura-venta.puml`](arquitectura/17-secuencia-integracion-factura-venta.puml), que muestra el outbox, el asiento y el auxiliar CxC dentro de la transacción y el fallo persistido para reintento. El registro, confirmación y aplicación contable de cobros se documentan en [`18-secuencia-cobro-aplicacion.puml`](arquitectura/18-secuencia-cobro-aplicacion.puml).
+
 ## Validación y exportación
 
 Con Java, Graphviz y PlantUML disponibles, generar SVG fuera del repositorio:

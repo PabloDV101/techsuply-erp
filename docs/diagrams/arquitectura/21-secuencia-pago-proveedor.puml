@@ -1,0 +1,28 @@
+@startuml TSS_Secuencia_Pago_Proveedor
+!include ../_estilo.iuml
+title Pago a proveedor y aplicación a cuentas por pagar
+hide footbox
+actor "Usuario autorizado" as Actor
+boundary "API Contabilidad" as API
+control "PagosProveedorService" as Pagos
+control "AsientoContableService" as Asientos
+database PostgreSQL as DB
+Actor -> API : registrar pago y clave
+API -> Pagos : registrar
+Pagos -> DB : persistir pago REGISTRADO y auditoría
+API --> Actor : pago registrado
+Actor -> API : confirmar con aplicaciones
+API -> Pagos : confirmar(id, aplicaciones)
+Pagos -> DB : bloquear pago y CxP por id
+Pagos -> DB : validar proveedor, saldo e importe total
+alt Periodo abierto y cuentas válidas
+  Pagos -> Asientos : crear y contabilizar asiento
+  Asientos -> DB : débito CxP original / crédito fondos
+  Pagos -> DB : confirmar pago y auditar
+  DB -> DB : comprobar conciliación al commit
+  API --> Actor : pago CONFIRMADO
+else Validación o contabilización falla
+  DB --> Pagos : rollback de aplicaciones y asiento
+  API --> Actor : conflicto; pago registrado
+end
+@enduml

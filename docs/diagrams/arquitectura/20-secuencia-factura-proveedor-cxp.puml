@@ -1,0 +1,39 @@
+@startuml TSS_Secuencia_Factura_Proveedor_CxP
+!include ../_estilo.iuml
+title Factura de proveedor, conciliación y cuenta por pagar
+hide footbox
+
+actor "Usuario autorizado" as Actor
+boundary "API Compras" as API
+control "FacturaProveedorService" as Supplier
+control "AsientoContableService" as Accounting
+database PostgreSQL as DB
+
+Actor -> API : registrar factura y líneas
+API -> Supplier : registrar(solicitud)
+Supplier -> DB : bloquear orden y guardar REGISTRADA
+Supplier -> DB : auditar registro
+API --> Actor : 201 REGISTRADA
+
+Actor -> API : validar factura
+API -> Supplier : validar(id)
+Supplier -> DB : bloquear orden y factura
+Supplier -> DB : conciliar orden, recepciones y kardex
+alt Conciliación exacta, cuentas compatibles y periodo abierto
+  Supplier -> Accounting : contabilizar factura de proveedor
+  Accounting -> DB : debe GRNI + IVA acreditable / haber CxP
+  Supplier -> DB : marcar VALIDADA y crear auxiliar CxP
+  Supplier -> DB : auditar validación y CxP
+  DB --> Supplier : commit atómico
+  API --> Actor : 200 VALIDADA
+else Diferencia, mapeo faltante o periodo cerrado
+  DB --> Supplier : rollback de validación, asiento y CxP
+  API --> Actor : 409; factura REGISTRADA para corregir/reintentar
+end
+
+note over Supplier,DB
+Una factura por orden. La recepción previa ya acreditó
+Mercancía recibida no facturada; la validación libera ese pasivo.
+No se registra pago ni se modifica el stock.
+end note
+@enduml

@@ -1,0 +1,24 @@
+@startuml TSS_Secuencia_Estados_Financieros
+!include ../_estilo.iuml
+title Estados financieros y flujo de efectivo
+hide footbox
+actor "Usuario autorizado" as Usuario
+boundary "API de reportes" as API
+control "EstadosFinancierosService" as Servicio
+database PostgreSQL as DB
+Usuario -> API : consultar periodo y reporte
+API -> Servicio : resultados / balance / flujo
+Servicio -> DB : consultar periodo y partidas válidas
+alt Resultado o balance
+  Servicio -> DB : agrupar importes por tipo de cuenta
+  Servicio --> API : subtotales y conciliación
+else Flujo de efectivo
+  Servicio -> DB : leer clasificaciones vigentes y partidas
+  alt Clasificaciones completas y variación conciliada
+    Servicio --> API : resultado, ajustes y actividades
+  else Falta evidencia o no concilia
+    Servicio --> API : NO_DISPONIBLE y motivo
+  end
+end
+API --> Usuario : reporte
+@enduml

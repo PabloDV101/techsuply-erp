@@ -1,0 +1,35 @@
+@startuml TSS_Secuencia_Consultas_Contables
+!include ../_estilo.iuml
+title Mayor y balance de prueba desde asientos contabilizados
+hide footbox
+
+actor Contador as Usuario
+boundary ReportesContablesController as API
+control ReportesContablesService as Servicio
+database PostgreSQL as DB
+
+alt Balance de prueba de un periodo
+  Usuario -> API : GET /reports/finance/trial-balance?periodId&page&size
+  API -> Servicio : permiso CONTABILIDAD_REPORTES_LEER
+  Servicio -> DB : leer fechas del periodo
+  Servicio -> DB : agregar apertura previa y movimientos del periodo
+  Servicio -> DB : ordenar/paginar cuentas y sumar totales globales
+  DB --> Servicio : saldos por cuenta + totales de todas las páginas
+  Servicio --> API : apertura, debe/haber del periodo, cierre
+else Mayor de una cuenta
+  Usuario -> API : GET /accounting/periods/{id}/accounts/{id}/ledger?page&size
+  API -> Servicio : permiso CONTABILIDAD_REPORTES_LEER
+  Servicio -> DB : validar periodo y cuenta
+  Servicio -> DB : saldo neto anterior y total de movimientos
+  Servicio -> DB : partidas cronológicas con saldo acumulado y paginación
+  DB --> Servicio : saldo inicial, líneas, saldo final
+  Servicio --> API : mayor paginado con totales del periodo
+end
+
+note over Servicio,DB
+Solo se incluyen asientos CONTABILIZADO y REVERSADO.
+El contraasiento contabilizado compensa al original reversado;
+BORRADOR y CANCELADO no afectan ningún saldo.
+La fecha de inicio y fin del periodo se incluye en movimientos.
+end note
+@enduml

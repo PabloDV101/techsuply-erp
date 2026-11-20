@@ -2,6 +2,7 @@ package com.techsupply.erp_backend.ventas.application;
 
 import com.techsupply.erp_backend.audit.application.*;
 import com.techsupply.erp_backend.common.api.*;
+import com.techsupply.erp_backend.contabilidad.application.IntegracionFacturaVentaService;
 import com.techsupply.erp_backend.security.application.AuthenticatedUserProvider;
 import com.techsupply.erp_backend.ventas.application.dto.*;
 import com.techsupply.erp_backend.ventas.domain.model.*;
@@ -29,10 +30,12 @@ public class FacturaService {
     private final AuthenticatedUserProvider users;
     private final AuditTrail audit;
     private final Clock clock;
+    private final IntegracionFacturaVentaService accountingIntegration;
     public FacturaService(FacturaVentaRepository facturas,DetalleFacturaVentaRepository detalles,PedidoVentaRepository pedidos,
-            DetallePedidoRepository lineasPedido,JdbcTemplate db,AuthenticatedUserProvider users,AuditTrail audit,Clock clock) {
+            DetallePedidoRepository lineasPedido,JdbcTemplate db,AuthenticatedUserProvider users,AuditTrail audit,Clock clock,
+            IntegracionFacturaVentaService accountingIntegration) {
         this.facturas=facturas;this.detalles=detalles;this.pedidos=pedidos;this.lineasPedido=lineasPedido;
-        this.db=db;this.users=users;this.audit=audit;this.clock=clock;
+        this.db=db;this.users=users;this.audit=audit;this.clock=clock;this.accountingIntegration=accountingIntegration;
     }
     public record Resultado(FacturaResponse factura,boolean creada) {}
     @Transactional @PreAuthorize("hasAuthority('VENTAS_FACTURAS_EMITIR')")
@@ -71,6 +74,7 @@ public class FacturaService {
         facturas.flush();
         invoice.emitir();facturas.flush();
         audit.change(AuditAction.SALES_INVOICE_ISSUED,invoice.getId());
+        accountingIntegration.registrarEmision(invoice.getId());
         return new Resultado(response(invoice,detalles.findByFacturaVentaIdOrderByIdAsc(invoice.getId())),true);
     }
     @Transactional(readOnly=true) @PreAuthorize("hasAuthority('VENTAS_FACTURAS_LEER')")

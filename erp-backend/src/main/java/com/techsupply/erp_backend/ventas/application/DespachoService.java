@@ -4,6 +4,7 @@ import com.techsupply.erp_backend.audit.application.AuditAction;
 import com.techsupply.erp_backend.audit.application.AuditTrail;
 import com.techsupply.erp_backend.audit.application.AuditField;
 import com.techsupply.erp_backend.audit.application.AuditState;
+import com.techsupply.erp_backend.contabilidad.application.IntegracionInventarioContableService;
 import com.techsupply.erp_backend.common.api.PageRequests;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.inventario.application.InventarioService;
@@ -38,12 +39,13 @@ public class DespachoService {
     private final Clock clock;
     private final InventarioService inventario;
     private final EntityManager entityManager;
+    private final IntegracionInventarioContableService accounting;
     public DespachoService(DespachoRepository despachos, DetalleDespachoRepository detalles, PedidoVentaRepository pedidos,
             DetallePedidoRepository lineasPedido, JdbcTemplate db, AuthenticatedUserProvider users, AuditTrail audit, Clock clock,
-            InventarioService inventario, EntityManager entityManager) {
+            InventarioService inventario, EntityManager entityManager, IntegracionInventarioContableService accounting) {
         this.despachos=despachos; this.detalles=detalles; this.pedidos=pedidos; this.lineasPedido=lineasPedido;
         this.db=db; this.users=users; this.audit=audit; this.clock=clock;
-        this.inventario=inventario; this.entityManager=entityManager;
+        this.inventario=inventario; this.entityManager=entityManager; this.accounting=accounting;
     }
     public record Resultado(DespachoResponse despacho,boolean creado) {}
     @Transactional @PreAuthorize("hasAuthority('VENTAS_DESPACHOS_REGISTRAR')")
@@ -128,6 +130,7 @@ public class DespachoService {
         despacho.confirmar();
         pedidos.flush();
         despachos.flush();
+        accounting.contabilizarDespacho(id, java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("America/Mexico_City"))));
         audit.change(AuditAction.SALES_DISPATCH_CONFIRMED,id);
         return response(despacho,lines);
     }

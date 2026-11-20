@@ -1,17 +1,17 @@
 openapi: 3.0.3
 info:
-  title: TechSupply ERP - Reportería (contrato propuesto)
-  version: 0.1.0-design
+  title: TechSupply ERP - Reportería (implementación parcial)
+  version: 0.2.0
   description: >-
-    Diseño de RF-INV-07, RF-CON-07 y RF-REP-01 a RF-REP-05. Ninguna ruta de este
-    archivo está implementada. Las fuentes transaccionales tampoco existen en las
-    migraciones V1-V5. Fórmulas y permisos específicos abiertos se documentan en
-    docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md. No define exportaciones.
+    El balance de prueba está implementado y requiere CONTABILIDAD_REPORTES_LEER.
+    Las demás rutas siguen como diseño y sus fuentes operativas aún no existen.
+    Fórmulas y permisos pendientes se documentan en
+    docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md.
 servers:
   - url: /api/v1
 security:
   - bearerAuth: []
-x-implementation-status: design-only
+x-implementation-status: partial
 paths:
   /reports/dashboard:
     get:
@@ -142,51 +142,59 @@ paths:
     get:
       operationId: getTrialBalanceReport
       summary: Balance de prueba
-      description: RF-CON-07. Solo asientos contabilizados y efecto de contraasientos válidos.
+      description: >-
+        RF-CON-07. Requiere CONTABILIDAD_REPORTES_LEER. Saldo inicial neto al inicio
+        del periodo, movimientos y saldo final. Incluye asientos CONTABILIZADO y
+        REVERSADO; el contraasiento contabilizado también se incluye. Excluye borradores y cancelados.
       parameters:
         - $ref: '#/components/parameters/AccountingPeriodId'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
-        - { name: sort, in: query, schema: { type: string, enum: [accountCode, accountId], default: accountCode } }
+        - { name: sort, in: query, schema: { type: string, enum: [codigoCuenta, cuentaId], default: codigoCuenta } }
         - $ref: '#/components/parameters/Direction'
       responses:
         '200': { description: Página de cuentas y totales del periodo, content: { application/json: { schema: { $ref: '#/components/schemas/TrialBalance' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+      x-implementation-status: implemented
   /reports/finance/income-statement:
     get:
+      x-implementation-status: implemented
       operationId: getIncomeStatementReport
       summary: Estado de resultados
-      description: RF-CON-07. Mapeo de cuentas y subtotales pendiente de validación.
+      description: RF-CON-07. Ingresos menos costos y gastos netos del periodo; requiere CONTABILIDAD_REPORTES_LEER.
       parameters:
         - $ref: '#/components/parameters/AccountingPeriodId'
       responses:
-        '200': { description: Estado financiero, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialStatement' } } } }
+        '200': { description: Estado financiero, content: { application/json: { schema: { $ref: '#/components/schemas/AccountingFinancialStatement' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/finance/balance-sheet:
     get:
+      x-implementation-status: implemented
       operationId: getBalanceSheetReport
       summary: Balance general
-      description: RF-CON-07. Fecha de corte y cierre contable pendientes de validación.
+      description: RF-CON-07. Saldos acumulados al cierre del periodo, incluido resultado acumulado; requiere CONTABILIDAD_REPORTES_LEER.
       parameters:
         - $ref: '#/components/parameters/AccountingPeriodId'
       responses:
-        '200': { description: Estado financiero, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialStatement' } } } }
+        '200': { description: Estado financiero, content: { application/json: { schema: { $ref: '#/components/schemas/AccountingFinancialStatement' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/finance/cash-flow:
     get:
+      x-implementation-status: implemented
       operationId: getCashFlowReport
       summary: Flujo de efectivo
-      description: RF-CON-07. Método y origen fiable de flujos pendientes; puede quedar NO_DISPONIBLE.
+      description: 'RF-CON-07. Método indirecto con resultado, ajustes, actividades y conciliación de efectivo; devuelve NO_DISPONIBLE si faltan clasificaciones o una operación no concilia. Requiere CONTABILIDAD_REPORTES_LEER.'
       parameters:
         - $ref: '#/components/parameters/AccountingPeriodId'
       responses:
-        '200': { description: Estado financiero o no disponible, content: { application/json: { schema: { $ref: '#/components/schemas/FinancialStatement' } } } }
+        '200': { description: Estado financiero o no disponible, content: { application/json: { schema: { $ref: '#/components/schemas/AccountingFinancialStatement' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -366,23 +374,49 @@ components:
         amount: { $ref: '#/components/schemas/Decimal' }
     TrialBalanceRow:
       type: object
-      required: [accountId, accountCode, debit, credit, balance]
+      required: [cuentaId, codigoCuenta, nombreCuenta, aperturaDeudora, aperturaAcreedora, movimientosDebe, movimientosHaber, cierreDeudor, cierreAcreedor]
       properties:
-        accountId: { type: integer, format: int64 }
-        accountCode: { type: string }
-        debit: { $ref: '#/components/schemas/Decimal' }
-        credit: { $ref: '#/components/schemas/Decimal' }
-        balance: { $ref: '#/components/schemas/Decimal' }
+        cuentaId: { type: integer, format: int64 }
+        codigoCuenta: { type: string }
+        nombreCuenta: { type: string }
+        aperturaDeudora: { $ref: '#/components/schemas/Decimal' }
+        aperturaAcreedora: { $ref: '#/components/schemas/Decimal' }
+        movimientosDebe: { $ref: '#/components/schemas/Decimal' }
+        movimientosHaber: { $ref: '#/components/schemas/Decimal' }
+        cierreDeudor: { $ref: '#/components/schemas/Decimal' }
+        cierreAcreedor: { $ref: '#/components/schemas/Decimal' }
     TrialBalance:
       allOf:
         - { $ref: '#/components/schemas/PageMeta' }
         - type: object
-          required: [periodId, content, totalDebit, totalCredit]
+          required: [periodoId, content, totalElements, totalAperturaDeudora, totalAperturaAcreedora, totalMovimientosDebe, totalMovimientosHaber, totalCierreDeudor, totalCierreAcreedor]
           properties:
-            periodId: { type: integer, format: int64 }
+            periodoId: { type: integer, format: int64 }
             content: { type: array, items: { $ref: '#/components/schemas/TrialBalanceRow' } }
-            totalDebit: { allOf: [ { $ref: '#/components/schemas/Decimal' } ], description: 'Total del periodo completo, no solo de la página.' }
-            totalCredit: { allOf: [ { $ref: '#/components/schemas/Decimal' } ], description: 'Total del periodo completo, no solo de la página.' }
+            totalElements: { type: integer, format: int64 }
+            totalAperturaDeudora: { $ref: '#/components/schemas/Decimal' }
+            totalAperturaAcreedora: { $ref: '#/components/schemas/Decimal' }
+            totalMovimientosDebe: { $ref: '#/components/schemas/Decimal' }
+            totalMovimientosHaber: { $ref: '#/components/schemas/Decimal' }
+            totalCierreDeudor: { $ref: '#/components/schemas/Decimal' }
+            totalCierreAcreedor: { $ref: '#/components/schemas/Decimal' }
+    AccountingFinancialStatement:
+      type: object
+      required: [periodoId, fin, estado, detalle, rubros]
+      properties:
+        periodoId: {type: integer, format: int64}
+        inicio: {type: string, format: date, nullable: true}
+        fin: {type: string, format: date}
+        estado: {type: string, enum: [DISPONIBLE, NO_DISPONIBLE]}
+        detalle: {type: string}
+        rubros:
+          type: array
+          items:
+            type: object
+            required: [nombre, importe]
+            properties:
+              nombre: {type: string}
+              importe: {type: number}
     FinancialStatement:
       type: object
       required: [periodId, source, availability, lines]
@@ -423,3 +457,4 @@ components:
     BadRequest: { description: Parámetros inválidos, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
     Unauthorized: { description: Falta autenticación, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
     Forbidden: { description: Permiso o alcance insuficiente, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: Periodo no encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }

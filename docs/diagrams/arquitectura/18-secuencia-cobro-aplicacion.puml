@@ -1,0 +1,43 @@
+@startuml TSS_Secuencia_Cobro_Aplicacion
+!include ../_estilo.iuml
+title Confirmación de cobro y aplicación a CxC
+hide footbox
+
+actor "Contador autorizado" as User
+boundary "CobrosClientesController" as API
+control "CobrosClientesService" as Service
+database "PostgreSQL" as DB
+control "AsientoContableService" as Entries
+
+User -> API : confirmar(cobroId, fechaContable)
+API -> Service : confirmar(id, request)
+group Transacción de confirmación
+  Service -> DB : bloquear cobro y validar configuración/periodo
+  Service -> Entries : crear CONTABILIDAD/COBRO_CLIENTE
+  Entries -> DB : débito fondos; crédito anticipos
+  Entries -> DB : contabilizar asiento y auditoría
+  Service -> DB : marcar cobro CONFIRMADO y guardar asiento
+end
+Service --> API : cobro confirmado, monto disponible
+API --> User : respuesta
+
+User -> API : aplicar(cobroId, CxC, importe, clave, fecha)
+API -> Service : aplicar
+group Transacción de aplicación
+  Service -> DB : bloquear cobro/CxC; validar cliente, saldo, disponible e idempotencia
+  Service -> DB : insertar aplicación histórica
+  Service -> Entries : crear CONTABILIDAD/APLICACION_COBRO
+  Entries -> DB : débito anticipos; crédito Clientes por cobrar
+  Entries -> DB : contabilizar y auditar
+  Service -> DB : enlazar aplicación al asiento
+end
+Service --> API : saldos derivados
+API --> User : respuesta
+
+note over Service,DB
+  Falla en cualquier asiento o auditoría revierte toda la operación.
+  La confirmación es evidencia operativa ingresada por usuario autorizado;
+  no equivale a conciliación bancaria externa.
+  El remanente no aplicado permanece como anticipo del cliente.
+end note
+@enduml

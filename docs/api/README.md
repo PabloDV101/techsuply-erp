@@ -18,6 +18,10 @@ la [guía de integración para frontend](guia-sprint-1.md), la [documentación d
 
 [`openapi-sprint-3-ventas.yaml`](openapi-sprint-3-ventas.yaml) y la [guía de Ventas](guia-sprint-3-ventas.md) describen 18 rutas implementadas de clientes, cotizaciones, pedidos, despachos y facturas comerciales internas. `implemented` se refiere a este contrato concreto: CFDI, cuentas por cobrar, crédito, cobros, portal y devoluciones siguen fuera de estas rutas. El campo y los datos de cancelación están explicados en [cancelaciones](../fase-3/SPRINT_3_CANCELACIONES.md).
 
+## Sprint 4 de la Fase 3
+
+[`openapi-sprint-4-contabilidad.yaml`](openapi-sprint-4-contabilidad.yaml) es **parcial**: implementa cuentas, periodos, asientos manuales, mayor, reportes financieros, clasificaciones explícitas de flujo, integraciones de facturas nuevas de Ventas/Compras y movimientos de Inventario, CxC/CxP, cobros y pagos. El procesamiento de facturas nuevas de Ventas es explícito y protegido; los históricos no se procesan automáticamente. El [contrato de Reportería](openapi-reporteria.yaml) marca balance de prueba, estado de resultados, balance general y flujo de efectivo como implementados parcialmente. El flujo requiere clasificación revisada y conciliación y responde `NO_DISPONIBLE` cuando falta evidencia. Facturas históricas, informes fiscales y otros RF-CON permanecen pendientes. Consulta [cuentas](../fase-3/SPRINT_4_CUENTAS.md), [periodos](../fase-3/SPRINT_4_PERIODOS.md), [asientos](../fase-3/SPRINT_4_ASIENTOS_BORRADOR.md), [migraciones](../fase-3/SPRINT_4_MIGRACIONES.md) y [diseño contable](../fase-3/SPRINT_4_DISENO_CONTABILIDAD.md).
+
 Para validar la estructura y las referencias de todos los contratos, instalar el
 validador temporalmente fuera del repositorio y ejecutar:
 
@@ -37,8 +41,7 @@ La base de las rutas es `/api/v1`. Los contratos ejecutables son
 [`openapi-crud-categorias.yaml`](openapi-crud-categorias.yaml),
 [`openapi-audit.yaml`](openapi-audit.yaml) y
 [`openapi-notifications.yaml`](openapi-notifications.yaml).
-[`openapi-reporteria.yaml`](openapi-reporteria.yaml) lleva
-`x-implementation-status: design-only`: sus 12 rutas son propuestas, no existen en el backend.
+[`openapi-reporteria.yaml`](openapi-reporteria.yaml) es **parcial**: de sus 12 rutas, balance de prueba, estado de resultados, balance general y flujo de efectivo están implementados dentro de los límites documentados; las otras ocho rutas siguen como diseño.
 
 Todas las API activas devuelven errores con `status`, `code` y `message`.
 `security.api` conserva sus mensajes funcionales y `WWW-Authenticate: Bearer` en `401`;
@@ -58,3 +61,7 @@ Para recorrer manualmente las rutas activas en una base local de prueba, usar
 [`pruebas-manuales-fase-2.http`](pruebas-manuales-fase-2.http). Ejecutar las
 peticiones en orden con un cliente compatible con archivos `.http`, reemplazando
 las contraseñas de ejemplo en una copia privada del archivo.
+
+## Sprint 4 de la Fase 3
+
+[`openapi-sprint-4-contabilidad.yaml`](openapi-sprint-4-contabilidad.yaml) documenta cuentas, periodos, asientos, reportes, clasificaciones de flujo, integraciones, CxC/CxP, cobros y pagos. V20 contabiliza recepción, despacho y ajustes de forma atómica; V21 incorpora factura de proveedor y CxP; V22–V23 incorporan pagos aplicados al mismo proveedor. La parte 15 implementa estado de resultados, balance general y flujo indirecto; su estado y condiciones están definidos en el contrato y el [diseño](../fase-3/SPRINT_4_DISENO_CONTABILIDAD.md). Se excluyen procesamiento automático de facturas históricas y cumplimiento fiscal.

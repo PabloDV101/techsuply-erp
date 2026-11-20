@@ -1,6 +1,7 @@
 package com.techsupply.erp_backend.inventario;
 
 import com.techsupply.erp_backend.inventario.application.InventarioService;
+import com.techsupply.erp_backend.contabilidad.application.IntegracionInventarioContableService;
 import com.techsupply.erp_backend.security.PostgresIntegrationSupport;
 import com.techsupply.erp_backend.security.infrastructure.security.SecurityActor;
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest @AutoConfigureMockMvc
 class InventarioIntegrationIT extends PostgresIntegrationSupport {
     @Autowired InventarioService inventory; @Autowired JdbcTemplate db; @Autowired TransactionTemplate tx;
+    @Autowired IntegracionInventarioContableService accounting;
     @Autowired MockMvc http; @Autowired ObjectMapper json; @Autowired PasswordEncoder passwords;
     private record Fixture(long product, long warehouse, long user, String username, String password, long first, long second) {}
     private Fixture fixture() {
@@ -40,6 +42,7 @@ class InventarioIntegrationIT extends PostgresIntegrationSupport {
         long role = db.queryForObject("insert into roles(codigo,nombre) values (?,?) returning id", Long.class, code, "Test");
         db.update("insert into roles_permisos(rol_id,permiso_id) select ?,id from permisos where codigo in ('INVENTARIO_EXISTENCIAS_LEER','COMPRAS_RECEPCIONES_CONFIRMAR')", role);
         db.update("insert into usuarios_roles(usuario_id,rol_id) values (?,?)", user, role);
+        configureInventoryAccounting(db, user);
         long[] details = new long[2];
         for (int i=0; i<2; i++) {
             long order = db.queryForObject("insert into ordenes_compra(folio,proveedor_id,departamento_id,creada_por_usuario_id,estado) values (?,?,?,?,?) returning id", Long.class, code+i, supplier, department, user, "ENVIADA");
@@ -59,6 +62,8 @@ class InventarioIntegrationIT extends PostgresIntegrationSupport {
         try { tx.executeWithoutResult(status -> {
             inventory.registrarEntradaRecepcion(detail);
             db.update("update recepciones_compra set estado='CONFIRMADA',confirmada_en=now() where id=(select recepcion_id from detalles_recepcion where id=?)", detail);
+            long receipt = db.queryForObject("select recepcion_id from detalles_recepcion where id=?", Long.class, detail);
+            accounting.contabilizarRecepcion(receipt, java.time.LocalDate.now(java.time.ZoneId.of("America/Mexico_City")));
         }); } finally { SecurityContextHolder.clearContext(); }
     }
     @Test void concurrentFirstStockAndHttpQuery() throws Exception {

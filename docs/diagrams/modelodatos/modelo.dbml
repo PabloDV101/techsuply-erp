@@ -1,5 +1,5 @@
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.16 — V1–V6 físicos, V7 parcial, precisión V8, documentos V9, controles V10 y alerta calculada; los cuatro catálogos maestros tienen API; resto modelo objetivo; SRS-TSS-ERP-001.
+// Versión 1.23 — V24 clasifica flujo; reportes financieros parciales; V22–V23 pagos de proveedor; V21 factura de proveedor/CxP; V20 Compras/Inventario; V14–V19 núcleo y auxiliares; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +7,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía la precisión de costos. V9 crea tablas SQL de conteos y ajustes; tienen JPA y dominio; conteos y registro/consulta/aprobación/rechazo/aplicación de ajustes cuentan con servicio/API. V10 protege historial y verifica fuentes en inserciones nuevas; sus triggers y límites se detallan en migraciones. Órdenes, recepción y consulta de existencias tienen API. Los campos y tablas futuros permanecen como objetivo. bigint/Long conserva el contrato vigente. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'V14-V24: contabilidad, auxiliares, integraciones transaccionales e informes parciales. V17 escribe outbox al emitir y el reintento explícito contabiliza facturas nuevas; V18 crea CxC y V19 agrega cobros/aplicaciones. V20 contabiliza fuentes valorizadas de Compras e Inventario; V21 factura proveedor/CxP; V22-V23 pagos a proveedor/aplicaciones. V24 soporta clasificación explícita y auditable de flujo y reportes parciales de resultados, balance general y flujo indirecto; no clasifica históricos automáticamente. El flujo devuelve NO_DISPONIBLE sin evidencia completa o conciliación. Facturas históricas no se procesan automáticamente; se excluyen borradores/cancelados y el contraasiento se suma al original reversado. Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía precisión. V9 crea tablas SQL para conteos y ajustes; conteos y ajustes tienen servicio/API. V10 protege historial y fuentes. Los campos futuros siguen como objetivo. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -296,27 +296,32 @@ Table facturas_proveedor [headercolor: #28B463] {
   numero_factura_proveedor varchar(60) [not null]
   fecha_emision date [not null]
   fecha_vencimiento date [not null]
-  subtotal numeric(14,2) [not null]
-  impuestos numeric(14,2) [not null]
-  total numeric(14,2) [not null]
-  estado varchar(20) [not null, note: 'REGISTRADA, VALIDADA, PARCIALMENTE_PAGADA, PAGADA, VENCIDA, CANCELADA']
+  subtotal numeric [not null]
+  impuestos numeric [not null]
+  total numeric [not null]
+  estado varchar(15) [not null, default: 'REGISTRADA', note: 'V21: REGISTRADA, VALIDADA']
+  registrada_por_usuario_id bigint [not null]
+  validada_por_usuario_id bigint
+  registrada_en timestamptz [not null]
+  validada_en timestamptz
+  asiento_contable_id bigint [unique]
   indexes { (proveedor_id, numero_factura_proveedor) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V21: una factura por orden. Registrada editable; validación exacta contra orden, recepciones y pasivo transitorio, asiento y CxP atómicos. Pago y cancelación posteriores pendientes.'
 }
 
 Table detalles_factura_proveedor [headercolor: #28B463] {
   id bigint [pk, not null, increment]
   factura_proveedor_id bigint [not null]
   detalle_orden_compra_id bigint [not null]
-  cantidad_facturada numeric(14,3) [not null]
-  precio_unitario numeric(14,2) [not null]
-  descuento_pct numeric(5,2) [not null, default: 0]
-  tasa_impuesto numeric(5,2) [not null]
-  subtotal numeric(14,2) [not null]
-  impuestos numeric(14,2) [not null]
-  total numeric(14,2) [not null]
+  cantidad_facturada numeric [not null]
+  precio_unitario numeric [not null]
+  descuento_pct numeric [not null, default: 0]
+  tasa_impuesto numeric [not null]
+  subtotal numeric [not null]
+  impuestos numeric [not null]
+  total numeric [not null]
   indexes { (factura_proveedor_id, detalle_orden_compra_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Detalle de conciliación de factura de proveedor contra orden y recepciones; conserva los importes pactados.'
+  Note: 'SQL V21: detalle de conciliación de factura de proveedor contra orden y recepciones; conserva importes pactados. Inmutable tras validación.'
 }
 
 Table devoluciones_proveedor [headercolor: #28B463] {
@@ -534,30 +539,72 @@ Table cobros_clientes [headercolor: #C0392B] {
   folio varchar(30) [not null, unique]
   cliente_id bigint [not null]
   fecha timestamptz [not null]
-  monto numeric(14,2) [not null]
+  monto numeric [not null, note: 'V19 valida hasta 12 enteros y 2 decimales sin redondeo']
   medio varchar(20) [not null, note: 'EFECTIVO, TRANSFERENCIA, CHEQUE, TARJETA, OTRO']
   referencia varchar(100)
   registrado_por_usuario_id bigint [not null]
   clave_idempotencia varchar(100) [not null, unique]
-  estado varchar(15) [not null, note: 'REGISTRADO, CONFIRMADO, RECHAZADO, REVERSADO']
-  Note: 'OBJETIVO: tabla aún no implementada. Movimiento de dinero independiente de una factura; puede aplicarse parcial o totalmente a una o varias cuentas por cobrar.'
+  estado varchar(15) [not null, note: 'REGISTRADO, CONFIRMADO']
+  asiento_contable_id bigint [unique]
+  fecha_contable date
+  confirmado_por_usuario_id bigint
+  confirmado_en timestamptz
+  Note: 'SQL V19 y API: registro idempotente; la confirmación autorizada reconoce fondos y anticipo por el total. Aplicaciones posteriores reducen anticipos y CxC en una transacción contable; fondos confirmados no implican conciliación bancaria externa.'
 }
 
+
+Table configuracion_cuenta_pago_proveedor [headercolor: #C0392B] {
+  id smallint [pk, not null]
+  cuenta_fondos_id bigint [not null]
+  actualizado_por_usuario_id bigint [not null]
+  actualizado_en timestamptz [not null, default: `now()`]
+  Note: 'V22: cuenta de fondos configurable; validación de tipo y estado en el servicio.'
+}
 
 Table pagos_proveedor [headercolor: #C0392B] {
   id bigint [pk, not null, increment]
   folio varchar(30) [not null, unique]
   proveedor_id bigint [not null]
-  fecha timestamptz [not null]
-  monto numeric(14,2) [not null]
+  fecha_pago timestamptz [not null]
+  monto numeric [not null]
   medio varchar(20) [not null]
   referencia varchar(100)
-  registrado_por_usuario_id bigint [not null]
   clave_idempotencia varchar(100) [not null, unique]
-  estado varchar(15) [not null, note: 'REGISTRADO, CONFIRMADO, RECHAZADO, REVERSADO']
-  Note: 'OBJETIVO: tabla aún no implementada. Pago independiente de una factura; puede aplicarse parcial o totalmente a una o varias cuentas por pagar del mismo proveedor.'
+  estado varchar(15) [not null]
+  registrado_por_usuario_id bigint [not null]
+  asiento_contable_id bigint [unique]
+  fecha_contable date
+  confirmado_por_usuario_id bigint
+  confirmado_en timestamptz
+  indexes { (proveedor_id, fecha_pago, id) [name: 'idx_pagos_proveedor_fecha'] }
+  Note: 'V22–V23: confirmación y aplicaciones por el importe total en la misma transacción; asiento de CxP y fondos.'
 }
 
+Table clasificaciones_flujo_cuenta [headercolor: #C0392B] {
+  id bigint [pk, not null, increment]
+  cuenta_contable_id bigint [not null]
+  clasificacion varchar(24) [not null]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  registrado_por_usuario_id bigint [not null]
+  registrado_en timestamptz [not null, default: `now()`]
+  anulada_en timestamptz
+  anulada_por_usuario_id bigint
+  motivo_anulacion varchar(300)
+  Note: 'SQL V24: clasificación explícita por vigencia sin solapamientos y anulación auditada; constraints y exclusión temporal en Flyway.'
+}
+
+Table clasificaciones_flujo_partida [headercolor: #C0392B] {
+  id bigint [pk, not null, increment]
+  partida_asiento_id bigint [not null]
+  clasificacion varchar(24) [not null]
+  registrado_por_usuario_id bigint [not null]
+  registrado_en timestamptz [not null, default: `now()`]
+  anulada_en timestamptz
+  anulada_por_usuario_id bigint
+  motivo_anulacion varchar(300)
+  Note: 'SQL V24: clasificación explícita de partida contabilizada con historial de anulación en Flyway.'
+}
 
 Table cuentas_contables [headercolor: #C0392B] {
   id bigint [pk, not null, increment]
@@ -569,7 +616,7 @@ Table cuentas_contables [headercolor: #C0392B] {
   cuenta_padre_id bigint
   acepta_movimientos boolean [not null, default: true]
   activa boolean [not null, default: true]
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  Note: 'SQL V14 y JPA; API de cuentas con validación de jerarquía y auditoría. Código y padre tienen restricciones SQL; ciclos indirectos y unicidad sin distinción de mayúsculas se controlan en servicio bajo bloqueo compartido, no ante SQL directo.'
 }
 
 Table periodos_contables [headercolor: #C0392B] {
@@ -579,8 +626,7 @@ Table periodos_contables [headercolor: #C0392B] {
   estado varchar(10) [not null, note: 'ABIERTO, CERRADO']
   cerrado_por_usuario_id bigint
   cerrado_en timestamptz
-  indexes { (fecha_inicio, fecha_fin) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. La fecha del asiento debe quedar dentro del periodo; no se contabiliza en periodos cerrados.'
+  Note: 'SQL V14, JPA y API: EXCLUDE GiST impide solapamientos; trigger protege el cierre. API usa bloqueo de fila y rechaza borradores; V15 cierra con borradores resueltos. No hay reapertura.'
 }
 
 Table asientos_contables [headercolor: #C0392B] {
@@ -596,9 +642,79 @@ Table asientos_contables [headercolor: #C0392B] {
   contraasiento_de_id bigint [unique]
   creado_por_usuario_id bigint [not null]
   contabilizado_por_usuario_id bigint
-  estado varchar(12) [not null, note: 'BORRADOR, CONTABILIZADO, REVERSADO']
+  estado varchar(16) [not null, note: 'BORRADOR, CONTABILIZADO, REVERSADO, CANCELADO']
   contabilizado_en timestamptz
-  Note: 'OBJETIVO: tabla aún no implementada. Un asiento contabilizado es inmutable; se corrige con contraasiento. Para contabilizar: periodo abierto, al menos dos partidas y suma debe = suma haber.'
+  ultimo_motivo_edicion varchar(300)
+  editado_por_usuario_id bigint
+  editado_en timestamptz
+  motivo_cancelacion varchar(300)
+  cancelado_por_usuario_id bigint
+  cancelado_en timestamptz
+  motivo_reversion varchar(300)
+  Note: 'SQL V14-V15, JPA y API: borradores manuales editables/cancelables con razón; contabilización exige periodo abierto, fecha incluida, mínimo dos partidas y balance exacto. Reversión crea contraasiento inmutable con fecha explícita en cualquier periodo abierto. Sin orígenes operativos. V15 conserva historial con actor y motivo.'
+}
+
+Table historial_asientos_contables [headercolor: #C0392B] {
+  id bigint [pk, not null, increment]
+  asiento_id bigint [not null]
+  resultado_asiento_id bigint
+  actor_usuario_id bigint [not null]
+  accion varchar(32) [not null, note: 'BORRADOR_EDITADO, BORRADOR_CANCELADO, CONTABILIZADO, REVERSADO']
+  clave_idempotencia varchar(120) [unique]
+  huella_solicitud char(64)
+  motivo varchar(300)
+  registrado_en timestamptz [not null]
+  Note: 'SQL V15: historial de ciclo de vida. Motivos se conservan en dominio; auditoría general guarda transición sin datos libres.'
+  indexes { (asiento_id, registrado_en, id) }
+}
+
+
+Table configuracion_cuentas_cobro [headercolor: #C0392B] {
+  medio varchar(20) [pk, not null]
+  cuenta_fondos_id bigint [not null]
+  cuenta_anticipos_id bigint [not null]
+  actualizado_por_usuario_id bigint [not null]
+  actualizado_en timestamptz [not null]
+  Note: 'SQL V19: mapeo administrado por medio; cuenta de fondos ACTIVO/DEUDORA y anticipos PASIVO/ACREEDORA, ambas distintas de CxC.'
+}
+
+Table configuracion_cuentas_factura_venta [headercolor: #C0392B] {
+  concepto varchar(24) [pk, not null, note: 'CLIENTES_POR_COBRAR, VENTAS, IMPUESTOS_TRASLADADOS']
+  cuenta_contable_id bigint [not null, unique]
+  actualizado_por_usuario_id bigint [not null]
+  actualizado_en timestamptz [not null]
+  Note: 'SQL V17 y API protegida. Cada concepto usa una cuenta distinta, activa, de movimiento y con tipo/naturaleza aprobados. No se crean cuentas por defecto.'
+}
+
+Table configuracion_cuentas_inventario [headercolor: #C0392B] {
+  concepto varchar(50) [pk, not null, note: 'INVENTARIO, MERCANCIA_RECIBIDA_NO_FACTURADA, COSTO_DE_VENTAS, AJUSTE_INVENTARIO_POSITIVO, AJUSTE_INVENTARIO_NEGATIVO']
+  cuenta_contable_id bigint [not null]
+  actualizado_por_usuario_id bigint [not null]
+  actualizado_en timestamptz [not null]
+  Note: 'SQL V20: mapeos protegidos para contabilizar recepción, despacho y ajustes en la misma transacción de stock. El pasivo de mercancía recibida no facturada es transitorio; no crea CxP.'
+}
+
+Table configuracion_cuentas_factura_proveedor [headercolor: #C0392B] {
+  concepto varchar(30) [pk, not null, note: 'IVA_ACREDITABLE, CUENTAS_POR_PAGAR']
+  cuenta_contable_id bigint [not null]
+  actualizado_por_usuario_id bigint [not null]
+  actualizado_en timestamptz [not null]
+  Note: 'SQL V21: cuentas activas y compatibles configuradas para validar factura de proveedor. GRNI se toma del mapeo V20.'
+}
+
+Table integracion_factura_venta_contabilidad [headercolor: #C0392B] {
+  factura_venta_id bigint [pk, not null]
+  estado varchar(16) [not null, default: 'PENDIENTE', note: 'PENDIENTE, CONTABILIZADA']
+  asiento_contable_id bigint [unique]
+  fecha_contable date
+  intentos integer [not null, default: 0]
+  ultima_fecha_intentada date
+  ultimo_codigo_error varchar(48)
+  ultimo_intento_por_usuario_id bigint
+  emitida_en timestamptz [not null]
+  contabilizada_en timestamptz
+  indexes { (estado, emitida_en, factura_venta_id) [name: 'idx_integracion_factura_venta_estado_fecha'] }
+  Note: 'SQL V17: outbox creado atómicamente con la emisión de facturas nuevas. El reintento contable es explícito y auditable; errores se guardan con código seguro. No incluye facturas históricas ni ejecutor periódico.'
 }
 
 Table partidas_asiento [headercolor: #C0392B] {
@@ -606,51 +722,68 @@ Table partidas_asiento [headercolor: #C0392B] {
   asiento_id bigint [not null]
   numero_linea smallint [not null]
   cuenta_contable_id bigint [not null]
-  debe numeric(14,2) [not null, default: 0]
-  haber numeric(14,2) [not null, default: 0]
+  debe numeric [not null, default: 0, note: 'SQL V14: CHECK escala <= 2 y máximo 999999999999.99, sin redondeo implícito']
+  haber numeric [not null, default: 0, note: 'SQL V14: CHECK escala <= 2 y máximo 999999999999.99, sin redondeo implícito']
   descripcion varchar(200)
   indexes { (asiento_id, numero_linea) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada. Al contabilizar: al menos dos partidas, debe total = haber total, y exactamente uno de debe/haber es mayor que cero.'
+  Note: 'SQL V14-V15 y JPA: FK, número por asiento único, lado positivo único, escala y límite; partidas solo se mutan mientras el asiento sea borrador y el periodo esté abierto. Contabilización valida mínimo dos y balance.'
 }
 
 Table cuentas_por_cobrar [headercolor: #C0392B] {
   id bigint [pk, not null, increment]
   factura_venta_id bigint [not null, unique]
-  monto_original numeric(14,2) [not null]
+  cliente_id bigint [not null]
+  monto_original numeric [not null, note: 'SQL valida hasta 12 enteros y 2 decimales sin redondeo']
   fecha_emision date [not null]
   fecha_vencimiento date [not null]
-  estado varchar(15) [not null, note: 'ABIERTA, PARCIAL, PAGADA, VENCIDA, CANCELADA']
-  Note: 'OBJETIVO: tabla aún no implementada. saldo_pendiente se deriva de monto_original menos aplicaciones de cobro confirmadas; no duplicar el saldo sin estrategia de sincronización.'
+  creado_en timestamptz [not null, default: `now()`]
+  Note: 'SQL V18/V19 y API: se genera junto con la contabilización VENTAS/FACTURA_VENTA. Snapshot de cliente, origen, importe y vencimiento protegidos. saldoPendiente se deriva del original menos aplicaciones contabilizadas. Históricas excluidas.'
 }
 
 Table aplicaciones_cobro [headercolor: #C0392B] {
   id bigint [pk, not null, increment]
   cobro_id bigint [not null]
   cuenta_por_cobrar_id bigint [not null]
-  monto_aplicado numeric(14,2) [not null]
+  monto_aplicado numeric [not null, note: 'SQL valida hasta 12 enteros y 2 decimales sin redondeo']
   fecha_aplicacion timestamptz [not null, default: `now()`]
-  indexes { (cobro_id, cuenta_por_cobrar_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  aplicado_por_usuario_id bigint [not null]
+  clave_idempotencia varchar(100) [not null, unique]
+  huella_solicitud char(64) [not null]
+  asiento_contable_id bigint [unique]
+  indexes {
+    (cobro_id, id) [name: 'idx_aplicaciones_cobro']
+    (cuenta_por_cobrar_id, id) [name: 'idx_aplicaciones_cxc']
+  }
+  Note: 'SQL V19 y API: inmutable después de contabilizar; mismo cliente, saldo CxC y disponible del cobro se validan bajo bloqueo. Trigger diferido exige asiento al commit. Cada aplicación tiene asiento de reclasificación e idempotencia propia.'
 }
 
 Table cuentas_por_pagar [headercolor: #C0392B] {
   id bigint [pk, not null, increment]
   factura_proveedor_id bigint [not null, unique]
-  monto_original numeric(14,2) [not null]
+  proveedor_id bigint [not null]
+  asiento_contable_id bigint [not null, unique]
+  monto_original numeric [not null]
   fecha_emision date [not null]
   fecha_vencimiento date [not null]
-  estado varchar(15) [not null, note: 'ABIERTA, PARCIAL, PAGADA, VENCIDA, CANCELADA']
-  Note: 'OBJETIVO: tabla aún no implementada. saldo_pendiente se deriva de monto_original menos aplicaciones de pago confirmadas.'
+  creado_en timestamptz [not null]
+  Note: 'SQL V21: auxiliar inmutable ligado a factura validada y asiento contabilizado. Saldo derivado de las aplicaciones de pagos confirmados.'
 }
 
 Table aplicaciones_pago_proveedor [headercolor: #C0392B] {
   id bigint [pk, not null, increment]
   pago_proveedor_id bigint [not null]
   cuenta_por_pagar_id bigint [not null]
-  monto_aplicado numeric(14,2) [not null]
-  fecha_aplicacion timestamptz [not null, default: `now()`]
-  indexes { (pago_proveedor_id, cuenta_por_pagar_id) [unique] }
-  Note: 'OBJETIVO: tabla aún no implementada.'
+  monto_aplicado numeric [not null]
+  aplicado_por_usuario_id bigint [not null]
+  clave_idempotencia varchar(100) [not null, unique]
+  huella_solicitud char(64) [not null]
+  asiento_contable_id bigint [unique]
+  creado_en timestamptz [not null, default: `now()`]
+  indexes {
+    (pago_proveedor_id, id) [name: 'idx_aplicaciones_pago_pago']
+    (cuenta_por_pagar_id, id) [name: 'idx_aplicaciones_pago_cxp']
+  }
+  Note: 'V22–V23: proveedor y límites validados bajo bloqueo; confirmación atómica.'
 }
 
 Table presupuestos [headercolor: #C0392B] {
@@ -992,6 +1125,9 @@ Ref: detalles_recepcion.recepcion_id > recepciones_compra.id
 Ref: detalles_recepcion.detalle_orden_compra_id > detalles_orden_compra.id
 Ref: facturas_proveedor.proveedor_id > proveedores.id
 Ref: facturas_proveedor.orden_compra_id > ordenes_compra.id
+Ref: facturas_proveedor.registrada_por_usuario_id > usuarios.id
+Ref: facturas_proveedor.validada_por_usuario_id > usuarios.id
+Ref: facturas_proveedor.asiento_contable_id > asientos_contables.id
 Ref: detalles_factura_proveedor.factura_proveedor_id > facturas_proveedor.id
 Ref: detalles_factura_proveedor.detalle_orden_compra_id > detalles_orden_compra.id
 Ref: devoluciones_proveedor.proveedor_id > proveedores.id
@@ -1053,6 +1189,14 @@ Ref: detalles_factura_venta.detalle_pedido_id > detalles_pedido.id
 Ref: detalles_factura_venta.producto_id > productos.id
 Ref: cobros_clientes.cliente_id > clientes.id
 Ref: cobros_clientes.registrado_por_usuario_id > usuarios.id
+Ref: cobros_clientes.asiento_contable_id > asientos_contables.id
+Ref: cobros_clientes.confirmado_por_usuario_id > usuarios.id
+Ref: configuracion_cuenta_pago_proveedor.cuenta_fondos_id > cuentas_contables.id
+Ref: configuracion_cuenta_pago_proveedor.actualizado_por_usuario_id > usuarios.id
+Ref: pagos_proveedor.asiento_contable_id > asientos_contables.id
+Ref: pagos_proveedor.confirmado_por_usuario_id > usuarios.id
+Ref: aplicaciones_pago_proveedor.aplicado_por_usuario_id > usuarios.id
+Ref: aplicaciones_pago_proveedor.asiento_contable_id > asientos_contables.id
 Ref: pagos_proveedor.proveedor_id > proveedores.id
 Ref: pagos_proveedor.registrado_por_usuario_id > usuarios.id
 Ref: devoluciones_cliente.pedido_id > pedidos_venta.id
@@ -1064,18 +1208,46 @@ Ref: detalles_devolucion_cliente.devolucion_cliente_id > devoluciones_cliente.id
 Ref: detalles_devolucion_cliente.detalle_pedido_id > detalles_pedido.id
 
 // Contabilidad
+Ref: clasificaciones_flujo_cuenta.cuenta_contable_id > cuentas_contables.id
+Ref: clasificaciones_flujo_cuenta.registrado_por_usuario_id > usuarios.id
+Ref: clasificaciones_flujo_cuenta.anulada_por_usuario_id > usuarios.id
+Ref: clasificaciones_flujo_partida.partida_asiento_id > partidas_asiento.id
+Ref: clasificaciones_flujo_partida.registrado_por_usuario_id > usuarios.id
+Ref: clasificaciones_flujo_partida.anulada_por_usuario_id > usuarios.id
 Ref: cuentas_contables.cuenta_padre_id > cuentas_contables.id
 Ref: periodos_contables.cerrado_por_usuario_id > usuarios.id
 Ref: asientos_contables.periodo_id > periodos_contables.id
 Ref: asientos_contables.contraasiento_de_id > asientos_contables.id
 Ref: asientos_contables.creado_por_usuario_id > usuarios.id
 Ref: asientos_contables.contabilizado_por_usuario_id > usuarios.id
+Ref: asientos_contables.editado_por_usuario_id > usuarios.id
+Ref: asientos_contables.cancelado_por_usuario_id > usuarios.id
 Ref: partidas_asiento.asiento_id > asientos_contables.id
+Ref: historial_asientos_contables.asiento_id > asientos_contables.id
+Ref: historial_asientos_contables.resultado_asiento_id > asientos_contables.id
+Ref: historial_asientos_contables.actor_usuario_id > usuarios.id
+Ref: configuracion_cuentas_factura_venta.cuenta_contable_id > cuentas_contables.id
+Ref: configuracion_cuentas_factura_venta.actualizado_por_usuario_id > usuarios.id
+Ref: configuracion_cuentas_inventario.cuenta_contable_id > cuentas_contables.id
+Ref: configuracion_cuentas_inventario.actualizado_por_usuario_id > usuarios.id
+Ref: integracion_factura_venta_contabilidad.factura_venta_id > facturas_venta.id
+Ref: integracion_factura_venta_contabilidad.asiento_contable_id > asientos_contables.id
+Ref: integracion_factura_venta_contabilidad.ultimo_intento_por_usuario_id > usuarios.id
 Ref: partidas_asiento.cuenta_contable_id > cuentas_contables.id
 Ref: cuentas_por_cobrar.factura_venta_id > facturas_venta.id
+Ref: cuentas_por_cobrar.cliente_id > clientes.id
 Ref: aplicaciones_cobro.cobro_id > cobros_clientes.id
 Ref: aplicaciones_cobro.cuenta_por_cobrar_id > cuentas_por_cobrar.id
+Ref: aplicaciones_cobro.aplicado_por_usuario_id > usuarios.id
+Ref: aplicaciones_cobro.asiento_contable_id > asientos_contables.id
+Ref: configuracion_cuentas_cobro.cuenta_fondos_id > cuentas_contables.id
+Ref: configuracion_cuentas_cobro.cuenta_anticipos_id > cuentas_contables.id
+Ref: configuracion_cuentas_cobro.actualizado_por_usuario_id > usuarios.id
 Ref: cuentas_por_pagar.factura_proveedor_id > facturas_proveedor.id
+Ref: cuentas_por_pagar.proveedor_id > proveedores.id
+Ref: cuentas_por_pagar.asiento_contable_id > asientos_contables.id
+Ref: configuracion_cuentas_factura_proveedor.cuenta_contable_id > cuentas_contables.id
+Ref: configuracion_cuentas_factura_proveedor.actualizado_por_usuario_id > usuarios.id
 Ref: aplicaciones_pago_proveedor.pago_proveedor_id > pagos_proveedor.id
 Ref: aplicaciones_pago_proveedor.cuenta_por_pagar_id > cuentas_por_pagar.id
 Ref: presupuestos.departamento_id > departamentos.id
@@ -1137,6 +1309,10 @@ TableGroup maestros_jpa_v6 {
   almacenes
 }
 
+TableGroup contabilidad_inventario_v20 {
+  configuracion_cuentas_inventario
+}
+
 TableGroup erp_mixto_sql_y_objetivo {
   puestos
   empleados
@@ -1165,10 +1341,16 @@ TableGroup erp_mixto_sql_y_objetivo {
   detalles_despacho
   facturas_venta
   cobros_clientes
+  configuracion_cuenta_pago_proveedor
   pagos_proveedor
+  clasificaciones_flujo_cuenta
+  clasificaciones_flujo_partida
   cuentas_contables
   periodos_contables
   asientos_contables
+  historial_asientos_contables
+  configuracion_cuentas_factura_venta
+  integracion_factura_venta_contabilidad
   partidas_asiento
   cuentas_por_cobrar
   aplicaciones_cobro

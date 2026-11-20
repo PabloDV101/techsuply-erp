@@ -4,6 +4,7 @@ import com.techsupply.erp_backend.audit.application.AuditAction;
 import com.techsupply.erp_backend.audit.application.AuditField;
 import com.techsupply.erp_backend.audit.application.AuditState;
 import com.techsupply.erp_backend.audit.application.AuditTrail;
+import com.techsupply.erp_backend.contabilidad.application.IntegracionInventarioContableService;
 import com.techsupply.erp_backend.common.api.PageRequests;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.inventario.application.dto.AjusteResponse;
@@ -34,8 +35,10 @@ public class AjusteInventarioService {
     private final AuthenticatedUserProvider users;
     private final AuditTrail audit;
     private final InventarioService inventory;
-    public AjusteInventarioService(AjusteInventarioRepository adjustments, JdbcTemplate db, EntityManager em, AuthenticatedUserProvider users, AuditTrail audit, InventarioService inventory) {
-        this.adjustments=adjustments; this.db=db; this.em=em; this.users=users; this.audit=audit; this.inventory=inventory;
+    private final IntegracionInventarioContableService accounting;
+    public AjusteInventarioService(AjusteInventarioRepository adjustments, JdbcTemplate db, EntityManager em, AuthenticatedUserProvider users, AuditTrail audit, InventarioService inventory,
+            IntegracionInventarioContableService accounting) {
+        this.adjustments=adjustments; this.db=db; this.em=em; this.users=users; this.audit=audit; this.inventory=inventory; this.accounting=accounting;
     }
     public record Resultado(AjusteResponse ajuste, boolean creado) {}
     @Transactional @PreAuthorize("hasAuthority('INVENTARIO_AJUSTES_REGISTRAR')")
@@ -117,7 +120,9 @@ public class AjusteInventarioService {
         }
         // Persist exit costs while the parent is still approved; V10 freezes applied details.
         em.flush();
-        adjustment.marcarAplicado(Instant.now()); em.flush();
+        Instant appliedAt = Instant.now();
+        adjustment.marcarAplicado(appliedAt); em.flush();
+        accounting.contabilizarAjuste(id, java.time.LocalDate.ofInstant(appliedAt, java.time.ZoneId.of("America/Mexico_City")));
         audit.change(AuditAction.INVENTORY_ADJUSTMENT_APPLIED,adjustment.getId(),Set.of(AuditField.ESTADO),AuditState.APROBADO,AuditState.APLICADO);
         return response(adjustment);
     }

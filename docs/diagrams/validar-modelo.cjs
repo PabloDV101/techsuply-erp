@@ -205,6 +205,177 @@ for (const [, name, body] of v13Tables) {
     assert.ok(target.indexes.some(i => i.unique && JSON.stringify(i.columns.map(c => c.value).sort()) === JSON.stringify(fields)), `${name}: missing composite uniqueness`);
   }
 }
+const v14 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V14__accounting_core.sql'), 'utf8');
+const v14Tables = [...v14.replace(/^\s*--.*$/gm, '').matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.equal(v14Tables.length, 4, 'Review V14 table count');
+for (const [, name, body] of v14Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target && target.note.includes('SQL V14'), `${name}: missing SQL V14 status`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT', 'EXCLUDE'].includes(c[1]));
+  const v15Additions = name === 'asientos_contables' ? ['ultimo_motivo_edicion', 'editado_por_usuario_id', 'editado_en',
+    'motivo_cancelacion', 'cancelado_por_usuario_id', 'cancelado_en', 'motivo_reversion'] : [];
+  assert.deepEqual(target.fields.map(f => f.name).sort(), [...columns.map(c => c[1]), ...v15Additions].sort(), `${name}: V14/V15 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    const v15Type = name === 'asientos_contables' && column === 'estado' ? 'varchar(16)' : type;
+    assert.equal(normalize(field.type.type_name), normalize(v15Type), `${name}.${column}: V14/V15 type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: V14 nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: missing primary key`);
+    if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: missing uniqueness`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: missing FK`);
+  }
+  for (const part of splitSqlColumns(body)) {
+    const unique = part.match(/^UNIQUE\s*\(([^)]+)\)/);
+    if (!unique) continue;
+    const fields = unique[1].split(',').map(x => x.trim()).sort();
+    assert.ok(target.indexes.some(i => i.unique && JSON.stringify(i.columns.map(c => c.value).sort()) === JSON.stringify(fields)), `${name}: missing composite uniqueness`);
+  }
+}
+const v15 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V15__accounting_posting_and_draft_lifecycle.sql'), 'utf8');
+const historyMatch = v15.match(/^CREATE TABLE historial_asientos_contables \(([\s\S]*?)^\);/m);
+assert.ok(historyMatch, 'V15 history table missing');
+const history = schema.tables.find(t => t.name === 'historial_asientos_contables');
+assert.ok(history?.note.includes('SQL V15'), 'DBML must mark the V15 history table');
+const historyColumns = splitSqlColumns(historyMatch[1]).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+  .filter(c => c && !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT'].includes(c[1]));
+assert.deepEqual(history.fields.map(f => f.name).sort(), historyColumns.map(c => c[1]).sort(), 'V15 history columns differ');
+for (const [, column, type, constraints] of historyColumns) {
+  const field = history.fields.find(f => f.name === column);
+  assert.equal(normalize(field.type.type_name), normalize(type), `historial_asientos_contables.${column}: type differs`);
+  assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `historial_asientos_contables.${column}: nullability differs`);
+  if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${column}: missing primary key`);
+  if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${column}: missing uniqueness`);
+  const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+  if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `historial_asientos_contables.${column}>${ref[1]}.${ref[2]}`), `${column}: missing FK`);
+}
+for (const [column, type, nullable] of [['ultimo_motivo_edicion','varchar(300)',true], ['editado_por_usuario_id','bigint',true],
+  ['editado_en','timestamptz',true], ['motivo_cancelacion','varchar(300)',true], ['cancelado_por_usuario_id','bigint',true],
+  ['cancelado_en','timestamptz',true], ['motivo_reversion','varchar(300)',true]]) {
+  assert.ok(v15.includes(`ADD COLUMN ${column} ${type}`), `V15 must add ${column} with ${type}`);
+  const field = schema.tables.find(t => t.name === 'asientos_contables').fields.find(f => f.name === column);
+  assert.equal(normalize(field.type.type_name), type);
+  assert.equal(Boolean(field.not_null), !nullable);
+}
+const v17 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V17__sales_invoice_accounting_integration.sql'), 'utf8');
+const v17Tables = [...v17.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v17Tables.map(t => t[1]).sort(), ['configuracion_cuentas_factura_venta', 'integracion_factura_venta_contabilidad']);
+for (const [, name, body] of v17Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target?.note.includes('SQL V17'), `${name}: DBML must mark V17 implementation`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V17 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: primary key missing`);
+    if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: uniqueness missing`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: FK missing`);
+  }
+}
+for (const reference of [
+  'configuracion_cuentas_factura_venta.cuenta_contable_id>cuentas_contables.id',
+  'configuracion_cuentas_factura_venta.actualizado_por_usuario_id>usuarios.id',
+  'integracion_factura_venta_contabilidad.factura_venta_id>facturas_venta.id',
+  'integracion_factura_venta_contabilidad.asiento_contable_id>asientos_contables.id',
+  'integracion_factura_venta_contabilidad.ultimo_intento_por_usuario_id>usuarios.id',
+]) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === reference), `V17 FK missing: ${reference}`);
+const v18 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V18__sales_accounts_receivable_subledger.sql'), 'utf8');
+const v18Tables = [...v18.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v18Tables.map(t => t[1]), ['cuentas_por_cobrar']);
+for (const [, name, body] of v18Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target?.note.includes('SQL V18'), `${name}: DBML must mark V18 implementation`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN', 'CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V18 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: primary key missing`);
+    if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: uniqueness missing`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: FK missing`);
+  }
+}
+for (const reference of [
+  'cuentas_por_cobrar.factura_venta_id>facturas_venta.id',
+  'cuentas_por_cobrar.cliente_id>clientes.id',
+]) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === reference), `V18 FK missing: ${reference}`);
+const v19 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V19__customer_receipts_and_applications.sql'), 'utf8');
+const v19Tables = [...v19.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v19Tables.map(t => t[1]).sort(), ['aplicaciones_cobro','cobros_clientes','configuracion_cuentas_cobro']);
+for (const [, name, body] of v19Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target?.note.includes('SQL V19'), `${name}: DBML must mark V19 implementation`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY','UNIQUE','CHECK','FOREIGN','CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V19 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: primary key missing`);
+    if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: uniqueness missing`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: FK missing`);
+  }
+}
+for (const reference of [
+  'configuracion_cuentas_cobro.cuenta_fondos_id>cuentas_contables.id',
+  'configuracion_cuentas_cobro.cuenta_anticipos_id>cuentas_contables.id',
+  'configuracion_cuentas_cobro.actualizado_por_usuario_id>usuarios.id',
+  'cobros_clientes.cliente_id>clientes.id','cobros_clientes.registrado_por_usuario_id>usuarios.id',
+  'cobros_clientes.asiento_contable_id>asientos_contables.id','cobros_clientes.confirmado_por_usuario_id>usuarios.id',
+  'aplicaciones_cobro.cobro_id>cobros_clientes.id','aplicaciones_cobro.cuenta_por_cobrar_id>cuentas_por_cobrar.id',
+  'aplicaciones_cobro.aplicado_por_usuario_id>usuarios.id','aplicaciones_cobro.asiento_contable_id>asientos_contables.id',
+]) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === reference), `V19 FK missing: ${reference}`);
+const v20 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V20__inventory_accounting_integration.sql'), 'utf8');
+const v20Tables = [...v20.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v20Tables.map(t => t[1]), ['configuracion_cuentas_inventario']);
+for (const [, name, body] of v20Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target?.note.includes('SQL V20'), `${name}: DBML must mark V20 implementation`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY','UNIQUE','CHECK','FOREIGN','CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V20 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: primary key missing`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: FK missing`);
+  }
+}
+for (const reference of [
+  'configuracion_cuentas_inventario.cuenta_contable_id>cuentas_contables.id',
+  'configuracion_cuentas_inventario.actualizado_por_usuario_id>usuarios.id',
+]) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === reference), `V20 FK missing: ${reference}`);
+const v21 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V21__supplier_invoices_and_payables.sql'), 'utf8');
+const v21Tables = [...v21.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v21Tables.map(t => t[1]).sort(), ['configuracion_cuentas_factura_proveedor','cuentas_por_pagar','detalles_factura_proveedor','facturas_proveedor']);
+for (const [, name, body] of v21Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target?.note.includes('SQL V21'), `${name}: DBML must mark V21 implementation`);
+  const columns = splitSqlColumns(body).map(part => part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/))
+    .filter(c => c && !['PRIMARY','UNIQUE','CHECK','FOREIGN','CONSTRAINT'].includes(c[1]));
+  assert.deepEqual(target.fields.map(f => f.name).sort(), columns.map(c => c[1]).sort(), `${name}: V21 columns differ`);
+  for (const [, column, type, constraints] of columns) {
+    const field = target.fields.find(f => f.name === column);
+    assert.equal(normalize(field.type.type_name), normalize(type), `${name}.${column}: type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${column}: nullability differs`);
+    if (/PRIMARY KEY/.test(constraints)) assert.equal(Boolean(field.pk), true, `${name}.${column}: primary key missing`);
+    if (/\bUNIQUE\b/.test(constraints)) assert.equal(field.unique, true, `${name}.${column}: uniqueness missing`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${column}>${ref[1]}.${ref[2]}`), `${name}.${column}: FK missing`);
+  }
+}
 assert.match(v11, /ALTER TABLE movimientos_inventario ADD COLUMN detalle_despacho_id bigint UNIQUE REFERENCES detalles_despacho\(id\);/);
 const dispatchSource = schema.tables.find(t => t.name === 'movimientos_inventario').fields.find(f => f.name === 'detalle_despacho_id');
 assert.equal(normalize(dispatchSource.type.type_name), 'bigint');
@@ -215,8 +386,41 @@ for (const groupName of new Set(implementationGroups.values())) {
   assert.equal(schema.tables.filter(t => t.group?.name === groupName).length,
     [...implementationGroups.values()].filter(g => g === groupName).length);
 }
+const v22 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V22__supplier_payments_and_applications.sql'), 'utf8');
+const v22Tables = [...v22.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+for (const [, name, body] of v22Tables) {
+  const target = schema.tables.find(t => t.name === name);
+  assert.ok(target?.note.includes('V22'), `${name}: DBML must mark V22 implementation`);
+  for (const part of splitSqlColumns(body)) {
+    const column = part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/);
+    if (!column || ['PRIMARY','UNIQUE','CHECK','FOREIGN','CONSTRAINT'].includes(column[1])) continue;
+    const [, nameColumn, type, constraints] = column;
+    const field = target.fields.find(f => f.name === nameColumn);
+    assert.ok(field, `${name}.${nameColumn}: missing`);
+    assert.equal(field.type.type_name.toLowerCase(), type.toLowerCase(), `${name}.${nameColumn}: type differs`);
+    assert.equal(Boolean(field.not_null), /NOT NULL|PRIMARY KEY/.test(constraints), `${name}.${nameColumn}: nullability differs`);
+    const ref = constraints.match(/REFERENCES (\w+)\((\w+)\)/);
+    if (ref) assert.ok(schema.refs.some(r => r.endpoints.map(e => `${e.tableName}.${e.fieldNames.join(',')}`).join('>') === `${name}.${nameColumn}>${ref[1]}.${ref[2]}`), `${name}.${nameColumn}: FK missing`);
+  }
+}
+const v24 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V24__cash_flow_classification.sql'), 'utf8');
+const v24Tables = [...v24.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v24Tables.map(t => t[1]).sort(), ['clasificaciones_flujo_cuenta','clasificaciones_flujo_partida']);
+for (const [,name,body] of v24Tables) {
+  const table=schema.tables.find(t=>t.name===name); assert.ok(table, `${name}: missing V24 table`);
+  assert.ok(table.note.includes('SQL V24'), `${name}: DBML must mark V24 implementation`);
+  for(const part of splitSqlColumns(body)) {
+    const m=part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/);
+    if(!m || ['PRIMARY','UNIQUE','CHECK','FOREIGN','CONSTRAINT','EXCLUDE'].includes(m[1])) continue;
+    const [,col,type,attrs]=m; const field=table.fields.find(f=>f.name===col); assert.ok(field,`${name}.${col}: missing`);
+    assert.equal(field.type.type_name.toLowerCase(),type.toLowerCase(),`${name}.${col}: type differs`);
+    assert.equal(Boolean(field.not_null),/NOT NULL|PRIMARY KEY/.test(attrs),`${name}.${col}: nullability differs`);
+    const ref=attrs.match(/REFERENCES (\w+)\((\w+)\)/);
+    if(ref) assert.ok(schema.refs.some(r=>r.endpoints.map(e=>`${e.tableName}.${e.fieldNames.join(',')}`).join('>')===`${name}.${col}>${ref[1]}.${ref[2]}`),`${name}.${col}: FK missing`);
+  }
+}
 for (const table of schema.tables) {
-  assert.ok(implemented.has(table.name) || v9Tables.some(t => t[1] === table.name) || v11Tables.some(t => t[1] === table.name) || v13Tables.some(t => t[1] === table.name) || table.note.includes('OBJETIVO'), `${table.name}: missing target status`);
+  assert.ok(implemented.has(table.name) || v9Tables.some(t => t[1] === table.name) || v11Tables.some(t => t[1] === table.name) || v13Tables.some(t => t[1] === table.name) || v14Tables.some(t => t[1] === table.name) || v17Tables.some(t => t[1] === table.name) || v18Tables.some(t => t[1] === table.name) || v19Tables.some(t => t[1] === table.name) || v20Tables.some(t => t[1] === table.name) || v21Tables.some(t => t[1] === table.name) || v22Tables.some(t => t[1] === table.name) || v24Tables.some(t => t[1] === table.name) || table.name === 'historial_asientos_contables' || table.note.includes('OBJETIVO'), `${table.name}: missing target status`);
 }
 assert.ok(!/\buuid\b|gen_random_uuid/i.test(primary), 'Stale UUID policy');
 console.log(`DBML OK: ${schema.tables.length} tables, ${schema.refs.length} relationships; both copies identical.`);
@@ -225,4 +429,12 @@ console.log('V7 partial target comparison with V8 type alterations: 6 tables; no
 console.log('V9 inventory documents: 4 tables plus the adjustment movement source; columns, types, nullability, uniqueness and foreign keys.');
 console.log('V11/V12 sales: 7 tables, dispatch movement source and cancellation metadata; columns, types, nullability, uniqueness and foreign keys.');
 console.log('V13 sales invoices: 2 tables; columns, types, nullability, uniqueness and foreign keys.');
+console.log('V14 accounting core: 4 tables; columns, types, nullability, uniqueness and foreign keys.');
+console.log('V15 accounting lifecycle: 7 added columns and the audited entry history table.');
+console.log('V17 sales invoice integration: durable outbox, configurable accounts and five documented foreign keys.');
+console.log('V18 accounts receivable: invoice-linked immutable subledger, matching customer/amount/dates and two documented foreign keys.');
+console.log('V19 customer receipts: explicit confirmation, same-customer idempotent applications, configured funds/advances accounts and eleven documented foreign keys.');
+console.log('V20 inventory accounting: five configurable concepts, active source-to-seat enforcement and two documented foreign keys.');
+console.log('V21 supplier invoice and payables: source, lines, mapping and auxiliary columns, types and foreign keys.');
+console.log('V24 cash flow classifications: two tables, columns, types, nullability and foreign keys; temporal exclusion and audit triggers remain defined by Flyway.');
 console.log('CHECK, triggers and partial indexes are described in notes; executable authority remains Flyway SQL.');

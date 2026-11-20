@@ -478,7 +478,7 @@ paths:
       description: 'Permiso: VENTAS_PEDIDOS_CANCELAR. Cancela borrador, confirmado o parcialmente despachado; rechaza si
         hay despachos en borrador, libera la reserva pendiente y conserva despachos y movimientos confirmados. El motivo
         se recorta; reintento con el mismo motivo devuelve 200, uno distinto o una cancelación histórica sin metadatos
-        devuelve 409. No se cancelan pedidos completamente despachados.
+        devuelve 409. No se cancelan pedidos completamente despachados.'
       parameters:
       - $ref: '#/components/parameters/Id'
       requestBody:

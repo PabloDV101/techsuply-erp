@@ -38,6 +38,7 @@ class ConfirmarDespachoIT extends PostgresIntegrationSupport {
         for(String permission:permissions) assertThat(db.update("insert into roles_permisos(rol_id,permiso_id) select ?,id from permisos where codigo=?",role,permission)).isEqualTo(1);
         long user=id("insert into usuarios(username,correo,password_hash) values (?,?,?) returning id",name,name+"@example.test",passwords.encode(password));
         db.update("insert into usuarios_roles(usuario_id,rol_id) values (?,?)",user,role);
+        configureInventoryAccounting(db,user);
         String response=http.perform(post("/api/v1/auth/login").contentType("application/json").content(json.writeValueAsString(Map.of("identificador",name,"password",password))))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return new User(user,json.readTree(response).get("accessToken").asText());
@@ -105,13 +106,18 @@ class ConfirmarDespachoIT extends PostgresIntegrationSupport {
         assertThat(db.queryForObject("select cantidad_despachada from detalles_pedido where id=?",BigDecimal.class,f.line())).isEqualByComparingTo("4");
         assertThat(db.queryForObject("select estado from pedidos_venta where id=?",String.class,f.order())).isEqualTo("PARCIALMENTE_DESPACHADO");
         assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id=? and cantidad=4 and motivo='DESPACHO_VENTA'",Integer.class,f.product())).isEqualTo(1);
+        long entry=id("select id from asientos_contables where origen_modulo='VENTAS' and origen_tipo='DESPACHO_VENTA' and origen_id=?",dispatch);
+        assertThat(db.queryForObject("select sum(debe) from partidas_asiento where asiento_id=?",BigDecimal.class,entry)).isEqualByComparingTo("28.00");
+        assertThat(db.queryForObject("select sum(haber) from partidas_asiento where asiento_id=?",BigDecimal.class,entry)).isEqualByComparingTo("28.00");
     }
-    @Test void conservaCostoMaximoYEscalaDeCuatroDecimales() throws Exception {
+    @Test void rechazaDespachoCuandoElCostoNoPuedeRepresentarseEnCentavos() throws Exception {
         User u=user("VENTAS_DESPACHOS_REGISTRAR","VENTAS_DESPACHOS_CONFIRMAR");Fixture f=fixture(u,"CONFIRMADO");
         db.update("update existencias set costo_promedio=999999999999.9999,version=version+1 where producto_id=?",f.product());
-        long dispatch=dispatch(u,f,"1");assertThat(confirm(u,dispatch)).isEqualTo(200);
-        assertThat(db.queryForObject("select costo_unitario from detalles_despacho where despacho_id=?",BigDecimal.class,dispatch)).isEqualByComparingTo("999999999999.9999");
-        assertThat(db.queryForObject("select costo_unitario from movimientos_inventario where producto_id=?",BigDecimal.class,f.product())).isEqualByComparingTo("999999999999.9999");
+        long dispatch=dispatch(u,f,"1");assertThat(confirm(u,dispatch)).isEqualTo(409);
+        assertThat(db.queryForObject("select estado from despachos where id=?",String.class,dispatch)).isEqualTo("BORRADOR");
+        assertThat(db.queryForObject("select cantidad_fisica from existencias where producto_id=?",BigDecimal.class,f.product())).isEqualByComparingTo("10");
+        assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id=?",Integer.class,f.product())).isZero();
+        assertThat(db.queryForObject("select count(*) from asientos_contables where origen_modulo='VENTAS' and origen_tipo='DESPACHO_VENTA' and origen_id=?",Integer.class,dispatch)).isZero();
     }
     @Test void despachosDistintosConcurrentesActualizanTodoSinPerdidas() throws Exception {
         User u=user("VENTAS_DESPACHOS_REGISTRAR","VENTAS_DESPACHOS_CONFIRMAR");Fixture f=fixture(u,"CONFIRMADO");long first=dispatch(u,f,"3"),second=dispatch(u,f,"2");
@@ -176,9 +182,9 @@ class ConfirmarDespachoIT extends PostgresIntegrationSupport {
         long supplier=id("insert into proveedores(codigo,nombre_razon_social) values (?,?) returning id",k,"Proveedor");
         long department=id("insert into departamentos(codigo,nombre) values (?,?) returning id",k,"Departamento");
         long purchase=id("insert into ordenes_compra(folio,proveedor_id,departamento_id,creada_por_usuario_id,estado) values (?,?,?,?,'ENVIADA') returning id",k,supplier,department,receiver.id());
-        long line=id("insert into detalles_orden_compra(orden_compra_id,producto_id,cantidad,precio_unitario,tasa_impuesto) values (?,?,1,10,0) returning id",purchase,f.product());
+        long line=id("insert into detalles_orden_compra(orden_compra_id,producto_id,cantidad,precio_unitario,tasa_impuesto) values (?,?,1,7,0) returning id",purchase,f.product());
         long receipt=id("insert into recepciones_compra(folio,orden_compra_id,almacen_id,registrada_por_usuario_id,clave_idempotencia,estado) values (?,?,?,?,?,'PENDIENTE') returning id",k,purchase,f.warehouse(),receiver.id(),k);
-        db.update("insert into detalles_recepcion(recepcion_id,detalle_orden_compra_id,cantidad_recibida,cantidad_aceptada,cantidad_rechazada,precio_unitario_recibido) values (?,?,1,1,0,10)",receipt,line);
+        db.update("insert into detalles_recepcion(recepcion_id,detalle_orden_compra_id,cantidad_recibida,cantidad_aceptada,cantidad_rechazada,precio_unitario_recibido) values (?,?,1,1,0,7)",receipt,line);
         var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
         try {
             var a=pool.submit(()->{gate.await();return confirm(seller,dispatch);});
@@ -189,7 +195,7 @@ class ConfirmarDespachoIT extends PostgresIntegrationSupport {
         assertThat(db.queryForObject("select cantidad_reservada from existencias where producto_id=?",BigDecimal.class,f.product())).isEqualByComparingTo("2");
         assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id=?",Integer.class,f.product())).isEqualTo(2);
         assertThat(db.queryForObject("select costo_unitario from detalles_despacho where despacho_id=?",BigDecimal.class,dispatch))
-            .isIn(new BigDecimal("7.0000"),new BigDecimal("7.2727"));
+            .isEqualByComparingTo("7.0000");
     }
     long crearAjuste(User creator,User approver,Fixture f,Map<String,Object> line) throws Exception {
         var body=Map.of("almacenId",f.warehouse(),"motivo","Prueba","claveIdempotencia",key(),"detalles",List.of(line));

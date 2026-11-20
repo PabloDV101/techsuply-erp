@@ -34,6 +34,7 @@ class AplicarAjusteIT extends PostgresIntegrationSupport {
         for(String permission:permissions) db.update("insert into roles_permisos(rol_id,permiso_id) select ?,id from permisos where codigo=?",role,permission);
         long user=db.queryForObject("insert into usuarios(username,correo,password_hash) values (?,?,?) returning id",Long.class,key,key+"@example.test",passwords.encode(password));
         db.update("insert into usuarios_roles(usuario_id,rol_id) values (?,?)",user,role);
+        configureInventoryAccounting(db,user);
         String body=http.perform(post("/api/v1/auth/login").contentType("application/json").content(json.writeValueAsString(Map.of("identificador",key,"password",password))))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return new Account(user,key,json.readTree(body).get("accessToken").asText());
@@ -106,6 +107,9 @@ class AplicarAjusteIT extends PostgresIntegrationSupport {
         assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id=? and tipo='ENTRADA' and costo_unitario=10 and usuario_id=?",Integer.class,f.first(),applier.id())).isEqualTo(1);
         assertThat(db.queryForObject("select count(*) from movimientos_inventario where producto_id=? and tipo='SALIDA' and costo_unitario=8 and usuario_id=?",Integer.class,f.second(),applier.id())).isEqualTo(1);
         assertThat(db.queryForObject("select costo_unitario from detalles_ajuste_inventario where ajuste_inventario_id=? and producto_id=?",BigDecimal.class,id,f.second())).isEqualByComparingTo("8");
+        long entry=db.queryForObject("select id from asientos_contables where origen_modulo='INVENTARIO' and origen_tipo='AJUSTE_INVENTARIO' and origen_id=?",Long.class,id);
+        assertThat(db.queryForObject("select sum(debe) from partidas_asiento where asiento_id=?",BigDecimal.class,entry)).isEqualByComparingTo("44.00");
+        assertThat(db.queryForObject("select sum(haber) from partidas_asiento where asiento_id=?",BigDecimal.class,entry)).isEqualByComparingTo("44.00");
         assertThat(apply(applier,id)).isEqualTo(200); assertThat(movementCount(f)).isEqualTo(2);
         assertThat(db.queryForObject("select count(*) from eventos_auditoria where accion='INVENTORY_ADJUSTMENT_APPLIED' and entidad_id=? and usuario_id=?",Integer.class,id,applier.id())).isEqualTo(1);
         var retryBody=Map.of("almacenId",f.warehouse(),"motivo","Solicitud","claveIdempotencia",f.key()+"M","detalles",List.of(minus(f.second(),3),plus(f.first(),2,10)));

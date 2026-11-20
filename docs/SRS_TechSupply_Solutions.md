@@ -263,6 +263,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-COM-06 — Factura de proveedor (Alta).** El sistema deberá registrar una factura de proveedor y validarla contra orden y recepciones antes de crear la cuenta por pagar. Para el MVP se permite una factura por orden.  
 *Criterio:* diferencias o documentos faltantes impiden marcar la validación como completada; la operación no duplica cuentas por pagar.
 
+*Estado parcial (sprint 4, parte 13):* V21 registra una factura por orden con líneas editables mientras está `REGISTRADA`. La validación explícita exige orden completamente recibida, cantidades y valores pactados exactos, costo de kardex conciliado, cuentas compatibles y periodo abierto; crea asiento y CxP en la misma transacción. Diferencias y fallos conservan la factura registrada. No hay cancelación de factura; V22–V23 agregan pagos a proveedores como proceso separado.
+
 **RF-COM-07 — Devolución a proveedor (Media).** El sistema deberá registrar devoluciones con motivo, proveedor, almacén, producto y cantidad, asociadas con la recepción/línea original.  
 *Criterio:* no puede devolverse más de lo aceptado y aún disponible para devolución; la confirmación genera salida trazable.
 
@@ -277,7 +279,7 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-INV-02 — Movimientos (Alta).** El sistema deberá registrar entradas, salidas, devoluciones, ajustes y reversiones con fecha, cantidad, tipo, usuario y fuente del movimiento.  
 *Criterio:* cada movimiento confirmado tiene exactamente una fuente válida y no se elimina físicamente.
 
-*Estado de implementación (Fase 3, sprint 2, parte 9):* existe consulta paginada protegida; recepciones y ajustes producen movimientos. V10 impide su modificación, borrado y truncado ordinarios y comprueba atributos de fuentes nuevas. Propietarios y administradores pueden alterar los controles; SQL directo con privilegios de inserción sigue sin garantizar el flujo transaccional. Salidas de ventas, devoluciones y reversas permanecen pendientes.
+*Estado de implementación (Fase 3, sprint 2, parte 9):* existe consulta paginada protegida; recepciones y ajustes producen movimientos. V10 impide su modificación, borrado y truncado ordinarios y comprueba atributos de fuentes nuevas. Propietarios y administradores pueden alterar los controles; SQL directo con privilegios de inserción sigue sin garantizar el flujo transaccional. Los despachos de Ventas producen salidas; devoluciones y reversas permanecen pendientes.
 
 **RF-INV-03 — Reserva de ventas (Alta).** Al confirmar un pedido, el sistema deberá reservar cantidades disponibles dentro de una transacción.  
 *Criterio:* las reservas concurrentes no permiten comprometer más unidades que las disponibles.
@@ -329,10 +331,12 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-VEN-05 — Factura comercial (Alta).** El sistema deberá emitir una factura comercial vinculada al pedido cuando este se encuentre completamente despachado. En el MVP se establece una factura por pedido.  
 *Criterio:* no se emite una segunda factura del mismo pedido y se mantiene explícito que no hay timbrado CFDI salvo que se implemente después.
 
-*Estado backend (sprint 3, parte 12):* emisión explícita y consulta de factura comercial interna por pedido totalmente despachado, con instantáneas, unicidad y auditoría. Cuentas por cobrar, contabilidad, CFDI y frontend integrado siguen pendientes. Evidencia en [factura comercial](fase-3/SPRINT_3_FACTURAS.md).
+*Estado backend (sprint 3, parte 12; sprint 4, partes 9–12):* emisión explícita de factura interna por pedido totalmente despachado, con snapshot, unicidad y auditoría. Contabilidad integra facturas nuevas y permite registrar, confirmar y aplicar cobros; Compras/Inventario contabilizan recepciones, despachos y ajustes en la operación de origen. CFDI, historial integrado del cliente y frontend siguen pendientes. Evidencia en [factura comercial](fase-3/SPRINT_3_FACTURAS.md) y [Contabilidad](fase-3/SPRINT_4_CONTABILIDAD_POR_PARTES.md).
 
 **RF-VEN-06 — Pagos de clientes (Media).** El sistema deberá registrar cobros y aplicarlos a una o varias cuentas por cobrar mediante aplicaciones explícitas.  
 *Criterio:* solo cobros confirmados reducen saldos; ninguna aplicación supera el saldo de factura o monto disponible del cobro.
+
+*Estado parcial (sprint 4, parte 11):* V19 permite registrar cobros idempotentes, confirmarlos con asiento de fondos/anticipos y aplicar montos a auxiliares CxC del mismo cliente. No aporta conciliación bancaria, reversión/contracargos ni presentación de historial comercial completo.
 
 **RF-VEN-07 — Historial del cliente (Media).** El sistema deberá mostrar a usuarios autorizados el historial de cotizaciones, pedidos, facturas y pagos del cliente.  
 *Criterio:* un cliente del portal solo accede a registros que le pertenecen.
@@ -345,26 +349,42 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 
 ### 5.6 Contabilidad y finanzas
 
+*Estado (sprint 4, partes 9–15):* V14–V16 implementan estructura/API de cuentas, periodos, asientos, mayor y balance de prueba. V17 agrega integración contable durable para facturas nuevas; V18 crea su auxiliar CxC, cuyo saldo V19 deriva de aplicaciones contabilizadas. V19 permite registrar y confirmar cobros independientes y aplicarlos al mismo cliente. V20 contabiliza recepciones aceptadas, despachos confirmados y ajustes aplicados en la misma transacción de Compras/Inventario. Los asientos usan costos persistidos y cuentas compatibles configuradas; requieren periodo abierto e importes exactos a centavos. Si falta configuración, periodo o precisión, se revierte también la operación de origen para reintento. Recepciones no crean factura de proveedor ni CxP. V21 incorpora factura de proveedor y CxP; V22–V23 agregan pagos con aplicaciones verificadas. V24 habilita clasificación explícita para reportes parciales de resultados, balance y flujo indirecto condicionado a evidencia. No hay procesamiento automático de facturas históricas, reversión de cobros/pagos, CFDI ni conciliación bancaria externa. Detalles en [migraciones](fase-3/SPRINT_4_MIGRACIONES.md), [asientos](fase-3/SPRINT_4_ASIENTOS_BORRADOR.md), [diseño](fase-3/SPRINT_4_DISENO_CONTABILIDAD.md) y [ruta](fase-3/SPRINT_4_CONTABILIDAD_POR_PARTES.md).
+
 **RF-CON-01 — Plan de cuentas y periodos (Alta).** El sistema deberá gestionar cuentas contables jerárquicas y periodos abiertos/cerrados.  
 *Criterio:* código de cuenta único; las cuentas de agrupación no aceptan movimientos cuando así estén configuradas.
+
+*Estado parcial (sprint 4, parte 7):* API de cuentas, periodos y asientos manuales. Borradores editables/cancelables con motivo, contabilización equilibrada en periodo abierto y reversión auditada con fecha explícita en otro periodo abierto. Las partes 8–15 añadieron integraciones, auxiliares y reportes parciales; no se autoriza reabrir periodos.
 
 **RF-CON-02 — Asientos contables (Alta).** El sistema deberá crear asientos con dos o más partidas vinculadas a cuentas contables, validando que debe y haber sean iguales.  
 *Criterio:* un asiento desbalanceado no puede contabilizarse.
 
+*Estado parcial (sprint 4, parte 7):* se crean y consultan borradores de 2 o más partidas; la contabilización exige igualdad exacta y periodo abierto. Precisión de hasta 12 enteros y 2 decimales, sin redondeo.
+
 **RF-CON-03 — Contabilización y reversión (Alta).** El sistema deberá generar o preparar asientos a partir de documentos operativos validados según reglas contables configuradas, y permitir contabilizarlos en un periodo abierto. Asociará la fuente y evitará duplicados.  
 *Criterio:* reintentar la misma solicitud no genera otro asiento; los asientos contabilizados solo se corrigen mediante reversión auditada.
+
+*Estado parcial (sprint 4, partes 9–15):* V17 contabiliza facturas nuevas de Ventas mediante reintento explícito; V20 contabiliza recepción aceptada, despacho confirmado y ajuste aplicado con costo persistido, origen idempotente, cuentas compatibles y periodo abierto. V21 valida factura de proveedor y crea asiento/CxP; V22–V23 agregan pagos. Mapeo, periodo o precisión inválidos revierten la operación operativa afectada. No procesa hechos históricos automáticamente ni fuentes no aprobadas.
 
 **RF-CON-04 — Cuentas por pagar (Alta).** El sistema deberá generar o mantener cuentas por pagar a partir de facturas de proveedores validadas.  
 *Criterio:* cada cuenta conserva proveedor, documento origen, importe original, vencimiento y saldo.
 
+*Estado parcial (sprint 4, parte 13):* V21 crea un auxiliar inmutable al validar y contabilizar la factura de proveedor; conserva proveedor, factura, asiento, importe y vencimiento. El saldo pendiente se deriva de las aplicaciones de pagos confirmados de V22–V23. La recepción previa solo genera el pasivo transitorio de mercancía recibida no facturada.
+
 **RF-CON-05 — Cuentas por cobrar (Alta).** El sistema deberá generar o mantener cuentas por cobrar a partir de facturas comerciales válidas.  
 *Criterio:* cada cuenta conserva cliente, factura origen, vencimiento y saldo.
+
+*Estado (sprint 4, partes 10–11):* V18 crea el auxiliar al contabilizar una factura nueva; V19 deriva el saldo restando aplicaciones contabilizadas. Cobros independientes se registran y confirman explícitamente; la confirmación contabiliza fondos contra anticipos y aplicaciones posteriores reclasifican el anticipo a CxC. No hay cobro automático al emitir factura, conciliación bancaria, reversión de cobros ni procesamiento de históricas.
 
 **RF-CON-06 — Pagos a proveedores y cobros de clientes (Alta).** El sistema deberá registrar pagos/cobros y permitir aplicaciones parciales con control de saldo.  
 *Criterio:* aplicaciones de cobro y de pago son entidades separadas y deben corresponder a cliente/proveedor de la cuenta auxiliar.
 
+*Estado parcial (sprint 4, parte 14):* V19 implementa cobros y aplicaciones al mismo cliente. V22–V23 agregan registro de pagos y confirmación con aplicaciones por el importe completo a una o varias CxP del mismo proveedor; cada aplicación puede liquidar parcialmente la cuenta. La confirmación registra débito en las cuentas originales de CxP y crédito en fondos, y exige periodo abierto. La regresión y las pruebas focalizadas están registradas en la ruta del sprint. No incluye reversión de pagos ni conciliación bancaria externa.
+
 **RF-CON-07 — Estados y reportes financieros (Media).** El sistema deberá generar balance de prueba, estado de resultados, balance general y flujo de efectivo conforme a las operaciones contables implementadas.  
 *Criterio:* los reportes identifican el periodo y se calculan con los datos contables válidos; su alcance y fórmulas se documentan.
+
+*Estado parcial (sprint 4, parte 15):* balance de prueba, estado de resultados y balance general consultan partidas contabilizadas/reversadas con permisos. El flujo indirecto exige clasificaciones auditables V24, cobertura de efectivo y conciliación; devuelve `NO_DISPONIBLE` si falta evidencia fiable. No genera clasificación histórica automática, no desglosa los ajustes operativos y no aporta informes fiscales. Evidencia de casos HTTP/PostgreSQL y límites en [Contabilidad por partes](fase-3/SPRINT_4_CONTABILIDAD_POR_PARTES.md) y [diseño contable](fase-3/SPRINT_4_DISENO_CONTABILIDAD.md).
 
 **RF-CON-08 — Control presupuestario (Futura).** El sistema podrá registrar presupuestos por departamento y periodo, y comparar gastos contra importes presupuestados.  
 *Criterio:* se definen periodo, versión, responsable y regla de cálculo antes de activar alertas o bloqueos de gasto.
@@ -519,7 +539,7 @@ Esta decisión limita la complejidad de despliegue y permite operaciones transac
 | Compras | Requisiciones, autorizaciones, órdenes, recepciones, devoluciones y factura de proveedor. |
 | Inventario | Existencias por producto/almacén, cantidad reservada, movimientos, conteos, ajustes y alertas. Es el único módulo autorizado para cambiar existencias. |
 | Ventas | Cotizaciones, pedidos, validación comercial, reservas solicitadas a inventario, despachos, facturas comerciales y cobros iniciados/consultados. |
-| Contabilidad | Plan de cuentas, periodos, asientos, cuentas por cobrar/pagar y aplicación de cobros/pagos. |
+| Contabilidad | Plan de cuentas, periodos, asientos, auxiliares CxC y registro/confirmación/aplicación contable de cobros. CxP y pagos a proveedores están implementados dentro de sus límites documentados. |
 | RR. HH. y nómina | Expedientes laborales, asistencia, vacaciones, cálculo básico, aprobación y pago de nómina. |
 | Reportería | Consultas e indicadores; respeta permisos y no cambia datos operativos. |
 | Auditoría | Registro transversal de acciones críticas. Una sola definición de dominio/tabla compartida. |
@@ -577,7 +597,8 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 - `04-vista-despliegue-react-spring-postgres.puml`: nodos, artefactos y comunicaciones.
 - `05-secuencia-recepcion-compra.puml`: atomicidad de recepción e inventario.
 - `06-secuencia-venta-despacho.puml`: reserva, despacho parcial y salida.
-- `07-secuencia-contabilizacion.puml`: validación de origen, periodo, equilibrio e idempotencia.
+- `07-secuencia-contabilizacion.puml`: diseño futuro de contabilización, origen, equilibrio y reversión.
+- `14-secuencia-asiento-manual.puml`: alta transaccional y consulta de borradores manuales implementadas.
 - `08-secuencia-autenticacion.puml`: login, validación Bearer, autorización y logout.
 - `../despliegue/00-despliegue-actual.puml`: entorno de desarrollo y pruebas aisladas; las demás vistas describen topologías de una o varias instancias. El estado verificable de cada entorno se consulta en su documentación operativa.
 
@@ -627,6 +648,8 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 
 **CA-04 — Pago parcial.** Dada una cuenta por cobrar de 1,000 y un cobro confirmado de 300 aplicado a la cuenta, el saldo pendiente será 700. El sistema rechazará una aplicación superior al monto disponible del cobro o al saldo de la cuenta.
 
+*Evidencia sprint 4, parte 11:* confirmado el asiento y el registro atómico de dos aplicaciones parciales, saldo cero al cubrir 58 de una factura de 58 y sobrante de 22 en un cobro de 80; se rechaza aplicar 30 cuando el saldo restante es 8.
+
 **CA-05 — Contabilización.** Un asiento con debe 1,000 y haber 950 no podrá contabilizarse. Un asiento equilibrado asociado a un periodo cerrado tampoco podrá contabilizarse. Reintentar una contabilización exitosa no generará otro asiento.
 
 **CA-06 — Autorización.** Un usuario sin permiso para ajustar inventario no podrá aplicar un ajuste enviando directamente una solicitud a la API. La denegación deberá quedar registrada según la política de auditoría.
@@ -644,13 +667,16 @@ Los códigos fuente están en `docs/diagrams/arquitectura/`. Comparten estilo lo
 | RF-MAE-04 (parcial) | Gestionar clientes | Cliente, ClienteService, ClienteController | `ClienteApiIT`, `ClienteOpenApiContractTest`, `PedidoApiIT`; cliente activo en conversión, crédito pendiente |
 | RF-MAE-02 (parcial) | Gestionar categorías de producto | CategoriaProducto; API y servicio de Gestión Maestra | CategoriaProductoIntegrationIT y MasterCatalogApiIT; consulta de productos por categoría |
 | RF-COM-03/04/05, RN-07/08/18 | Orden y recepción parcial | OrdenCompra, RecepcionCompra, InventarioService | `ConfirmarRecepcionIT`: CA-01, reintento, concurrencia y rollback |
-| RF-COM-01/02/06/07/08 | Requisición, factura y devolución | RequisicionCompra, FacturaProveedor y devolución | Pendiente de implementación y pruebas |
+| RF-COM-01/02/07/08 | Requisición y devolución | RequisicionCompra y devolución | Pendiente de implementación y pruebas |
+| RF-COM-06 / RF-CON-04 | Factura de proveedor y CxP | FacturaProveedorService, V21, cuenta por pagar | Conciliación HTTP/PostgreSQL en `ConfirmarRecepcionIT`; V22–V23 agregan pagos, cancelación de factura pendiente |
 | RF-INV-01/02/05/06/07 (parcial según alcance) | Existencia, movimiento, conteo, ajuste y alerta global | Existencia, MovimientoInventario, ConteoInventario, AjusteInventario | `FlujoCompraInventarioIT`, `AplicarAjusteIT`, `AlertaStockIT`; CA-01/06 |
 | RF-INV-03/04 y restantes de RF-INV-02/07 | Reservas, despachos y reportes | Inventario y Ventas | CA-02: `ConfirmarPedidoIT`; CA-03: `ConfirmarDespachoIT`; informes pendientes |
 | RF-VEN-01 a RF-VEN-04 | Cotización, pedido y despacho | Cotizacion, PedidoVenta, Despacho | `ConfirmarPedidoIT`, `ConfirmarDespachoIT`; CA-02 y CA-03 |
 | RF-VEN-05 | Factura comercial interna | FacturaVenta, DetalleFacturaVenta | `FacturaApiIT`, `FacturaMigrationIT`, `FacturaOpenApiContractTest` |
-| RF-VEN-06 a RF-VEN-09 | Cobros, historial, portal y comisiones | Módulos futuros | Pendiente de implementación y pruebas |
-| RF-CON-01 a RF-CON-08 | Contabilidad y aplicaciones | AsientoContable, DetalleAsiento, CuentaPorCobrar/Pagar, aplicaciones | CA-04, CA-05 |
+| RF-VEN-06 | Cobros y aplicaciones | Contabilidad V19 (parcial) | Registro/confirmación/aplicación implementados; conciliación externa, reversión y UX de Ventas pendientes |
+| RF-VEN-07 a RF-VEN-09 | Historial, portal y comisiones | Módulos futuros | Pendiente de implementación y pruebas |
+| RF-CON-01 a RF-CON-07 (parciales) | Contabilidad y aplicaciones | Cuentas, periodos, asientos, CxC/CxP, cobros, pagos y reportes | `CuentaContableApiIT`, `PeriodoContableApiIT`, `AsientoContableApiIT`, `FacturaApiIT`, `ConfirmarRecepcionIT`, `ReportesContablesApiIT`; CA-04/05; límites en cierre Sprint 4 |
+| RF-CON-08 (futuro) | Presupuestos | Sin fuente ni reglas aprobadas | Sin pruebas operativas |
 | RF-RH-01 a RF-RH-04 | RR. HH. y nómina | ExpedienteLaboral, SolicitudVacaciones, Nomina, DetalleNomina | CA-07 |
 | RF-SEG-01 a RF-SEG-04 | Seguridad | Usuario, Rol, Permiso, EventoAuditoria | CA-06, CA-08 |
 | RF-REP-01 a RF-REP-05 | Dashboard e informes | DefinicionReporte, EjecucionReporte, Indicador | CA-08 y pruebas de rendimiento |

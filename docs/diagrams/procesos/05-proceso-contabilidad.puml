@@ -1,59 +1,88 @@
 @startuml TS05_Proceso_Contabilidad
 !include ../_estilo.iuml
-title ERP TechSupply Solutions - Registro Financiero y Contable
+title ERP TechSupply Solutions - Registro financiero y contable\nFactura de proveedor V21 valida contra orden, recepciones y costo\nVentas conserva outbox pendiente; Inventario y CxP usan rollback conjunto
 
 |Modulo operativo / Contador|
 start
-:Recibir documento origen o pago confirmado;
-:Identificar tipo de operacion;
+:Solicitar operacion contable o reporte financiero;
 |Sistema ERP|
-if (¿Tipo de operacion?) then (Factura de venta)
+if (¿Tipo solicitado?) then (Estados financieros)
+  :Validar permiso CONTABILIDAD_REPORTES_LEER;
+  :Consultar asientos contabilizados y reversados;
+  :Calcular resultados y balance a fecha;
+  :Evaluar clasificaciones de flujo V24;
+  if (¿Cobertura y conciliacion completas?) then (Si)
+    :Devolver flujo indirecto y efectivo conciliado;
+  else (No)
+    :Devolver NO_DISPONIBLE con motivo;
+  endif
+  stop
+elseif (Clasificar flujo) then (Clasificar)
+  :Validar permiso CONTABILIDAD_FLUJO_CLASIFICAR;
+  :Guardar clasificacion versionada de cuenta o partida;
+  :Anular con actor y motivo para sustituir;
+  stop
+elseif (Factura de venta) then (Factura de venta)
   :Validar factura comercial;
+  :Persistir outbox PENDIENTE con la emision;
+  :Conservar factura para reintento explicito;
+  stop
+elseif (Reintento de factura) then (Reintento)
+  :Validar outbox pendiente y fecha abierta;
   :Preparar cuenta por cobrar;
   :Preparar asiento de venta;
 elseif (Factura proveedor) then (Factura proveedor)
-  :Validar factura contra orden y recepcion;
+  :Conciliar factura registrada con orden recibida,\nrecepciones confirmadas y costo de kardex;
   if (¿Documentos conciliados?) then (Si)
-    :Preparar cuenta por pagar;
-    :Preparar asiento de compra;
+    :Liberar Mercancia recibida no facturada;\nreconocer IVA acreditable y CxP;
   else (No)
-    :Registrar discrepancia y detener proceso;
+    :Conservar factura registrada para correccion;
     stop
   endif
 elseif (Nomina aprobada) then (Nomina aprobada)
-  :Validar nomina aprobada y su periodo;
-  :Preparar asiento de nomina;
+  :Fuente futura sin contabilizacion operativa;
+  stop
 elseif (Cobro de cliente) then (Cobro de cliente)
   :Validar pago confirmado y saldo por cobrar;
   :Preparar aplicacion de cobro;
   :Preparar asiento de cobro;
 elseif (Pago a proveedor) then (Pago a proveedor)
-  :Validar pago confirmado y saldo por pagar;
-  :Preparar aplicacion de pago;
-  :Preparar asiento de pago;
+  :Validar pago registrado, proveedor y saldos;
+  :Aplicar el total del pago a una o varias CxP;
+  :Preparar debe CxP original / haber fondos;
+elseif (Recepcion aceptada) then (Recepcion)
+  :Valuar entradas con costo persistido;
+  :Debe Inventario / haber Mercancia recibida no facturada;
+elseif (Despacho confirmado) then (Despacho)
+  :Tomar costo persistido del kardex;
+  :Debe Costo de ventas / haber Inventario;
+elseif (Ajuste aplicado) then (Ajuste)
+  :Usar costo persistido y clasificar sentido;
+  :Debe/Haber Inventario contra ganancia o perdida;
 else (Asiento manual autorizado)
   |Contador|
   :Capturar cuentas e importes;
   |Sistema ERP|
-  :Preparar asiento manual;
+  :Validar periodo abierto y balance;
+  :Contabilizar asiento manual con auditoria;
 endif
 
 :Validar cuentas contables activas;
 :Validar periodo contable abierto;
-:Verificar que el documento origen no este contabilizado;
+:Verificar duplicidad de fuente (origen e idempotencia);
 :Calcular debe y haber;
 if (¿Asiento equilibrado y sin duplicado?) then (Si)
   :Iniciar transaccion;
-  :Guardar cuenta auxiliar o aplicacion preparada;
+  :Guardar el efecto auxiliar u operativo correspondiente;
   :Contabilizar asiento;
   :Registrar referencia al documento origen;
   :Registrar auditoria;
   :Confirmar transaccion;
   stop
 else (No)
-  :Cancelar contabilizacion;
-  :No modificar saldos auxiliares;
-  :Informar error al contador;
+  :Revertir la transaccion afectada;
+  :Conservar documento para reintento cuando aplique;
+  :Informar error al usuario;
   stop
 endif
 @enduml

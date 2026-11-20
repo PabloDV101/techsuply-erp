@@ -1,6 +1,6 @@
 @startuml ERP_04_Contabilidad
 !include ../_estilo.iuml
- title TechSupply Solutions - Vista logica: Contabilidad y finanzas
+ title TechSupply Solutions - Vista logica: Contabilidad y finanzas\nAPI manual, auxiliares, integraciones y estados financieros parciales
  hide circle
 
  package "Catalogos contables" {
@@ -19,10 +19,112 @@
   -fechaInicio: Date
   -fechaFin: Date
   -estado: EstadoPeriodo
-  +cerrar()
+  +contiene(fecha): Boolean
+  +cerrar(usuarioId, instante)
 }
  }
  package "Libro diario y mayor" {
+  class AsientoContableController <<REST>> {
+  +crear(request): 201 / 200
+  +listar(page, size, sort, direction)
+  +obtener(id)
+  +editar(id, request): borrador con motivo
+  +cancelar(id, motivo): borrador conservado
+  +contabilizar(id): asiento inmutable
+  +revertir(id, fecha, motivo, clave): contraasiento
+}
+  class ReportesContablesController <<REST>> {
+  +balancePrueba(periodoId, page, size, sort, direction)
+  +libroMayor(periodoId, cuentaId, page, size)
+  +estadoResultados(periodoId)
+  +balanceGeneral(periodoId)
+  +flujoEfectivo(periodoId): DISPONIBLE | NO_DISPONIBLE
+}
+  class CuentasPorCobrarController <<REST>> {
+  +listar(clienteId?, page, size)
+  +obtener(id)
+}
+  class CuentasPorCobrarService <<read-only>> {
+  +listar(clienteId?, page, size): saldo derivado
+  +obtener(id)
+  -requiere CONTABILIDAD_CXC_LEER
+}
+  class ReportesContablesService <<read-only>> {
+  +balancePrueba(periodo): apertura, movimientos, cierre
+  +libroMayor(periodo, cuenta): saldo acumulado
+  +resultados(periodo): ingresos - costos - gastos
+  +balance(periodo): activos = pasivos + patrimonio + diferencia
+  +flujo(periodo): indirecto, condicionado por clasificaciones
+  -excluir borradores y cancelados
+  -incluir original reversado y contraasiento
+  -exigir cobertura y conciliacion de efectivo
+}
+  class EstadosFinancierosService <<read-only>> {
+  +resultados(periodoId): rubros
+  +balance(periodoId): rubros y diferencia
+  +flujo(periodoId): resultado, ajuste, actividades, efectivo
+  -retornar NO_DISPONIBLE si falta evidencia
+  }
+  class ClasificacionFlujoController <<REST>> {
+  +clasificarCuenta(cuenta, vigencia)
+  +clasificarPartida(partida, actividad)
+  +anularClasificacion(id, motivo)
+  }
+  class ClasificacionFlujoService <<application>> {
+  +clasificarCuenta(request): auditado
+  +clasificarPartida(request): auditado
+  +anularCuenta(id, motivo): historico
+  +anularPartida(id, motivo): historico
+  -requiere CONTABILIDAD_FLUJO_CLASIFICAR
+  }
+  class ClasificacionFlujoCuenta <<SQL V24>> {
+  -cuentaContableId: Long
+  -clasificacion: ClasificacionCuentaFlujo
+  -vigencia: DateRange
+  -anulacion: actor, motivo, instante
+  }
+  class ClasificacionFlujoPartida <<SQL V24>> {
+  -partidaAsientoId: Long
+  -clasificacion: ActividadFlujo
+  -anulacion: actor, motivo, instante
+  }
+  class AsientoContableService <<application>> {
+  +crear(request): borrador manual
+  +crearDesdeOrigen(request, modulo, tipo, origenId): borrador idempotente
+  +listar(page, size, sort, direction)
+  +obtener(id)
+  -validar periodo, cuentas e importes
+  -guardar asiento, partidas y auditoria
+}
+  class IntegracionFacturaVentaController <<REST>> {
+  +pendientes(page, size)
+  +obtener(facturaVentaId)
+  +configurar(cuentas)
+  +reintentar(facturaVentaId, fechaContable?)
+}
+  class IntegracionFacturaVentaService <<application>> {
+  +registrarEmision(facturaId): outbox en transaccion de Ventas
+  +configurarCuentas(cuentas)
+  +consultarPendiente(facturaId)
+  +reintentar(facturaId, fecha?): auditoria
+}
+  class ProcesadorFacturaVentaContable <<transactional>> {
+  +crearYContabilizar(factura, cuentas, periodo): atómico
+  -revisarPeriodoYCuentas
+  -marcarOutboxContabilizada
+}
+  class IntegracionFacturaVenta <<outbox>> {
+  -facturaVentaId: Long
+  -estado: Pendiente | Contabilizada
+  -intentos: Integer
+  -ultimoCodigoError: String
+  -asientoContableId: Long
+}
+  class ConfiguracionCuentasFacturaVenta <<configuration>> {
+  -clientesPorCobrar: CuentaContable
+  -ventas: CuentaContable
+  -impuestosTrasladados: CuentaContable
+}
   class AsientoContable {
   -id: Long
   -folio: String
@@ -32,17 +134,32 @@
   -origenTipo: String
   -origenId: Long
   -claveIdempotencia: String
-  +validarBalance(): Boolean
-  +contabilizar()
-  +revertir()
+  -motivoCancelacion: String
+  -motivoReversion: String
 }
-  class DetalleAsiento {
+  class PartidaAsiento {
   -id: Long
   -numeroLinea: Integer
   -debe: Decimal
   -haber: Decimal
   -descripcion: String
 }
+  class AsientoContableCreateRequest <<DTO>>
+  class AsientoContableResponse <<DTO>>
+  class HistorialAsientoContable {
+  -accion: String
+  -actorUsuarioId: Long
+  -motivo: String
+  -registradoEn: Instant
+  -claveIdempotencia: String
+}
+  class BalancePruebaResponse <<DTO>>
+  class LibroMayorResponse <<DTO>>
+  class LibroMayorLineaResponse <<DTO>>
+  class EstadoFinancieroResponse <<DTO>>
+ }
+ class BalanceAsiento <<calculo puro>> {
+  +calcular(partidas): Totales
  }
  package "Control presupuestario" {
   class Presupuesto {
@@ -51,15 +168,34 @@
     -mes: Integer
     -monto: Decimal
   }
+  class IntegracionInventarioController <<REST>> {
+  +configuracion(): cinco cuentas
+  +configurar(cuentas): configuración validada
+}
+  class IntegracionInventarioContableService <<transactional>> {
+  +contabilizarRecepcion(id, fecha): idempotente
+  +contabilizarDespacho(id, fecha): idempotente
+  +contabilizarAjuste(id, fecha): idempotente
+  -leer costos persistidos y cuentas configuradas
+  -validar periodo abierto y centavos exactos
+}
+  class ConfiguracionCuentasInventario <<configuration>> {
+  -inventario: CuentaContable
+  -mercanciaRecibidaNoFacturada: CuentaContable
+  -costoDeVentas: CuentaContable
+  -ajustePositivo: CuentaContable
+  -ajusteNegativo: CuentaContable
+}
  }
  package "Cuentas auxiliares" {
   class CuentaPorCobrar {
   -id: Long
+  -facturaVentaId: Long
+  -clienteId: Long
   -montoOriginal: Decimal
   +/saldoPendiente: Decimal
   -fechaEmision: Date
   -fechaVencimiento: Date
-  -estado: EstadoCuentaAuxiliar
 }
   class AplicacionCobro {
   -id: Long
@@ -75,20 +211,20 @@
   -estado: EstadoPago
   -claveIdempotencia: String
 }
-  class CuentaPorPagar {
+  class CuentaPorPagar <<V21>> {
   -id: Long
   -montoOriginal: Decimal
   +/saldoPendiente: Decimal
   -fechaEmision: Date
   -fechaVencimiento: Date
-  -estado: EstadoCuentaAuxiliar
+  -asientoContableId: Long
 }
-  class AplicacionPagoProveedor {
+  class AplicacionPagoProveedor <<V22>> {
   -id: Long
   -montoAplicado: Decimal
-  -fechaAplicacion: DateTime
+  -creadoEn: DateTime
 }
-  class PagoProveedor {
+  class PagoProveedor <<V22>> {
   -id: Long
   -folio: String
   -fecha: DateTime
@@ -126,6 +262,7 @@
   BORRADOR
   CONTABILIZADO
   REVERSADO
+  CANCELADO
 }
  enum EstadoCuentaAuxiliar {
   ABIERTA
@@ -149,13 +286,46 @@
 }
 
  CuentaContable "0..1" <-- "0..*" CuentaContable : cuenta padre
+ AsientoContableController ..> AsientoContableService
+ IntegracionFacturaVentaController ..> IntegracionFacturaVentaService
+ IntegracionFacturaVentaService ..> ProcesadorFacturaVentaContable
+ IntegracionFacturaVentaService ..> IntegracionFacturaVenta
+ ProcesadorFacturaVentaContable ..> AsientoContableService
+ ProcesadorFacturaVentaContable ..> ConfiguracionCuentasFacturaVenta
+ ProcesadorFacturaVentaContable ..> FacturaVenta
+ ConfiguracionCuentasFacturaVenta ..> CuentaContable
+ ReportesContablesController ..> ReportesContablesService
+ ReportesContablesController ..> EstadosFinancierosService
+ ClasificacionFlujoController ..> ClasificacionFlujoService
+ ClasificacionFlujoService ..> ClasificacionFlujoCuenta
+ ClasificacionFlujoService ..> ClasificacionFlujoPartida
+ EstadosFinancierosService ..> ClasificacionFlujoCuenta : valida vigencia y efectivo
+ EstadosFinancierosService ..> ClasificacionFlujoPartida : partidas no monetarias
+ EstadosFinancierosService ..> EstadoFinancieroResponse
+ CuentasPorCobrarController ..> CuentasPorCobrarService
+ CuentasPorCobrarService ..> CuentaPorCobrar
+ ProcesadorFacturaVentaContable ..> CuentaPorCobrar : crea al contabilizar
+ ReportesContablesService ..> PartidaAsiento : consulta agregada y paginada
+ ReportesContablesService ..> PeriodoContable : obtiene fechas del periodo
+ ReportesContablesService ..> CuentaContable : valida cuenta del mayor
+ ReportesContablesService ..> BalancePruebaResponse
+ ReportesContablesService ..> LibroMayorResponse
+ LibroMayorResponse "1" *-- "0..*" LibroMayorLineaResponse
+ AsientoContableService ..> AsientoContable : administra estados
+ AsientoContableService ..> PeriodoContable : bloquea y valida abierto
+ AsientoContableService ..> CuentaContable : valida activa y movimientos
+ AsientoContableService ..> AsientoContableCreateRequest
+ AsientoContableService ..> AsientoContableResponse
  PeriodoContable "1" -- "0..*" AsientoContable
  PeriodoContable "0..*" --> "0..1" Usuario : cerrado por
- AsientoContable "1" *-- "2..*" DetalleAsiento
- DetalleAsiento "0..*" --> "1" CuentaContable
+ AsientoContable "1" -- "0..*" PartidaAsiento : referencia por id
+ BalanceAsiento ..> PartidaAsiento : usa importes
+ PartidaAsiento "0..*" --> "1" CuentaContable
  AsientoContable "0..1" --> "0..1" AsientoContable : contraasiento de
  AsientoContable "0..*" --> "1" Usuario : creado por
  AsientoContable "0..*" --> "0..1" Usuario : contabilizado por
+ AsientoContable "1" -- "0..*" HistorialAsientoContable
+ HistorialAsientoContable "0..*" --> "1" Usuario : actor
  FacturaVenta "1" -- "0..1" CuentaPorCobrar : origina
  FacturaProveedor "1" -- "0..1" CuentaPorPagar : origina
  Departamento "1" -- "0..*" Presupuesto
@@ -170,18 +340,49 @@
  Usuario "1" <-- "0..*" PagoProveedor : registrado por
 
  note bottom of AsientoContable
-  Periodo abierto, al menos dos partidas y total debe = total haber.
-  Una clave idempotente evita duplicados. Un asiento contabilizado
-  es inmutable y se corrige con un contraasiento.
+  V15 permite solo operaciones manuales auditadas.
+  Contabilizar requiere periodo abierto, fecha incluida,
+  dos partidas o mas y balance exacto. Revertir crea
+  contraasiento con fecha explícita en periodo abierto.
+  Fuentes implementadas: factura de Ventas mediante reintento,
+  recepción, despacho, ajuste y factura de proveedor/pago
+  dentro de las transacciones aprobadas.
+ end note
+ note right of CuentaContable
+  API con permisos y auditoria; escrituras de cuentas
+  serializadas por bloqueo transaccional compartido.
+  Una cuenta con hijas es agrupadora; con partidas
+  solo se admite editar su nombre.
+ end note
+ note bottom of PeriodoContable
+  Cierre bajo bloqueo de fila; rechaza borradores.
+  Un cierre repetido conserva actor y fecha originales.
+  No existe reapertura. Escritores futuros deben usar
+  el mismo bloqueo y validar estado en su transaccion.
+ end note
+ note right of ReportesContablesService
+  Permiso independiente CONTABILIDAD_REPORTES_LEER.
+  Apertura neta anterior al periodo; movimientos en sus
+  fechas inclusivas; cierre = apertura + debe - haber.
+  Consultas de solo lectura y pagina estable. No guarda saldos.
+ end note
+ note right of EstadosFinancierosService
+  Resultados suma INGRESO y resta COSTO/GASTO del periodo.
+  Balance acumula ACTIVO, PASIVO, CAPITAL y resultado al corte.
+  Flujo indirecto exige clasificación completa y conciliación;
+  no clasifica histórico ni desglosa ajustes operativos.
  end note
  note right of CuentaPorCobrar
+  V18 la crea en la misma transacción que el asiento de factura.
   Saldo derivado = monto original - aplicaciones de cobros confirmados.
-  Cada cobro aplicado debe corresponder al mismo cliente; no exceder
+  V19 descuenta aplicaciones contabilizadas del mismo cliente;
+  cada cobro aplicado no debe exceder
   el saldo de la cuenta ni el monto no aplicado del cobro.
  end note
  note right of CuentaPorPagar
-  Saldo derivado = monto original - aplicaciones de pagos confirmados.
-  Cada pago aplicado debe corresponder al mismo proveedor; no exceder
-  el saldo de la cuenta ni el monto no aplicado del pago.
+  V21: auxiliar inmutable al validar factura de proveedor;
+  saldo derivado = monto original - aplicaciones confirmadas.
+  V22–V23: mismo proveedor; aplicaciones por el total del pago
+  y asiento atómico contra las cuentas originales de CxP.
  end note
 @enduml
