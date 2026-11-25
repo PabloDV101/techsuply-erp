@@ -32,6 +32,7 @@ Para iniciar la aplicación contra una base local, seguir las [instrucciones de 
 - [Guía de integración para frontend](docs/api/guia-sprint-1.md) y [contratos OpenAPI](docs/api/README.md).
 - [Módulos y decisiones del sprint 1](docs/fase-3/SPRINT_1_MODULOS.md), [políticas de negocio](docs/fase-3/SPRINT_1_POLITICAS.md) y [migraciones](docs/fase-3/SPRINT_1_MIGRACIONES.md).
 - [Requisitos SRS](docs/SRS_TechSupply_Solutions.md), [modelo de datos](database/modelo.dbml) y [diagramas UML](docs/diagrams/README.md). El DBML incluye partes del modelo objetivo que todavía no existen en SQL.
+- [Sprint 7 — integración y testing por partes](docs/fase-3/SPRINT_7_INTEGRACION_TESTING_POR_PARTES.md).
 - [Patrones de diseño y programación funcional](docs/PATRONES_Y_PROGRAMACION_FUNCIONAL.md).
 
 Los objetivos de rendimiento y disponibilidad requieren medición; la cobertura puede medirse con el perfil descrito y debe interpretarse junto con los resultados y límites de las pruebas.

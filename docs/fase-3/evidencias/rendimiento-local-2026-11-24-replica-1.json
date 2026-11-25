@@ -1,0 +1,269 @@
+{
+  "inicio_utc": "2026-11-25T01:21:02.997604+00:00",
+  "fin_utc": "2026-11-25T01:21:47.112616+00:00",
+  "git_head": "aeb661aabe4b681c4f3e5ffe283872ef502bf1d6",
+  "jar_sha256": "0b5ab44468f9b05a07cfbda18fcd35f9bbcceca92e99a65fd11cc48f2debc832",
+  "python": "3.14.8",
+  "sistema": "Linux-7.2.15-100.fc43.x86_64-x86_64-with-glibc2.42",
+  "cpu_logicas_vistas": 16,
+  "afinidad_cpu": 16,
+  "cpu_modelo": "AMD Ryzen 7 7730U with Radeon Graphics",
+  "memoria_host": "15740740 kB",
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18",
+  "postgres_imagen": "postgres:17-alpine",
+  "postgres_imagen_id": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+  "jvm_args": [
+    "-XX:+UseSerialGC",
+    "-Xms256m",
+    "-Xmx768m"
+  ],
+  "pool_bd": "Spring Boot/Hikari por defecto",
+  "dataset": {
+    "categorias": 1000,
+    "productos": 10000,
+    "almacenes": 3,
+    "existencias": 30000,
+    "minimos": 30000,
+    "usuarios_carga": 200,
+    "movimientos": 0,
+    "facturas_venta": 0,
+    "facturas_proveedor": 0,
+    "pares_bajo_minimo": 12114,
+    "alertas_globales": 2422,
+    "max_connections": "100",
+    "postgres_version": "17.11"
+  },
+  "rutas": [
+    {
+      "nombre": "categorias",
+      "tipo": "consulta",
+      "ruta": "/api/v1/categories?page=0&size=20"
+    },
+    {
+      "nombre": "productos",
+      "tipo": "consulta",
+      "ruta": "/api/v1/products?page=0&size=20"
+    },
+    {
+      "nombre": "stock_bajo",
+      "tipo": "reporte",
+      "ruta": "/api/v1/reports/inventory/low-stock?page=0&size=20"
+    },
+    {
+      "nombre": "dashboard",
+      "tipo": "reporte",
+      "ruta": "/api/v1/reports/dashboard?from=2026-11-01&to=2026-11-24"
+    }
+  ],
+  "metodologia": "usuarios distintos con sesiones precargadas, 8 GET por usuario, conexión persistente, arranque simultáneo por etapa, sin espera; p95 nearest-rank de respuestas 200 válidas",
+  "sin_token_status": 401,
+  "etapas": [
+    {
+      "usuarios": 1,
+      "solicitudes_por_usuario": 8,
+      "duracion_s": 0.399,
+      "solicitudes_por_s": 20.07,
+      "max_solicitudes_en_vuelo_cliente": 1,
+      "rutas": {
+        "categorias": {
+          "tipo": "consulta",
+          "solicitudes": 2,
+          "correctas": 2,
+          "estados": {
+            "200": 2
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 27.583,
+          "p95_ms_correctas": 29.476,
+          "p99_ms_correctas": 29.476,
+          "max_ms_todas": 29.476,
+          "umbral_ms": 2000,
+          "correctas_bajo_umbral": 2
+        },
+        "productos": {
+          "tipo": "consulta",
+          "solicitudes": 2,
+          "correctas": 2,
+          "estados": {
+            "200": 2
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 30.817,
+          "p95_ms_correctas": 32.269,
+          "p99_ms_correctas": 32.269,
+          "max_ms_todas": 32.269,
+          "umbral_ms": 2000,
+          "correctas_bajo_umbral": 2
+        },
+        "stock_bajo": {
+          "tipo": "reporte",
+          "solicitudes": 2,
+          "correctas": 2,
+          "estados": {
+            "200": 2
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 65.465,
+          "p95_ms_correctas": 69.254,
+          "p99_ms_correctas": 69.254,
+          "max_ms_todas": 69.254,
+          "umbral_ms": 5000,
+          "correctas_bajo_umbral": 2
+        },
+        "dashboard": {
+          "tipo": "reporte",
+          "solicitudes": 2,
+          "correctas": 2,
+          "estados": {
+            "200": 2
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 69.249,
+          "p95_ms_correctas": 74.199,
+          "p99_ms_correctas": 74.199,
+          "max_ms_todas": 74.199,
+          "umbral_ms": 5000,
+          "correctas_bajo_umbral": 2
+        }
+      }
+    },
+    {
+      "usuarios": 50,
+      "solicitudes_por_usuario": 8,
+      "duracion_s": 2.361,
+      "solicitudes_por_s": 169.44,
+      "max_solicitudes_en_vuelo_cliente": 50,
+      "rutas": {
+        "categorias": {
+          "tipo": "consulta",
+          "solicitudes": 100,
+          "correctas": 100,
+          "estados": {
+            "200": 100
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 210.825,
+          "p95_ms_correctas": 327.804,
+          "p99_ms_correctas": 398.5,
+          "max_ms_todas": 488.859,
+          "umbral_ms": 2000,
+          "correctas_bajo_umbral": 100
+        },
+        "productos": {
+          "tipo": "consulta",
+          "solicitudes": 100,
+          "correctas": 100,
+          "estados": {
+            "200": 100
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 217.608,
+          "p95_ms_correctas": 355.147,
+          "p99_ms_correctas": 422.812,
+          "max_ms_todas": 457.462,
+          "umbral_ms": 2000,
+          "correctas_bajo_umbral": 100
+        },
+        "stock_bajo": {
+          "tipo": "reporte",
+          "solicitudes": 100,
+          "correctas": 100,
+          "estados": {
+            "200": 100
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 291.106,
+          "p95_ms_correctas": 522.753,
+          "p99_ms_correctas": 568.231,
+          "max_ms_todas": 576.451,
+          "umbral_ms": 5000,
+          "correctas_bajo_umbral": 100
+        },
+        "dashboard": {
+          "tipo": "reporte",
+          "solicitudes": 100,
+          "correctas": 100,
+          "estados": {
+            "200": 100
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 287.87,
+          "p95_ms_correctas": 409.025,
+          "p99_ms_correctas": 497.842,
+          "max_ms_todas": 513.909,
+          "umbral_ms": 5000,
+          "correctas_bajo_umbral": 100
+        }
+      }
+    },
+    {
+      "usuarios": 200,
+      "solicitudes_por_usuario": 8,
+      "duracion_s": 11.511,
+      "solicitudes_por_s": 139.0,
+      "max_solicitudes_en_vuelo_cliente": 200,
+      "rutas": {
+        "categorias": {
+          "tipo": "consulta",
+          "solicitudes": 400,
+          "correctas": 400,
+          "estados": {
+            "200": 400
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 1311.827,
+          "p95_ms_correctas": 2048.34,
+          "p99_ms_correctas": 2275.159,
+          "max_ms_todas": 2692.81,
+          "umbral_ms": 2000,
+          "correctas_bajo_umbral": 373
+        },
+        "productos": {
+          "tipo": "consulta",
+          "solicitudes": 400,
+          "correctas": 400,
+          "estados": {
+            "200": 400
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 1306.326,
+          "p95_ms_correctas": 2002.044,
+          "p99_ms_correctas": 2189.112,
+          "max_ms_todas": 2863.346,
+          "umbral_ms": 2000,
+          "correctas_bajo_umbral": 378
+        },
+        "stock_bajo": {
+          "tipo": "reporte",
+          "solicitudes": 400,
+          "correctas": 400,
+          "estados": {
+            "200": 400
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 1481.171,
+          "p95_ms_correctas": 2210.953,
+          "p99_ms_correctas": 2331.892,
+          "max_ms_todas": 3392.522,
+          "umbral_ms": 5000,
+          "correctas_bajo_umbral": 400
+        },
+        "dashboard": {
+          "tipo": "reporte",
+          "solicitudes": 400,
+          "correctas": 400,
+          "estados": {
+            "200": 400
+          },
+          "respuestas_200_invalidas": 0,
+          "p50_ms_correctas": 1371.228,
+          "p95_ms_correctas": 2068.002,
+          "p99_ms_correctas": 2256.636,
+          "max_ms_todas": 2534.933,
+          "umbral_ms": 5000,
+          "correctas_bajo_umbral": 400
+        }
+      }
+    }
+  ]
+}

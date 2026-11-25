@@ -33,5 +33,15 @@ class DashboardOpenApiContractTest {
         var schemas = map(map(api.get("components")).get("schemas"));
         assertThat(map(map(schemas.get("Dashboard")).get("properties")).keySet()).containsExactlyInAnyOrderElementsOf(fields(DashboardResponse.class));
         assertThat(map(map(schemas.get("Metric")).get("properties")).keySet()).containsExactlyInAnyOrderElementsOf(fields(IndicadorDashboardResponse.class));
+        for (String exportPath : java.util.List.of("/reports/export", "/reports/dashboard/export.csv")) {
+            var export = map(map(map(api.get("paths")).get(exportPath)).get("get"));
+            assertThat(export.get("x-implementation-status")).isEqualTo("implemented");
+            var responses = map(export.get("responses"));
+            assertThat(responses).containsKeys("200", "401", "403");
+            assertThat(map(map(responses.get("200")).get("content"))).containsKey("text/csv");
+        }
+        var generalExport = map(map(map(api.get("paths")).get("/reports/export")).get("get"));
+        assertThat(map(map(map(generalExport.get("responses")).get("200")).get("content")))
+            .containsKeys("application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 }

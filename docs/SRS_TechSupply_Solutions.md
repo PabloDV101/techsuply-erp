@@ -446,6 +446,8 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 
 **RNF-04 — Concurrencia y escalabilidad (Alta).** La solución deberá soportar hasta 200 usuarios concurrentes como objetivo de evaluación, mediante pruebas de carga. El diseño permitirá añadir instancias backend si la sesión/autenticación y la infraestructura lo permiten.
 
+*Evidencia posterior, sprint 7:* se ejecutó una [medición local con 200 sesiones y datos sintéticos](fase-3/SPRINT_7_INTEGRACION_TESTING_POR_PARTES.md#parte-5--rendimiento-y-concurrencia-24-nov-2026). Dos consultas superaron el p95 de 2 s en el escenario extendido; dos reportes medidos quedaron bajo 5 s. La carga fue breve y solo de lectura, sin facturas ni kardex histórico, por lo que no acredita rendimiento global ni capacidad sostenida.
+
 **RNF-05 — Seguridad de transporte y almacenamiento (Alta).** La comunicación externa utilizará HTTPS/TLS. Las credenciales se almacenarán con un algoritmo robusto de hash; los volúmenes o medios de datos y respaldos deberán cifrarse según las capacidades de la infraestructura.
 
 **RNF-06 — Control de acceso (Alta).** La API deberá aplicar autorización por roles/permisos en backend en cada operación protegida. Los datos financieros, salariales y de clientes estarán limitados según el rol.
@@ -462,7 +464,7 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 
 **RNF-12 — Pruebas (Alta).** Las pruebas unitarias deberán alcanzar como mínimo 70% de cobertura según la métrica acordada (recomendado: cobertura de líneas/instrucciones del backend). Se realizarán pruebas de integración, end-to-end, seguridad y carga.
 
-*Estado de implementación (sprint 2, parte 11):* JaCoCo mide líneas Java con las suites separadas. Surefire (incluye pruebas de contrato) cubre 290/2077 líneas, 13,96 %; integración cubre 1967/2077, 94,70 %, y la unión 1981/2077, 95,38 %. La cifra Surefire no es exclusivamente unitaria y la combinada no acredita el mínimo de cobertura unitaria. La meta y las pruebas de carga siguen pendientes; ver [medición y límites](fase-3/SPRINT_2_DISENO_INVENTARIO.md#parte-11--informes-y-medición-de-cobertura).
+*Estado histórico (sprint 2, parte 11):* JaCoCo midió 290/2077 líneas Surefire (13,96 %), 1967/2077 de integración (94,70 %) y 1981/2077 combinadas (95,38 %); ver [medición histórica](fase-3/SPRINT_2_DISENO_INVENTARIO.md#parte-11--informes-y-medición-de-cobertura). La [medición aislada posterior](fase-3/SPRINT_7_INTEGRACION_TESTING_POR_PARTES.md#parte-4--medición-unitaria-aislada) cubrió 765/4533 líneas (16,88 %); la meta unitaria sigue pendiente.
 
 **RNF-13 — Usabilidad (Media).** Las pantallas emplearán terminología consistente con el negocio, formularios con validaciones comprensibles, confirmación en operaciones críticas, estados de proceso visibles y mensajes de error accionables.
 
