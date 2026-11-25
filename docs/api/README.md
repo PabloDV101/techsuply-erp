@@ -41,7 +41,7 @@ La base de las rutas es `/api/v1`. Los contratos ejecutables son
 [`openapi-crud-categorias.yaml`](openapi-crud-categorias.yaml),
 [`openapi-audit.yaml`](openapi-audit.yaml) y
 [`openapi-notifications.yaml`](openapi-notifications.yaml).
-[`openapi-reporteria.yaml`](openapi-reporteria.yaml) es **parcial**: de sus 21 rutas, la exportación CSV del dashboard, el dashboard, las facturaciones de proveedores y ventas, el resumen global de alertas, el resumen de resultado contable, balance de prueba, estado de resultados, balance general y flujo de efectivo están implementados dentro de los límites documentados; la ruta salarial permanece fuera de este sprint. El dashboard y sus permisos se detallan en el [diseño del sprint 5](../fase-3/SPRINT_5_DISENO_REPORTERIA.md). La [guía para frontend](guia-sprint-5-reporteria.md) distingue rutas disponibles y propuestas, e incluye ejemplos y criterios para la integración; todavía no hay confirmación del compañero.
+[`openapi-reporteria.yaml`](openapi-reporteria.yaml) documenta dashboard, analíticas y exportaciones implementadas dentro de los límites del sprint 5; la ruta salarial sigue fuera de alcance. Revisar `x-implementation-status` por operación, el [cierre](../fase-3/SPRINT_5_CIERRE.md) y la [guía para frontend](guia-sprint-5-reporteria.md). La autenticación del cliente se probó en navegador; la integración de reportería sigue pendiente en la [ruta frontend](../fase-3/SPRINT_7_RUTA_INTEGRACION_FRONTEND.md).
 
 Todas las API activas devuelven errores con `status`, `code` y `message`.
 `security.api` conserva sus mensajes funcionales y `WWW-Authenticate: Bearer` en `401`;

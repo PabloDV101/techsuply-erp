@@ -54,7 +54,7 @@ La regresión completa pasó con 91 Surefire y 229 Failsafe. El caso de concurre
 | RNF-04 200 usuarios | Parte 5: 200 sesiones distintas, pico cliente 200 solicitudes en vuelo y 6.400 lecturas válidas en 44,77 s. | Carga cerrada y corta, sin login, escrituras ni red externa; no acredita capacidad sostenida ni todos los módulos. |
 | RNF-12 cobertura unitaria ≥70 % | Parte 4: selección de 61 pruebas `*Test` excluyendo `*OpenApiContractTest`, 765/4533 líneas (16,88 %), con mocks aislados y sin Testcontainers. | Brecha de 53,12 puntos porcentuales respecto a 70 %. La cobertura combinada no sustituye la unitaria; la selección y sus límites se describen en la bitácora del sprint. |
 | RNF-17 manuales/trazabilidad | README, guía de API, documentos de cierre y trazabilidad inicial en el SRS. | No se encontró manual de usuario ni guion de demostración; la matriz actual mezcla diseño y evidencia histórica. Completar documentos técnicos y de usuario solo para flujos existentes. |
-| Integración navegador | Build/lint de frontend pasan. `App.tsx` contiene plantilla Vite. | Sin pantallas ERP, script de tests, Playwright/Cypress ni llamada al backend; pendiente de entrega del compañero. |
+| Integración navegador | El frontend del compañero ya está disponible como cambios locales. Login, restauración y logout se probaron en Chromium contra backend y PostgreSQL temporales; hay un script reproducible. | Las pantallas de negocio, dashboard y exportaciones aún no están conciliadas ni verificadas contra el backend; CORS/TLS y despliegue siguen pendientes. Ver [ruta frontend](SPRINT_7_RUTA_INTEGRACION_FRONTEND.md). |
 
 ## Decisiones de ejecución para la parte 2
 

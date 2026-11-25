@@ -2,7 +2,7 @@
 
 ERP de TechSupply Solutions. El backend está en `erp-backend/` y utiliza Java 21, Spring Boot, PostgreSQL y migraciones Flyway. El frontend se desarrolla por separado en `frontend/`.
 
-Los sprints 1–4 entregan Gestión Maestra, Compras, Inventario, Ventas y Contabilidad dentro de sus límites documentados. El sprint 5 incorpora dashboard por permisos, reportes de facturación y analítica de inventario/ventas/finanzas con exportación CSV/PDF/XLSX auditada. Nómina queda fuera del sprint; integración frontend en navegador y pruebas de rendimiento representativo siguen pendientes. Consultar el [cierre de sprint 5](docs/fase-3/SPRINT_5_CIERRE.md), la [ruta de Fase 3](docs/FASE_3_RUTA_BACKEND.md) y la [guía de Reportería](docs/api/guia-sprint-5-reporteria.md).
+Los sprints 1–4 entregan Gestión Maestra, Compras, Inventario, Ventas y Contabilidad dentro de sus límites documentados. El sprint 5 incorpora dashboard por permisos, reportes de facturación y analítica de inventario/ventas/finanzas con exportación CSV/PDF/XLSX auditada. Nómina queda fuera del sprint. La autenticación del frontend se ha conectado y probado en navegador con un entorno desechable; los demás módulos y las pruebas de rendimiento representativo siguen pendientes. Consultar el [cierre de sprint 5](docs/fase-3/SPRINT_5_CIERRE.md), la [ruta de Fase 3](docs/FASE_3_RUTA_BACKEND.md) y la [guía de Reportería](docs/api/guia-sprint-5-reporteria.md).
 
 ## Ejecutar y verificar el backend
 
@@ -33,6 +33,7 @@ Para iniciar la aplicación contra una base local, seguir las [instrucciones de 
 - [Módulos y decisiones del sprint 1](docs/fase-3/SPRINT_1_MODULOS.md), [políticas de negocio](docs/fase-3/SPRINT_1_POLITICAS.md) y [migraciones](docs/fase-3/SPRINT_1_MIGRACIONES.md).
 - [Requisitos SRS](docs/SRS_TechSupply_Solutions.md), [modelo de datos](database/modelo.dbml) y [diagramas UML](docs/diagrams/README.md). El DBML incluye partes del modelo objetivo que todavía no existen en SQL.
 - [Sprint 7 — integración y testing por partes](docs/fase-3/SPRINT_7_INTEGRACION_TESTING_POR_PARTES.md).
+- [Ruta de integración del frontend](docs/fase-3/SPRINT_7_RUTA_INTEGRACION_FRONTEND.md), incluidos arranque local y prueba de sesión.
 - [Patrones de diseño y programación funcional](docs/PATRONES_Y_PROGRAMACION_FUNCIONAL.md).
 
 Los objetivos de rendimiento y disponibilidad requieren medición; la cobertura puede medirse con el perfil descrito y debe interpretarse junto con los resultados y límites de las pruebas.

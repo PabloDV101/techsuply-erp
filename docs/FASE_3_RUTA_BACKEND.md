@@ -2,6 +2,8 @@
 
 **Estado de este plan:** propuesta de ejecución, iniciada el 27 de octubre de 2026. **Fecha objetivo del enunciado:** 17 de diciembre de 2026. El compañero del equipo desarrolla el frontend; este plan solo compromete backend, contratos HTTP y la coordinación necesaria para que pueda consumirlos.
 
+**Actualización de integración:** el usuario proporcionó el frontend del compañero y autorizó conectar la sesión. La [ruta frontend](fase-3/SPRINT_7_RUTA_INTEGRACION_FRONTEND.md) registra el avance y las partes pendientes; este documento conserva la planificación histórica del backend.
+
 ## Cómo retomar el trabajo en un nuevo chat
 
 1. Leer este archivo, [patrones y programación funcional](PATRONES_Y_PROGRAMACION_FUNCIONAL.md), el [SRS](SRS_TechSupply_Solutions.md) y las [instrucciones del repositorio](../AGENTS.md).

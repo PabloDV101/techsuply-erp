@@ -1,4 +1,8 @@
-# React + TypeScript + Vite
+# Frontend TechSupply ERP
+
+La autenticación consume el backend mediante el proxy de desarrollo de Vite. Los requisitos, arranque, prueba en navegador y estado de los módulos se documentan en la [ruta de integración](../docs/fase-3/SPRINT_7_RUTA_INTEGRACION_FRONTEND.md). Las demás pantallas aún requieren conciliar sus contratos con el backend.
+
+## Notas de la plantilla React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 

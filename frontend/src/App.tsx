@@ -1,122 +1,61 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import LoginPage from './features/auth/LoginPage'
+import ProtectedRoute from './features/auth/ProtectedRoute'
+import AppLayout from './layout/AppLayout'
+import SessionHomePage from './features/auth/SessionHomePage'
+import ProveedoresPage from './features/proveedores/ProveedoresPage'
+import ProductosPage from './features/productos/ProductosPage'
+import OrdenesPage from './features/compras/ordenes/OrdenesPage'
+import RecepcionesPage from './features/compras/recepciones/RecepcionesPage'
+import ExistenciasPage from './features/inventario/existencias/ExistenciasPage'
+import MovimientosPage from './features/inventario/movimientos/MovimientosPage'
+import AjustesPage from './features/inventario/ajustes/AjustesPage'
+import ConteosPage from './features/inventario/conteos/ConteosPage'
+import AlertasPage from './features/inventario/alertas/AlertasPage'
+import RotacionPage from './features/inventario/reportes/RotacionPage'
+import ClientesPage from './features/clientes/ClientesPage'
+import CotizacionesPage from './features/ventas/documentos/CotizacionesPage'
+import PedidosPage from './features/ventas/documentos/PedidosPage'
+import DespachosPage from './features/ventas/despachos/DespachosPage'
+import FacturasPage from './features/ventas/facturas/FacturasPage'
+import CreditoPage from './features/credito/CreditoPage'
+import ContabilidadPage from './features/contabilidad/ContabilidadPage'
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/registro" element={<Navigate to="/login" replace />} />
+      <Route path="/recuperar-cuenta" element={<Navigate to="/login" replace />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route index element={<SessionHomePage />} />
+          <Route path="proveedores" element={<ProveedoresPage />} />
+          <Route path="productos" element={<ProductosPage />} />
+          <Route path="ordenes-compra" element={<OrdenesPage />} />
+          <Route path="recepciones" element={<RecepcionesPage />} />
+          <Route path="inventario">
+            <Route index element={<Navigate to="existencias" replace />} />
+            <Route path="existencias" element={<ExistenciasPage />} />
+            <Route path="movimientos" element={<MovimientosPage />} />
+            <Route path="ajustes" element={<AjustesPage />} />
+            <Route path="conteos" element={<ConteosPage />} />
+            <Route path="alertas" element={<AlertasPage />} />
+            <Route path="rotacion" element={<RotacionPage />} />
+          </Route>
+          <Route path="ventas">
+            <Route index element={<Navigate to="clientes" replace />} />
+            <Route path="clientes" element={<ClientesPage />} />
+            <Route path="cotizaciones" element={<CotizacionesPage />} />
+            <Route path="pedidos" element={<PedidosPage />} />
+            <Route path="despachos" element={<DespachosPage />} />
+            <Route path="facturas" element={<FacturasPage />} />
+            <Route path="credito" element={<CreditoPage />} />
+          </Route>
+          <Route path="contabilidad" element={<ContabilidadPage />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
-
-export default App
