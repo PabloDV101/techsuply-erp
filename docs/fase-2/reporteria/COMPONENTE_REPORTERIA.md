@@ -2,9 +2,21 @@
 
 ## Estado y trazabilidad
 
-Este documento concreta el diseño de lectura de RF-INV-07, RF-CON-07 y RF-REP-01 a RF-REP-05 del [SRS](../../SRS_TechSupply_Solutions.md). El contrato HTTP propuesto está en [`openapi-reporteria.yaml`](../../api/openapi-reporteria.yaml). No describe endpoints existentes: las migraciones ejecutables V1–V5 solo contienen seguridad, categorías, auditoría y notificaciones. Las tablas de compras, inventario, ventas, contabilidad, nómina y reportería del [DBML](../../diagrams/modelodatos/modelo.dbml) son objetivo. El catálogo de categorías sí implementa parte de RF-REP-02 (filtros, orden y página), sin cerrar el requisito de reportes.
+Este documento concreta el diseño de lectura de RF-INV-07, RF-CON-07 y RF-REP-01 a RF-REP-05 del [SRS](../../SRS_TechSupply_Solutions.md). El contrato HTTP propuesto ampliado está en [`openapi-reporteria.yaml`](../../api/openapi-reporteria.yaml); sus rutas `/reports/...` siguen siendo propuestas. Las migraciones V1–V9 incluyen seguridad, categorías, auditoría, notificaciones, maestros básicos y contabilidad. V7 aporta proveedores, productos y clientes; V8 aporta cuentas, periodos, asientos y partidas; V9 corrige la longitud de estado de los asientos. Compras, movimientos/existencias de inventario, ventas/facturación, nómina y reportería operativa siguen sin fuente transaccional implementada.
 
-La primera implementación de cada consulta depende de que el módulo dueño cree y valide su fuente transaccional. No se crea una plataforma BI, consultas SQL configurables por usuarios ni una migración solo para almacenar definiciones o valores calculados. Las tablas `definiciones_reporte`, `ejecuciones_reporte`, `indicadores` y `valores_indicador` son diseño futuro, no prerrequisito de las consultas bajo demanda.
+## Estado de implementación — sprints 9 y 10
+
+Se implementó una primera entrega parcial de RF-CON-07:
+
+- `GET /api/v1/reportes/contabilidad/balance-prueba`: acumula únicamente partidas de asientos contabilizados en el periodo solicitado.
+- `GET /api/v1/reportes/contabilidad/mayor`: entrega un resumen agregado por cuenta; todavía no es un libro cronológico con saldo corrido.
+- `GET /api/v1/reportes/contabilidad/estado-resultados` y `GET /api/v1/reportes/contabilidad/balance-general`: exponen líneas y subtotales por tipo de cuenta (`totalsByType`). No entregan una utilidad/margen global porque su fórmula y clasificación requieren aprobación.
+- `GET /api/v1/reportes/contabilidad/flujo-efectivo`: responde `NO_DISPONIBLE` hasta acordar método y cuentas fuente.
+- El panel React combina reportes contables y conteos de maestros reales. Los indicadores de compras, ventas, inventario, margen operativo y rentabilidad por cliente se muestran explícitamente como no disponibles.
+
+Los reportes contables requieren `CONTABILIDAD_LEER`; la API responde `401` sin autenticación y `403` sin ese permiso. Las pruebas PostgreSQL de integración validan aislamiento por periodo/estado, persistencia de maestros y permisos. No se ha medido todavía la latencia de reportería bajo volumen/concurrencia; los objetivos de rendimiento no se consideran verificados.
+
+La implementación completa de cada consulta depende de que el módulo dueño cree y valide su fuente transaccional y de que negocio apruebe la fórmula pendiente. No se crea una plataforma BI, consultas SQL configurables por usuarios ni una migración solo para almacenar definiciones o valores calculados. Las tablas `definiciones_reporte`, `ejecuciones_reporte`, `indicadores` y `valores_indicador` son diseño futuro, no prerrequisito de las consultas bajo demanda.
 
 ## Inventario y contratos
 

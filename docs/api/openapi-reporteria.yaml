@@ -1,17 +1,18 @@
 openapi: 3.0.3
 info:
-  title: TechSupply ERP - Reportería (contrato propuesto)
-  version: 0.1.0-design
+  title: TechSupply ERP - Reportería ampliada (contrato propuesto)
+  version: 0.1.1-design
   description: >-
-    Diseño de RF-INV-07, RF-CON-07 y RF-REP-01 a RF-REP-05. Ninguna ruta de este
-    archivo está implementada. Las fuentes transaccionales tampoco existen en las
-    migraciones V1-V5. Fórmulas y permisos específicos abiertos se documentan en
-    docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md. No define exportaciones.
+    Contratos propuestos para RF-INV-07, RF-CON-07 y RF-REP-01 a RF-REP-05.
+    Las rutas /reports de este archivo no están implementadas. La entrega parcial
+    de contabilidad vive en /api/v1/reportes/contabilidad/* y se documenta en
+    docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md. Fórmulas y permisos de los
+    reportes operativos permanecen abiertos. No define exportaciones.
 servers:
   - url: /api/v1
 security:
   - bearerAuth: []
-x-implementation-status: design-only
+x-implementation-status: proposed-routes-design-only
 paths:
   /reports/dashboard:
     get:
