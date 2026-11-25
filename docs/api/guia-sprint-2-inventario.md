@@ -94,6 +94,8 @@ Authorization: Bearer <token>
 
 Se incluyen productos activos con umbral mayor que cero y disponible global menor o igual al umbral. El disponible resta reservas y suma solo almacenes activos; sin existencias activas se considera cero. Un producto inexistente o sin alerta devuelve `200` y contenido vacío; parámetros inválidos devuelven `400`, sin autenticación `401` y sin permiso `403`. La consulta no crea alertas persistidas ni órdenes. Los campos decimales deben tratarse con precisión decimal en el consumidor.
 
+Desde el sprint 5 existe además un resumen global con conteo e instante de consulta, protegido por el mismo permiso. Su contrato está en la [guía de Reportería](guia-sprint-5-reporteria.md); la ruta de reporte por almacén sigue en diseño.
+
 
 ## Recorrido integrado para frontend
 

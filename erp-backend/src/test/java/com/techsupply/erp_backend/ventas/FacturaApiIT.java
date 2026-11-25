@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class FacturaApiIT extends PostgresIntegrationSupport {
     @Autowired JdbcTemplate db; @Autowired MockMvc http; @Autowired PasswordEncoder passwords; @Autowired ObjectMapper json;
     @Autowired InventarioService inventory; @Autowired TransactionTemplate tx;
+    @Autowired com.techsupply.erp_backend.ventas.application.FacturacionVentaReportService reportService;
     long id(String sql,Object... args) {return db.queryForObject(sql,Long.class,args);}
     static String key() {return "D"+UUID.randomUUID().toString().substring(0,12).toUpperCase(Locale.ROOT);}
     record User(long id,String token) {}
@@ -86,6 +87,119 @@ class FacturaApiIT extends PostgresIntegrationSupport {
     }
     String invoiceBody(Fixture f,String key) throws Exception {return json.writeValueAsString(Map.of("pedidoId",f.order(),"claveIdempotencia",key));}
     int invoice(User user,String body) throws Exception {return http.perform(post("/api/v1/sales/invoices").header("Authorization","Bearer "+user.token()).contentType("application/json").content(body)).andReturn().getResponse().getStatus();}
+    private BigDecimal report(User user, LocalDate from, LocalDate to) throws Exception {
+        String body = http.perform(get("/api/v1/reports/sales/invoiced").header("Authorization", "Bearer " + user.token())
+                .param("from", from.toString()).param("to", to.toString()))
+            .andExpect(status().isOk()).andExpect(jsonPath("from").value(from.toString()))
+            .andExpect(jsonPath("to").value(to.toString())).andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("subtotal").decimalValue();
+    }
+
+    @Test void reporteFacturacionIncluyeSoloEmitidasSinImpuestosYCobraPermiso() throws Exception {
+        User u = user("VENTAS_DESPACHOS_REGISTRAR", "VENTAS_DESPACHOS_CONFIRMAR", "VENTAS_PEDIDOS_CANCELAR",
+            "VENTAS_FACTURAS_EMITIR", "VENTAS_FACTURAS_LEER");
+        User denied = user("VENTAS_PEDIDOS_LEER");
+        LocalDate today = LocalDate.now(ZoneId.of("America/Mexico_City"));
+        BigDecimal baseline = report(u, today, today);
+        BigDecimal before = report(u, today.minusDays(1), today.minusDays(1));
+        BigDecimal after = report(u, today.plusDays(1), today.plusDays(1));
+        LocalDate historicalDate = today.minusDays(2);
+        BigDecimal historicalBaseline = report(u, historicalDate, historicalDate);
+        assertThat(report(u, LocalDate.of(1000, 1, 1), LocalDate.of(1000, 1, 1))).isEqualByComparingTo("0");
+        Fixture canceled = fixture(u, "CONFIRMADO");
+        http.perform(post("/api/v1/sales/orders/{id}/cancel", canceled.order())
+                .header("Authorization", "Bearer " + u.token()).contentType("application/json")
+                .content("{\"motivo\":\"Cancelación de prueba\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("estado").value("CANCELADO"));
+        assertThat(invoice(u, invoiceBody(canceled, key()))).isEqualTo(409);
+        Fixture f = fixture(u, "CONFIRMADO");
+        assertThat(report(u, today, today)).isEqualByComparingTo(baseline);
+        complete(u, f);
+        assertThat(report(u, today, today)).isEqualByComparingTo(baseline);
+
+        // V13 impide guardar un borrador al confirmar la transacción; se prueba dentro
+        // de una transacción real que se revierte sin desactivar controles de BD.
+        tx.executeWithoutResult(status -> {
+            String draftKey = key();
+            long draft = id("""
+                insert into facturas_venta(folio,pedido_id,cliente_id,emitida_por_usuario_id,fecha_emision,
+                    fecha_vencimiento,subtotal,impuestos,total,estado,clave_idempotencia)
+                select ?,id,cliente_id,?,?,?,subtotal,impuestos,total,'BORRADOR',? from pedidos_venta where id=? returning id
+                """, draftKey, u.id(), today, today, draftKey, f.order());
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new SecurityActor(u.id(), "test"), null, List.of(new SimpleGrantedAuthority("VENTAS_FACTURAS_LEER"))));
+            try {
+                assertThat(reportService.consultar(today, today).subtotal()).isEqualByComparingTo(baseline);
+                db.update("delete from facturas_venta where id=?", draft);
+                String historicalKey = key();
+                long historical = id("""
+                    insert into facturas_venta(folio,pedido_id,cliente_id,emitida_por_usuario_id,fecha_emision,
+                        fecha_vencimiento,subtotal,impuestos,total,estado,clave_idempotencia)
+                    select ?,id,cliente_id,?,?,?,subtotal,impuestos,total,'BORRADOR',? from pedidos_venta where id=? returning id
+                    """, historicalKey, u.id(), historicalDate, historicalDate, historicalKey, f.order());
+                db.update("""
+                    insert into detalles_factura_venta(factura_venta_id,detalle_pedido_id,producto_id,cantidad,
+                        precio_unitario,descuento_pct,tasa_impuesto,subtotal,impuestos,total)
+                    select ?,id,producto_id,cantidad,precio_unitario,descuento_pct,tasa_impuesto,50,8,58
+                    from detalles_pedido where id=?
+                    """, historical, f.line());
+                db.update("update facturas_venta set estado='EMITIDA' where id=?", historical);
+                db.update("insert into integracion_factura_venta_contabilidad(factura_venta_id,estado,emitida_en) values (?,'PENDIENTE',now())", historical);
+                db.execute("set constraints all immediate");
+                assertThat(reportService.consultar(historicalDate, historicalDate).subtotal())
+                    .isEqualByComparingTo(historicalBaseline.add(new BigDecimal("50.00")));
+                assertThat(reportService.consultar(today, today).subtotal()).isEqualByComparingTo(baseline);
+            }
+            finally { SecurityContextHolder.clearContext(); status.setRollbackOnly(); }
+        });
+
+        String body = http.perform(post("/api/v1/sales/invoices").header("Authorization", "Bearer " + u.token())
+                .contentType("application/json").content(invoiceBody(f, key())))
+            .andExpect(status().isCreated()).andExpect(jsonPath("estado").value("EMITIDA"))
+            .andReturn().getResponse().getContentAsString();
+        long invoiceId = json.readTree(body).get("id").asLong();
+        User analyst=user("VENTAS_FACTURAS_LEER","CONTABILIDAD_REPORTES_LEER","REPORTERIA_INVENTARIO_LEER");
+        long customer=id("select cliente_id from pedidos_venta where id=?",f.order());
+        http.perform(get("/api/v1/reports/sales/customer-profitability").header("Authorization","Bearer "+analyst.token())
+            .param("from",today.toString()).param("to",today.toString()).param("customerId",Long.toString(customer)))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].revenue").value(50))
+            .andExpect(jsonPath("content[0].cost").value(35)).andExpect(jsonPath("content[0].result").value(15));
+        http.perform(get("/api/v1/reports/inventory/abc").header("Authorization","Bearer "+analyst.token())
+            .param("from",today.toString()).param("to",today.toString()).param("warehouseId",Long.toString(f.warehouse())))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].basisAmount").value(35))
+            .andExpect(jsonPath("content[0].cumulativePercent").value(100)).andExpect(jsonPath("content[0].classification").value("A"));
+        // This fixture starts with stock inserted directly, without an opening kardex entry.
+        http.perform(get("/api/v1/reports/inventory/turnover").header("Authorization","Bearer "+analyst.token())
+            .param("from",today.toString()).param("to",today.toString()).param("warehouseId",Long.toString(f.warehouse())))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].availability").value("NO_DISPONIBLE"));
+
+        assertThat(db.queryForObject("select estado from integracion_factura_venta_contabilidad where factura_venta_id=?", String.class, invoiceId)).isEqualTo("PENDIENTE");
+        assertThat(report(u, today, today)).isEqualByComparingTo(baseline.add(new BigDecimal("50.00")));
+        String dashboard=http.perform(get("/api/v1/reports/dashboard").header("Authorization","Bearer "+u.token())
+                .param("from",today.toString()).param("to",today.toString()))
+            .andExpect(status().isOk()).andExpect(jsonPath("indicators.length()").value(1))
+            .andExpect(jsonPath("indicators[0].code").value("VENTAS_FACTURADO_SIN_IMPUESTOS"))
+            .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(dashboard).get("indicators").get(0).get("value").decimalValue())
+            .isEqualByComparingTo(baseline.add(new BigDecimal("50.00")));
+        assertThat(report(u, today.minusDays(1), today)).isEqualByComparingTo(before.add(baseline).add(new BigDecimal("50.00")));
+        assertThat(report(u, today, today.plusDays(1))).isEqualByComparingTo(after.add(baseline).add(new BigDecimal("50.00")));
+        assertThat(report(u, today.minusDays(1), today.minusDays(1))).isEqualByComparingTo(before);
+        assertThat(report(u, today.plusDays(1), today.plusDays(1))).isEqualByComparingTo(after);
+        http.perform(get("/api/v1/reports/sales/invoiced").param("from", today.toString()).param("to", today.toString()))
+            .andExpect(status().isUnauthorized());
+        http.perform(get("/api/v1/reports/sales/invoiced").header("Authorization", "Bearer " + denied.token())
+            .param("from", today.toString()).param("to", today.toString())).andExpect(status().isForbidden());
+        for (var params : List.of(Map.of("from", today.plusDays(1).toString(), "to", today.toString()),
+                Map.of("from", "incorrecta", "to", today.toString()), Map.of("from", today.toString()))) {
+            var request = get("/api/v1/reports/sales/invoiced").header("Authorization", "Bearer " + u.token());
+            params.forEach(request::param);
+            http.perform(request).andExpect(status().isBadRequest());
+        }
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("test", null, List.of()));
+        try { assertThatThrownBy(() -> reportService.consultar(today, today)).isInstanceOf(org.springframework.security.access.AccessDeniedException.class); }
+        finally { SecurityContextHolder.clearContext(); }
+    }
     @Test void emiteConsultaYConservaSnapshotSinCobroNiCambiarStock() throws Exception {
         User u=user("VENTAS_DESPACHOS_REGISTRAR","VENTAS_DESPACHOS_CONFIRMAR","VENTAS_FACTURAS_EMITIR","VENTAS_FACTURAS_LEER");Fixture f=fixture(u,"CONFIRMADO");String k=key();
         assertThat(invoice(u,invoiceBody(f,k))).isEqualTo(409);complete(u,f);

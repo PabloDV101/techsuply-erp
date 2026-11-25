@@ -4,7 +4,7 @@
 **Identificador:** SRS-TSS-ERP-001  
 **Versión:** 1.1 — propuesta consolidada para validación académica (sincronización documental)
 **Fecha:** 11 de octubre de 2026  
-**Revisión documental:** 19 de octubre de 2026
+**Revisión documental:** 24 de noviembre de 2026
 **Estado:** Borrador de trabajo  
 **Tecnologías objetivo:** React + TypeScript, Java 21 + Spring Boot, PostgreSQL  
 
@@ -408,22 +408,27 @@ Prioridad: **Alta** = necesaria para completar flujos principales; **Media** = r
 **RF-REP-01 — Dashboard (Media).** El sistema deberá presentar indicadores de compras, ventas, inventario y finanzas según permisos.  
 *Criterio:* cada indicador identifica periodo y fuente; las fórmulas principales se documentan.
 
+*Estado backend (sprint 5):* dashboard compuesto con cuatro indicadores iniciales y autorización por cada permiso de fuente; analíticas de inventario, ventas y finanzas implementadas según fórmulas aprobadas. Las consultas incompletas devuelven `NO_DISPONIBLE`. No se acreditan cobertura histórica anterior al sistema, integración de frontend en navegador ni rendimiento representativo. Ver [diseño y límites](fase-3/SPRINT_5_DISENO_REPORTERIA.md).
+
 **RF-REP-02 — Informes parametrizables (Media).** El sistema deberá permitir filtrar, ordenar y paginar catálogos y reportes; habilitar exportación PDF/CSV/XLSX cuando el formato se implemente.  
 *Criterio:* la exportación mantiene filtros, respeta permisos y registra la ejecución cuando corresponda.
 
-*Estado de implementación (Fase 2):* el catálogo de categorías permite filtros
-opcionales combinables, ordenación permitida y paginación con límites, probado
-mediante API sobre PostgreSQL aislado. Los demás catálogos, reportes y formatos
-de exportación siguen pendientes; este avance no cierra RF-REP-02.
+*Estado parcial (sprints 1–5):* existen consultas filtradas/paginadas y reportes contables; Reportería exporta el dashboard a CSV y los informes autorizados a CSV/PDF/XLSX por página, con filtros y evento de auditoría. Las exportaciones no son un motor libre de informes y el tamaño está limitado por paginación. RF-REP-02 se cubre dentro de estas capacidades. Ver [diseño de Reportería](fase-3/SPRINT_5_DISENO_REPORTERIA.md).
 
 **RF-REP-03 — Análisis de gestión (Media).** El sistema deberá ofrecer reportes de rotación, clasificación ABC, rentabilidad por cliente y margen operativo conforme a definiciones documentadas.  
 *Criterio:* cada indicador define fórmula, fuentes, periodo y exclusiones; si faltan datos, se identifica el indicador como no disponible en lugar de inventar valores.
 
+*Estado backend (sprint 5):* implementado con fórmulas aprobadas para rotación, ABC, rentabilidad bruta por cliente y margen operativo. Rotación y ABC exigen cobertura conciliada; rentabilidad compara factura con despachos del pedido; margen usa clasificación versionada, sin inferir históricos. Ver rutas y límites en el diseño de Reportería. Devoluciones/reversas y cobertura previa al sistema no están soportadas.
+
 **RF-REP-04 — Reportes y permisos (Alta).** Toda consulta o exportación deberá respetar los permisos de datos financieros, salariales y comerciales.  
 *Criterio:* un usuario sin permiso no puede obtener información protegida invocando directamente API o exportaciones.
 
+*Estado backend (sprint 5):* permisos específicos aplicados en consultas, políticas y formatos de exportación. No hay módulo ni reporte de nómina; ese acceso no se considera implementado.
+
 **RF-REP-05 — Costos de personal por departamento (Media).** El sistema deberá ofrecer un reporte de costos de personal por departamento usando los registros de nómina disponibles.  
 *Criterio:* el reporte identifica periodo, departamento y origen de los importes; solo lo consultan roles autorizados.
+
+*Estado:* fuera del sprint 5 por decisión del usuario; no implementado, ya que falta nómina operativa y definiciones de costo.
 
 **RF-SYS-01 — Validación y errores (Alta).** La API deberá validar entradas y devolver errores consistentes sin exponer trazas internas, contraseñas, SQL ni secretos.  
 *Criterio:* los errores de validación se comunican con un código/mensaje funcional y se registra detalle técnico apropiado en los logs.
@@ -700,7 +705,7 @@ La matriz completa de trazabilidad debe ampliarse cuando se creen los identifica
 2. Confirmar cuáles módulos deben ser implementados funcionalmente y cuáles pueden quedar como diseño/futuras ampliaciones.
 3. Definir los detalles de autenticación del portal de clientes y validar sus pantallas mínimas; el alcance base incluye consultar catálogo, crear pedidos y consultar estados propios.
 4. Definir frecuencia/retención de respaldos y objetivo de recuperación; la especificación original no aporta RPO/RTO.
-5. Definir el significado y fórmula de los indicadores de rentabilidad, margen operativo, rotación y productos obsoletos.
+5. **Reportería (sprint 5):** el usuario aprobó e implementó en backend rotación por unidades despachadas/existencia física media diaria, ABC por costo de despachos y cortes 80/95 %, rentabilidad bruta por cliente y margen con clasificación de cuenta explícita. La inactividad distingue nunca registrado de sin movimiento y no se denomina obsolescencia. Los límites por historia incompleta, conciliación, denominador cero, devoluciones y nómina se registran en el diseño de Reportería. Cualquier fórmula fuera de ese alcance requiere aprobación.
 6. Definir el mecanismo de token/sesión de Spring Security y las medidas CSRF si se utilizan cookies.
 
 ### 12.3 Criterios para considerar aprobado el SRS

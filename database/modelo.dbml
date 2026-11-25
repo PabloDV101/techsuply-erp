@@ -1,5 +1,7 @@
+// Sprint 5: consultas y exportaciones bajo demanda. V25 incorpora mínimos por almacén y clasificación de margen; auditoría en eventos_auditoria (V4).
+// definiciones_reporte, ejecuciones_reporte, indicadores y valores_indicador siguen como OBJETIVO; no son tablas usadas por estas consultas.
 // TechSupply Solutions ERP — Modelo lógico relacional
-// Versión 1.23 — V24 clasifica flujo; reportes financieros parciales; V22–V23 pagos de proveedor; V21 factura de proveedor/CxP; V20 Compras/Inventario; V14–V19 núcleo y auxiliares; SRS-TSS-ERP-001.
+// Versión 1.24 — V25 añade mínimos por almacén y clasificación de margen; V24 clasifica flujo; reportes financieros parciales; V22–V23 pagos de proveedor; V21 factura de proveedor/CxP; V20 Compras/Inventario; V14–V19 núcleo y auxiliares; SRS-TSS-ERP-001.
 // Tipos bigint se propagan como propuesta documental a los módulos aún no implementados.
 // React + TypeScript,
 // Java 21 / Spring Boot (monolito modular) y PostgreSQL.
@@ -7,7 +9,7 @@
 
 Project techsupply_erp {
   database_type: 'PostgreSQL'
-  Note: 'V14-V24: contabilidad, auxiliares, integraciones transaccionales e informes parciales. V17 escribe outbox al emitir y el reintento explícito contabiliza facturas nuevas; V18 crea CxC y V19 agrega cobros/aplicaciones. V20 contabiliza fuentes valorizadas de Compras e Inventario; V21 factura proveedor/CxP; V22-V23 pagos a proveedor/aplicaciones. V24 soporta clasificación explícita y auditable de flujo y reportes parciales de resultados, balance general y flujo indirecto; no clasifica históricos automáticamente. El flujo devuelve NO_DISPONIBLE sin evidencia completa o conciliación. Facturas históricas no se procesan automáticamente; se excluyen borradores/cancelados y el contraasiento se suma al original reversado. Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía precisión. V9 crea tablas SQL para conteos y ajustes; conteos y ajustes tienen servicio/API. V10 protege historial y fuentes. Los campos futuros siguen como objetivo. Usar Flyway, no exportar todo este diseño sobre una base existente.'
+  Note: 'V25 añade mínimos explícitos por producto/almacén y clasificación de margen operativa con vigencia y anulación auditadas. El sprint 5 agrega dashboard y analíticas bajo demanda, con exportaciones auditadas, sin materializar resultados. V14-V24: contabilidad, auxiliares, integraciones transaccionales e informes parciales. V17 escribe outbox al emitir y el reintento explícito contabiliza facturas nuevas; V18 crea CxC y V19 agrega cobros/aplicaciones. V20 contabiliza fuentes valorizadas de Compras e Inventario; V21 factura proveedor/CxP; V22-V23 pagos a proveedor/aplicaciones. V24 soporta clasificación explícita y auditable de flujo y reportes parciales de resultados, balance general y flujo indirecto; no clasifica históricos automáticamente. El flujo devuelve NO_DISPONIBLE sin evidencia completa o conciliación. Facturas históricas no se procesan automáticamente; se excluyen borradores/cancelados y el contraasiento se suma al original reversado. Seguridad V1/V2, categorías V3, auditoría V4, notificaciones V5 y catálogos V6 implementados. V7 implementa parcialmente compras e inventario; V8 amplía precisión. V9 crea tablas SQL para conteos y ajustes; conteos y ajustes tienen servicio/API. V10 protege historial y fuentes. Los campos futuros siguen como objetivo. Usar Flyway, no exportar todo este diseño sobre una base existente.'
 }
 
 // ==================== GESTIÓN MAESTRA ====================
@@ -1378,3 +1380,32 @@ TableGroup erp_mixto_sql_y_objetivo {
   valores_indicador
   eventos_integracion
 }
+
+Table minimos_producto_almacen {
+ producto_id bigint [not null]
+ almacen_id bigint [not null]
+ minimo numeric(14,3) [not null]
+ indexes { (producto_id, almacen_id) [pk] }
+ Note: 'SQL V25: mínimo explícito no negativo, nunca copiado del umbral global; configuración auditada.'
+}
+Table clasificaciones_margen_cuenta {
+ id bigint [pk, not null, increment]
+ cuenta_contable_id bigint [not null]
+ clasificacion varchar(24) [not null]
+ fecha_inicio date [not null]
+ fecha_fin date [not null]
+ registrado_por_usuario_id bigint [not null]
+ registrado_en timestamptz [not null, default: `now()`]
+ anulada_en timestamptz
+ motivo_anulacion varchar(300)
+ Note: 'SQL V25: INGRESO_OPERATIVO, COSTO_OPERATIVO, GASTO_OPERATIVO o NO_OPERATIVO; tipo de cuenta compatible. Exclusión de rangos vigentes solapados. Historial inmutable excepto anulación con motivo; no clasifica históricos automáticamente.'
+}
+TableGroup reporteria_v25 {
+ minimos_producto_almacen
+ clasificaciones_margen_cuenta
+}
+
+Ref: minimos_producto_almacen.producto_id > productos.id
+Ref: minimos_producto_almacen.almacen_id > almacenes.id
+Ref: clasificaciones_margen_cuenta.cuenta_contable_id > cuentas_contables.id
+Ref: clasificaciones_margen_cuenta.registrado_por_usuario_id > usuarios.id

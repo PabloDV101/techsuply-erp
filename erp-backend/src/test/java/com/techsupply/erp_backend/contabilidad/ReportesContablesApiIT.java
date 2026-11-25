@@ -22,6 +22,7 @@ class ReportesContablesApiIT extends PostgresIntegrationSupport {
     @Autowired JdbcTemplate db;
     @Autowired ObjectMapper json;
     @Autowired PasswordEncoder passwords;
+    @Autowired com.techsupply.erp_backend.contabilidad.application.ResultadoFinancieroService resultadoService;
 
     private record Auth(String token, long userId) {}
 
@@ -54,17 +55,48 @@ class ReportesContablesApiIT extends PostgresIntegrationSupport {
     }
 
     @Test void estadosFinancierosConcilianYExcluyenBorradores() throws Exception {
-        Auth accountant=token("CONTABILIDAD_REPORTES_LEER","CONTABILIDAD_ASIENTOS_REGISTRAR","CONTABILIDAD_ASIENTOS_CONTABILIZAR","CONTABILIDAD_ASIENTOS_REVERTIR","CONTABILIDAD_FLUJO_CLASIFICAR");
+        Auth accountant=token("CONTABILIDAD_REPORTES_LEER","CONTABILIDAD_ASIENTOS_REGISTRAR","CONTABILIDAD_ASIENTOS_CONTABILIZAR","CONTABILIDAD_ASIENTOS_REVERTIR","CONTABILIDAD_FLUJO_CLASIFICAR","CONTABILIDAD_MARGEN_CLASIFICAR");
         Auth reader=token("CONTABILIDAD_ASIENTOS_LEER");
         long period=period("1901-01-01","1901-01-31");
+        String summary="/api/v1/reports/finance/result-summary";
+        http.perform(get(summary).param("periodId",Long.toString(period))).andExpect(status().isUnauthorized());
+        http.perform(get(summary).header("Authorization","Bearer "+reader.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("resultado").doesNotExist());
+        http.perform(get("/api/v1/reports/finance/cash-flow").param("periodId",Long.toString(period))).andExpect(status().isUnauthorized());
+        http.perform(get("/api/v1/reports/finance/cash-flow").header("Authorization","Bearer "+reader.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("rubros").doesNotExist());
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isOk()).andExpect(jsonPath("periodoId").value(period))
+            .andExpect(jsonPath("inicio").value("1901-01-01")).andExpect(jsonPath("fin").value("1901-01-31"))
+            .andExpect(jsonPath("resultado").value(0));
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token())).andExpect(status().isBadRequest());
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token()).param("periodId","0")).andExpect(status().isBadRequest());
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token()).param("periodId","invalido")).andExpect(status().isBadRequest());
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(Long.MAX_VALUE))).andExpect(status().isNotFound());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test", null, java.util.List.of()));
+        try { org.assertj.core.api.Assertions.assertThatThrownBy(() -> resultadoService.consultar(period))
+            .isInstanceOf(org.springframework.security.access.AccessDeniedException.class); }
+        finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
         http.perform(get("/api/v1/reports/finance/cash-flow").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
-            .andExpect(status().isOk()).andExpect(jsonPath("estado").value("NO_DISPONIBLE"));
+            .andExpect(status().isOk()).andExpect(jsonPath("estado").value("NO_DISPONIBLE"))
+            .andExpect(jsonPath("rubros").isEmpty()).andExpect(jsonPath("detalle").isNotEmpty());
         long funds=account("EF");
         String suffix=UUID.randomUUID().toString().substring(0,8).toUpperCase(Locale.ROOT);
         long revenue=db.queryForObject("insert into cuentas_contables(codigo,nombre,tipo,naturaleza) values (?,?,'INGRESO','ACREEDORA') returning id",Long.class,"IN"+suffix,"Ingresos");
         long expense=db.queryForObject("insert into cuentas_contables(codigo,nombre,tipo,naturaleza) values (?,?,'GASTO','DEUDORA') returning id",Long.class,"GA"+suffix,"Gastos");
         long revenueEntry=entry(accountant,period,"1901-01-10",funds,revenue,"100",suffix+"A",true);
         long expenseEntry=entry(accountant,period,"1901-01-11",expense,funds,"25",suffix+"B",true);
+        http.perform(get("/api/v1/reports/finance/operating-margin").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isOk()).andExpect(jsonPath("availability").value("NO_DISPONIBLE"));
+        for(var classification:Map.of(revenue,"INGRESO_OPERATIVO",expense,"GASTO_OPERATIVO").entrySet()) {
+            String body=json.writeValueAsString(Map.of("accountId",classification.getKey(),"classification",classification.getValue(),"from","1901-01-01","to","1901-01-31"));
+            http.perform(post("/api/v1/reports/finance/operating-classifications").header("Authorization","Bearer "+accountant.token()).contentType("application/json").content(body)).andExpect(status().isCreated());
+            http.perform(post("/api/v1/reports/finance/operating-classifications").header("Authorization","Bearer "+accountant.token()).contentType("application/json").content(body)).andExpect(status().isConflict());
+        }
+        http.perform(get("/api/v1/reports/finance/operating-margin").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isOk()).andExpect(jsonPath("availability").value("DISPONIBLE")).andExpect(jsonPath("value").value(75));
+
         http.perform(post("/api/v1/accounting/cash-flow-classifications/accounts").header("Authorization","Bearer "+accountant.token()).contentType("application/json").content(json.writeValueAsString(Map.of("cuentaId",funds,"clasificacion","EFECTIVO","desde","1901-01-01","hasta","1901-12-31")))).andExpect(status().isOk());
         http.perform(post("/api/v1/accounting/cash-flow-classifications/accounts").header("Authorization","Bearer "+accountant.token()).contentType("application/json").content(json.writeValueAsString(Map.of("cuentaId",funds,"clasificacion","INVERSION","desde","1901-06-01","hasta","1902-01-01")))).andExpect(status().isConflict());
         http.perform(post("/api/v1/accounting/cash-flow-classifications/accounts").header("Authorization","Bearer "+reader.token()).contentType("application/json").content(json.writeValueAsString(Map.of("cuentaId",funds,"clasificacion","EFECTIVO","desde","1902-01-01","hasta","1902-12-31")))).andExpect(status().isForbidden());
@@ -78,6 +110,13 @@ class ReportesContablesApiIT extends PostgresIntegrationSupport {
         entry(accountant,period,"1901-01-12",funds,revenue,"50",suffix+"C",false);
         http.perform(get("/api/v1/reports/finance/income-statement").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
             .andExpect(status().isOk()).andExpect(jsonPath("rubros[0].importe").value(100)).andExpect(jsonPath("rubros[2].importe").value(25)).andExpect(jsonPath("rubros[3].importe").value(75));
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isOk()).andExpect(jsonPath("resultado").value(75));
+        http.perform(get("/api/v1/reports/dashboard").header("Authorization","Bearer "+accountant.token())
+                .param("from","1900-01-01").param("to","1900-01-31").param("periodId",Long.toString(period)))
+            .andExpect(status().isOk()).andExpect(jsonPath("indicators.length()").value(1))
+            .andExpect(jsonPath("indicators[0].code").value("FINANZAS_RESULTADO"))
+            .andExpect(jsonPath("indicators[0].value").value(75)).andExpect(jsonPath("indicators[0].from").value("1901-01-01"));
         http.perform(get("/api/v1/reports/finance/balance-sheet").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
             .andExpect(status().isOk()).andExpect(jsonPath("rubros[5].importe").value(0));
         http.perform(get("/api/v1/reports/finance/cash-flow").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
@@ -107,6 +146,8 @@ class ReportesContablesApiIT extends PostgresIntegrationSupport {
             .contentType("application/json").content(json.writeValueAsString(Map.of("fechaContable","1901-01-20","motivo","Corrección","claveIdempotencia",suffix+"REV")))).andExpect(status().isOk());
         http.perform(get("/api/v1/reports/finance/income-statement").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
             .andExpect(status().isOk()).andExpect(jsonPath("rubros[2].importe").value(0)).andExpect(jsonPath("rubros[3].importe").value(100));
+        http.perform(get(summary).header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
+            .andExpect(status().isOk()).andExpect(jsonPath("resultado").value(100));
         http.perform(get("/api/v1/reports/finance/balance-sheet").header("Authorization","Bearer "+accountant.token()).param("periodId",Long.toString(period)))
             .andExpect(status().isOk()).andExpect(jsonPath("rubros[5].importe").value(0));
         http.perform(get("/api/v1/reports/finance/income-statement").header("Authorization","Bearer "+reader.token()).param("periodId",Long.toString(period))).andExpect(status().isForbidden());
@@ -137,7 +178,7 @@ class ReportesContablesApiIT extends PostgresIntegrationSupport {
         // Fechas aisladas para que otras integraciones contables no contaminen el total del reporte.
         // Mantener el periodo antes de los movimientos de los demás casos de integración:
         // el balance incluye saldos de apertura de toda la compañía.
-        int year = 1000 + Math.floorMod(UUID.randomUUID().hashCode(), 1000);
+        int year = 1800 + Math.floorMod(UUID.randomUUID().hashCode(), 100);
         String januaryStart = "%04d-01-01".formatted(year);
         String januaryEnd = "%04d-01-31".formatted(year);
         String februaryStart = "%04d-02-01".formatted(year);

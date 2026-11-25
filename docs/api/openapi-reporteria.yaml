@@ -1,43 +1,295 @@
 openapi: 3.0.3
 info:
-  title: TechSupply ERP - Reportería (implementación parcial)
+  title: TechSupply ERP - Reportería
   version: 0.2.0
   description: >-
-    El balance de prueba está implementado y requiere CONTABILIDAD_REPORTES_LEER.
-    Las demás rutas siguen como diseño y sus fuentes operativas aún no existen.
-    Fórmulas y permisos pendientes se documentan en
-    docs/fase-2/reporteria/COMPONENTE_REPORTERIA.md.
+    Balance de prueba, resultados, balance general y flujo indirecto están implementados
+    con CONTABILIDAD_REPORTES_LEER, incluido el resumen de resultado; facturación
+    de proveedores y ventas y resumen de alertas globales tienen consultas propias.
+    Dashboard y análisis operativos están implementados con exportación CSV/PDF/XLSX auditada.
+    Costos de personal queda fuera del sprint por decisión del usuario; consulte
+    docs/fase-3/SPRINT_5_DISENO_REPORTERIA.md para definiciones y límites.
+    Las fórmulas, permisos y límites implementados se documentan en
+    docs/fase-3/SPRINT_5_DISENO_REPORTERIA.md.
 servers:
   - url: /api/v1
 security:
   - bearerAuth: []
 x-implementation-status: partial
 paths:
-  /reports/dashboard:
+  /reports/inventory/minimums:
     get:
-      operationId: getReportingDashboard
-      summary: Indicadores autorizados de compras, ventas, inventario y finanzas
+      x-implementation-status: implemented
+      summary: Consultar mínimos configurados de un producto
+      description: Requiere REPORTERIA_INVENTARIO_LEER o REPORTERIA_MINIMOS_CONFIGURAR.
+      parameters:
+        - { name: productId, in: query, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+      responses:
+        '200': { description: Pares configurados, content: { application/json: { schema: { type: array, items: { type: object, properties: { producto_id: { type: integer }, almacen_id: { type: integer }, minimo: { type: number } } } } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      x-implementation-status: implemented
+      summary: Crear o sustituir mínimo explícito
+      description: Requiere REPORTERIA_MINIMOS_CONFIGURAR; producto y almacén activos. Audita la configuración; mínimo no negativo, máximo 11 enteros y 3 decimales.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, warehouseId, minimum]
+              properties:
+                productId: { type: integer, format: int64, minimum: 1 }
+                warehouseId: { type: integer, format: int64, minimum: 1 }
+                minimum: { type: number, minimum: 0, maximum: 99999999999.999, multipleOf: 0.001 }
+      responses:
+        '200':
+          description: Configuración guardada
+          content:
+            application/json:
+              schema: { type: object, required: [productId, warehouseId, minimum], properties: { productId: { type: integer, format: int64 }, warehouseId: { type: integer, format: int64 }, minimum: { type: number } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reports/finance/operating-classifications:
+    get:
+      x-implementation-status: implemented
+      summary: Historial de clasificaciones operativas de una cuenta
+      description: Requiere CONTABILIDAD_REPORTES_LEER o CONTABILIDAD_MARGEN_CLASIFICAR. Incluye anulaciones.
+      parameters:
+        - { name: accountId, in: query, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+      responses:
+        '200':
+          description: Historial de clasificaciones con anulaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, cuenta_contable_id, clasificacion, fecha_inicio, fecha_fin]
+                  properties:
+                    id: { type: integer, format: int64 }
+                    cuenta_contable_id: { type: integer, format: int64 }
+                    clasificacion: { type: string }
+                    fecha_inicio: { type: string, format: date }
+                    fecha_fin: { type: string, format: date }
+                    anulada_en: { type: string, format: date-time, nullable: true }
+                    motivo_anulacion: { type: string, nullable: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      x-implementation-status: implemented
+      summary: Clasificar cuenta de resultados con vigencia inclusiva
+      description: Requiere CONTABILIDAD_MARGEN_CLASIFICAR. Cuenta de movimiento compatible con el tipo. Sin asignación automática ni solapamientos vigentes; auditado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accountId, classification, from, to]
+              properties:
+                accountId: { type: integer, format: int64, minimum: 1 }
+                classification: { type: string, enum: [INGRESO_OPERATIVO, COSTO_OPERATIVO, GASTO_OPERATIVO, NO_OPERATIVO] }
+                from: { type: string, format: date }
+                to: { type: string, format: date }
+      responses:
+        '201':
+          description: Clasificación creada
+          content:
+            application/json:
+              schema: { type: object, required: [id, accountId, classification, from, to], properties: { id: { type: integer, format: int64 }, accountId: { type: integer, format: int64 }, classification: { type: string }, from: { type: string, format: date }, to: { type: string, format: date } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Vigencia solapada }
+  /reports/finance/operating-classifications/{id}/void:
+    post:
+      x-implementation-status: implemented
+      summary: Anular clasificación conservando historial
+      description: Requiere CONTABILIDAD_MARGEN_CLASIFICAR; auditado e idempotente. Después permite registrar una clasificación corregida. No modifica asientos ni reabre periodos.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 1, maxLength: 300 } } }
+      responses:
+        '204': { description: Anulada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reports/export:
+    get:
+      x-implementation-status: implemented
+      summary: Exportar una consulta autorizada a CSV, PDF o XLSX
       description: >-
-        RF-REP-01. Solo devuelve indicadores con fórmula y fuente aprobadas y acceso
-        del actor; los indicadores pendientes se identifican como NO_DISPONIBLE.
+        Usa los permisos y filtros del reporte fuente. Exporta la página seleccionada cuando hay paginación,
+        con metadatos y totales; no promete exportar todas las páginas. Presentación campo/valor que conserva
+        filtros, datos, precisión decimal y disponibilidad. Nulos como celda vacía. CSV protege fórmulas;
+        XLSX usa celdas de texto. PDF conserva texto con fuente incluida. Auditoría REPORT_FILE_GENERATED
+        antes de responder; un fallo aborta la descarga. Cache-Control no-store. No exporta nómina.
+      parameters:
+        - { name: report, in: query, required: true, schema: { type: string, enum: [dashboard, inventory/low-stock, inventory/inactive-products, inventory/turnover, inventory/abc, sales/customer-profitability, finance/operating-margin, finance/income-statement, finance/balance-sheet, finance/cash-flow, finance/trial-balance, finance/result-summary, purchases/invoiced, sales/invoiced, inventory/low-stock-summary] } }
+        - { name: format, in: query, required: true, schema: { type: string, enum: [csv, pdf, xlsx] } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: asOf, in: query, schema: { type: string, format: date } }
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 36500 } }
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/CustomerId'
+        - { name: periodId, in: query, schema: { type: integer, format: int64, minimum: 1 } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - { name: sort, in: query, description: Campos permitidos del reporte fuente; valor predeterminado de esa consulta., schema: { type: string } }
+        - $ref: '#/components/parameters/Direction'
+      responses:
+        '200':
+          description: Archivo reporte.csv, reporte.pdf o reporte.xlsx
+          content:
+            text/csv: { schema: { type: string } }
+            application/pdf: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reports/dashboard/export.csv:
+    get:
+      x-implementation-status: implemented
+      operationId: exportDashboardCsv
+      summary: Exportar indicadores autorizados del dashboard
+      description: >-
+        CSV UTF-8 con coma y CRLF, encabezado y hasta cuatro filas autorizadas.
+        Columnas: requestedFrom, requestedTo, periodId, code, source, from, to, asOf,
+        availability, value, unit, unavailabilityReason.
+        Mismos filtros, permisos, snapshot y errores que el dashboard. Celdas nulas vacías,
+        importes decimales con punto. Registra DASHBOARD_CSV_GENERATED antes de responder;
+        no acredita recepción por el cliente. Sin permiso de fuente devuelve 403.
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
+        - name: periodId
+          in: query
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Archivo dashboard.csv; Cache-Control no-store
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reports/finance/result-summary:
+    get:
+      x-implementation-status: implemented
+      operationId: getAccountingResultSummary
+      summary: Resultado contable de un periodo
+      description: >-
+        Requiere CONTABILIDAD_REPORTES_LEER. Devuelve el rubro RESULTADO del
+        estado de resultados existente: ingresos netos menos costos y gastos.
+        No es margen operativo ni acredita cobertura de fuentes no contabilizadas.
+      parameters:
+        - $ref: '#/components/parameters/AccountingPeriodId'
+      responses:
+        '200': { description: Resultado y fechas del periodo, content: { application/json: { schema: { $ref: '#/components/schemas/AccountingResultSummary' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reports/inventory/low-stock-summary:
+    get:
+      x-implementation-status: implemented
+      operationId: getLowStockSummary
+      summary: Conteo actual de productos con alerta global de inventario
+      description: >-
+        Requiere INVENTARIO_ALERTAS_LEER. Cuenta productos activos con punto de
+        reorden positivo cuya disponibilidad global en almacenes activos (físico
+        menos reservado) es menor o igual al punto de reorden. Es la misma regla
+        de /inventory/low-stock-alerts; no filtra por almacén ni reconstruye historia.
+        asOf es el instante de inicio de la sentencia que calcula el total.
+      responses:
+        '200': { description: Conteo e instante de consulta, content: { application/json: { schema: { $ref: '#/components/schemas/LowStockSummary' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/sales/invoiced:
+    get:
+      x-implementation-status: implemented
+      operationId: getSalesInvoicedReport
+      summary: Subtotal facturado en ventas
+      description: >-
+        Requiere VENTAS_FACTURAS_LEER. Suma subtotal sin impuestos de facturas
+        comerciales EMITIDA cuya fecha_emision está dentro del rango inclusivo,
+        incluso si su contabilización está pendiente. Devuelve cero si no hay
+        facturas. No representa cobros ni garantiza integridad histórica.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200': { description: Facturación del periodo, content: { application/json: { schema: { $ref: '#/components/schemas/SalesInvoicedReport' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/purchases/invoiced:
+    get:
+      x-implementation-status: implemented
+      operationId: getSupplierInvoicedReport
+      summary: Subtotal facturado por proveedores
+      description: >-
+        Requiere COMPRAS_FACTURAS_PROVEEDOR_LEER. Suma subtotal sin impuestos de
+        facturas de proveedor VALIDADA con fecha_emision dentro del rango inclusivo.
+        Devuelve cero si no hay facturas. No representa pagos ni todas las compras.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200': { description: Facturación del periodo, content: { application/json: { schema: { $ref: '#/components/schemas/SupplierInvoicedReport' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /reports/dashboard:
+    get:
+      x-implementation-status: implemented
+      operationId: getReportingDashboard
+      summary: Indicadores autorizados de compras, ventas, inventario y finanzas
+      description: >-
+        RF-REP-01. Devuelve solo indicadores autorizados: compras requiere
+        COMPRAS_FACTURAS_PROVEEDOR_LEER, ventas VENTAS_FACTURAS_LEER, inventario
+        INVENTARIO_ALERTAS_LEER y finanzas CONTABILIDAD_REPORTES_LEER. Sin ninguno
+        se devuelve 403. El periodo contable se identifica por periodId; inventario
+        es instantánea actual. Si el actor tiene acceso financiero y omite periodId,
+        el indicador financiero es NO_DISPONIBLE. Un periodId inexistente produce
+        404 solo cuando se consulta el indicador financiero autorizado. Las fechas
+        from y to son inclusivas para facturas. Las consultas autorizadas comparten
+        una instantánea REPEATABLE_READ; el asOf de inventario identifica el inicio
+        de la sentencia que establece dicha instantánea del dashboard.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - { name: periodId, in: query, required: false, description: Periodo contable para el indicador financiero., schema: { type: integer, format: int64, minimum: 1 } }
       responses:
         '200': { description: Indicadores y periodo, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /reports/inventory/low-stock:
     get:
+      x-implementation-status: implemented
       operationId: getLowStockReport
       summary: Existencias bajo el mínimo configurado
-      description: >-
-        RF-INV-07. Fotografía del estado actual; no reconstruye existencias históricas.
-        Disponible = física - reservada. El DBML propone productos.punto_reorden
-        como umbral global. El sprint 2 implementa una alerta operativa global en
-        /inventory/low-stock-alerts; el filtro warehouseId de este reporte no es
-        equivalente y debe redefinirse antes de implementar esta ruta de diseño.
+      description: Mínimos explícitos por producto/almacén (V25); requiere REPORTERIA_INVENTARIO_LEER. Solo pares configurados y activos; disponible = físico - reservado, menor o igual al mínimo. Nunca copia el umbral global.
       parameters:
         - $ref: '#/components/parameters/WarehouseId'
         - $ref: '#/components/parameters/ProductId'
@@ -52,13 +304,10 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/inventory/inactive-products:
     get:
+      x-implementation-status: implemented
       operationId: getInactiveProductsReport
       summary: Productos sin movimiento según umbral
-      description: >-
-        RF-INV-07. La interpretación de obsoleto, de productos nunca movidos y de
-        tipos de movimiento válidos sigue pendiente; faltan despachos de Ventas,
-        devoluciones y reversas en el kardex actual. No llamar obsoleto al resultado
-        ni interpretar ausencia de fuentes como ausencia de actividad hasta aprobarla.
+      description: Requiere REPORTERIA_INVENTARIO_LEER. Corte al final del día America/Mexico_City. Todo movimiento del kardex cuenta. SIN_MOVIMIENTO si han transcurrido al menos days desde el último movimiento; NUNCA_REGISTRADO si no existe uno al corte. No acredita obsolescencia ni historia externa.
       parameters:
         - $ref: '#/components/parameters/AsOf'
         - { name: days, in: query, required: true, description: Umbral positivo de días sin movimiento., schema: { type: integer, minimum: 1 } }
@@ -74,9 +323,10 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/inventory/turnover:
     get:
+      x-implementation-status: implemented
       operationId: getInventoryTurnoverReport
       summary: Rotación de inventario
-      description: RF-INV-07 y RF-REP-03. Fórmula, períodos y exclusiones pendientes de aprobación; faltan salidas de Ventas y fuentes históricas suficientes.
+      description: Requiere REPORTERIA_INVENTARIO_LEER. Unidades despachadas / promedio del físico al cierre de cada día. Kardex conciliado con stock actual, sin saldos negativos, con primer movimiento anterior o igual al inicio; de lo contrario NO_DISPONIBLE. Denominador cero produce NO_DISPONIBLE. Fechas inclusivas America/Mexico_City, máximo 3661 días y sin fecha final futura.
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
@@ -92,9 +342,10 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/inventory/abc:
     get:
+      x-implementation-status: implemented
       operationId: getInventoryAbcReport
       summary: Clasificación ABC
-      description: RF-REP-03. Base de valoración, umbrales y exclusiones pendientes.
+      description: Requiere REPORTERIA_INVENTARIO_LEER. Costo de despachos confirmados del rango. Orden de clasificación por costo descendente y producto ascendente; clase A si acumulado previo menor a 80%, B si menor a 95%, C el resto. La fila que cruza un corte permanece en su clase inicial. Base total cero produce NO_DISPONIBLE. No incluye productos sin despachos en el rango.
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
@@ -110,9 +361,10 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/sales/customer-profitability:
     get:
+      x-implementation-status: implemented
       operationId: getCustomerProfitabilityReport
       summary: Rentabilidad por cliente
-      description: RF-REP-03. Fórmula de ingresos, costos y exclusiones pendiente.
+      description: Requiere VENTAS_FACTURAS_LEER y CONTABILIDAD_REPORTES_LEER. Facturas emitidas por fecha inclusiva, subtotal con descuentos sin impuestos menos costo de despachos conciliados del pedido, aunque el despacho tenga otra fecha. Rentabilidad bruta; excluye gastos indirectos y operaciones no registradas. Discrepancia de cantidades produce NO_DISPONIBLE.
       parameters:
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
@@ -128,9 +380,10 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/finance/operating-margin:
     get:
+      x-implementation-status: implemented
       operationId: getOperatingMarginReport
       summary: Margen operativo
-      description: RF-REP-03. Fórmula y clasificación de cuentas pendientes.
+      description: Requiere CONTABILIDAD_REPORTES_LEER. Porcentaje = (ingresos operativos - costos operativos - gastos operativos) / ingresos operativos * 100. Clasificación explícita vigente de cada cuenta de resultados con movimientos; incluye contraasientos. Sin clasificación o ingresos positivos devuelve NO_DISPONIBLE. No infiere clasificación histórica.
       parameters:
         - $ref: '#/components/parameters/AccountingPeriodId'
       responses:
@@ -200,6 +453,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /reports/payroll/department-costs:
     get:
+      x-implementation-status: out-of-scope
       operationId: getDepartmentPersonnelCostsReport
       summary: Costos de personal por departamento
       description: RF-REP-05. Importes de nómina; definición de costo y estados válidos pendientes.
@@ -232,20 +486,53 @@ components:
     Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
     Direction: { name: direction, in: query, schema: { type: string, enum: [asc, desc], default: asc } }
   schemas:
+    AccountingResultSummary:
+      type: object
+      required: [periodoId, inicio, fin, resultado]
+      properties:
+        periodoId: { type: integer, format: int64, minimum: 1 }
+        inicio: { type: string, format: date }
+        fin: { type: string, format: date }
+        resultado: { type: number, description: Resultado decimal del periodo. }
+    LowStockSummary:
+      type: object
+      required: [asOf, productosEnAlerta]
+      properties:
+        asOf: { type: string, format: date-time, description: Instante de inicio de la consulta en PostgreSQL. }
+        productosEnAlerta: { type: integer, format: int64, minimum: 0 }
+    SalesInvoicedReport:
+      type: object
+      required: [from, to, subtotal]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        subtotal: { type: number, description: Suma decimal de subtotales sin impuestos. }
+    SupplierInvoicedReport:
+      type: object
+      required: [from, to, subtotal]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        subtotal: { type: number, description: Suma decimal de subtotales sin impuestos. }
     Availability: { type: string, enum: [DISPONIBLE, NO_DISPONIBLE] }
     Decimal: { type: number, description: Importe o cantidad decimal; serializar sin pérdida de precisión. }
     NullableDecimal: { type: number, nullable: true, description: Decimal o nulo cuando la métrica no está disponible. }
     Metric:
       type: object
-      required: [code, source, from, to, availability]
+      description: >-
+        Solo indicadores autorizados. DISPONIBLE lleva valor numérico y motivo nulo;
+        NO_DISPONIBLE lleva valor nulo y motivo. from/to describen el periodo del
+        indicador; asOf el instante de inventario. Los campos no aplicables son nulos.
+      required: [code, source, from, to, asOf, availability, value, unit, unavailabilityReason]
       properties:
-        code: { type: string }
+        code: { type: string, enum: [COMPRAS_FACTURADO_SIN_IMPUESTOS, VENTAS_FACTURADO_SIN_IMPUESTOS, INVENTARIO_PRODUCTOS_ALERTA, FINANZAS_RESULTADO] }
         source: { type: string, description: Documento o conjunto de tablas origen y estado admitido. }
-        from: { type: string, format: date }
-        to: { type: string, format: date }
+        from: { type: string, format: date, nullable: true, description: Inicio incluido; nulo para instantánea o periodo no indicado. }
+        to: { type: string, format: date, nullable: true, description: Fin incluido; nulo para instantánea o periodo no indicado. }
+        asOf: { type: string, format: date-time, nullable: true, description: Instante de consulta para inventario; nulo para indicadores por periodo. }
         availability: { $ref: '#/components/schemas/Availability' }
         value: { $ref: '#/components/schemas/NullableDecimal' }
-        unit: { type: string, nullable: true }
+        unit: { type: string, enum: [IMPORTE, PRODUCTOS], description: IMPORTE para montos y PRODUCTOS para el conteo. }
         unavailabilityReason: { type: string, nullable: true }
     Dashboard:
       type: object
@@ -264,13 +551,14 @@ components:
         totalPages: { type: integer }
     LowStockRow:
       type: object
-      required: [productId, warehouseId, physical, reserved, available, reorderPoint]
+      required: [productId, warehouseId, physical, reserved, available, reorderPoint, consultedAt]
       properties:
         productId: { type: integer, format: int64 }
         warehouseId: { type: integer, format: int64 }
         physical: { $ref: '#/components/schemas/Decimal' }
         reserved: { $ref: '#/components/schemas/Decimal' }
         available: { $ref: '#/components/schemas/Decimal' }
+        consultedAt: { type: string, format: date-time }
         reorderPoint: { $ref: '#/components/schemas/Decimal' }
     LowStockPage:
       allOf:
@@ -278,16 +566,16 @@ components:
         - type: object
           required: [consultedAt, content]
           properties:
-            consultedAt: { type: string, format: date-time }
             content: { type: array, items: { $ref: '#/components/schemas/LowStockRow' } }
     InactiveProductRow:
       type: object
-      required: [productId, warehouseId, asOf, thresholdDays]
+      required: [productId, warehouseId, asOf, thresholdDays, status]
       properties:
         productId: { type: integer, format: int64 }
         warehouseId: { type: integer, format: int64 }
         asOf: { type: string, format: date }
         thresholdDays: { type: integer }
+        status: { type: string, enum: [SIN_MOVIMIENTO, NUNCA_REGISTRADO] }
         lastMovementAt: { type: string, format: date-time, nullable: true }
     InactiveProductPage:
       allOf:

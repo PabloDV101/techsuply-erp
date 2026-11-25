@@ -1,6 +1,6 @@
 @startuml CU_Reporteria
 !include ../_estilo.iuml
-title TechSupply Solutions - Reportería de solo lectura
+title TechSupply Solutions - Consultas y exportación de Reportería
 left to right direction
 
 actor "Usuario con permiso de datos" as Usuario
@@ -10,6 +10,7 @@ actor "Responsable de RR. HH." as RRHH
 
 rectangle "ERP - Reportería" {
   usecase "Consultar dashboard\ncompras / ventas / inventario / finanzas" as Dashboard
+  usecase "Exportar dashboard CSV\ncon auditoría de generación" as CSV
   usecase "Consultar stock bajo y\nsin movimiento" as Stock
   usecase "Consultar rotación y ABC" as InventoryAnalysis
   usecase "Consultar rentabilidad\npor cliente" as Profit
@@ -18,6 +19,7 @@ rectangle "ERP - Reportería" {
   usecase "Consultar costos de personal\npor departamento" as Personnel
 }
 
+Usuario -- CSV
 Usuario -- Dashboard
 Usuario -- Stock
 Usuario -- InventoryAnalysis
@@ -29,8 +31,9 @@ Almacen -- Stock
 Almacen -- InventoryAnalysis
 
 note bottom of Dashboard
-  La API aplica permiso por reporte y restricciones de filas
-  antes de agregar, contar o paginar. No se asumen permisos por rol.
+  Implementado: cuatro indicadores con permisos por fuente,
+  alcance global autorizado e instantánea compartida.
+  Periodo contable opcional; sin él, resultado no disponible.
 end note
 note bottom of Finance
   Periodo, filtros, orden y página son parámetros de consulta,
@@ -38,8 +41,8 @@ note bottom of Finance
 end note
 
 note bottom of Profit
-  Una métrica sin fórmula o fuente disponible
-  se distingue de un resultado igual a cero.
+  Rentabilidad, margen, rotación, ABC, inactividad
+  y costos de personal siguen en diseño.
 end note
 
 @enduml

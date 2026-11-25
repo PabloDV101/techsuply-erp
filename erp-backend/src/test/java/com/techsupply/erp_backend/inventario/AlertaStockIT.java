@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AlertaStockIT extends PostgresIntegrationSupport {
     @Autowired MockMvc http; @Autowired JdbcTemplate db; @Autowired ObjectMapper json; @Autowired PasswordEncoder passwords;
     @Autowired AlertaStockService service;
+    @Autowired org.springframework.transaction.support.TransactionTemplate transactions;
     record Account(String token,long id) {}
     private long id(String sql,Object... args) {return db.queryForObject(sql,Long.class,args);}
     private Account account(String permission) throws Exception {
@@ -46,8 +47,18 @@ class AlertaStockIT extends PostgresIntegrationSupport {
         assertThat(item.get("sku").asText()).isNotBlank();assertThat(item.get("nombre").asText()).isNotBlank();
     }
     private void noAlert(Account user,long product) throws Exception {JsonNode r=fetch(user,product,0,20);assertThat(r.get("totalElements").asLong()).isZero();assertThat(r.get("content").size()).isZero();assertThat(r.get("totalPages").asInt()).isZero();}
+    private JsonNode summary(Account user) throws Exception {
+        return json.readTree(http.perform(get("/api/v1/reports/inventory/low-stock-summary")
+            .header("Authorization", "Bearer " + user.token())).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString());
+    }
     @Test void consultaUmbralGlobalPaginacionPermisosYNoProduceEfectos() throws Exception {
         Account reader=account("INVENTARIO_ALERTAS_LEER"),denied=account("INVENTARIO_EXISTENCIAS_LEER");
+        http.perform(get("/api/v1/reports/inventory/low-stock-summary")).andExpect(status().isUnauthorized());
+        http.perform(get("/api/v1/reports/inventory/low-stock-summary").header("Authorization", "Bearer " + denied.token())).andExpect(status().isForbidden());
+        JsonNode initialSummary = summary(reader);
+        long initialTotal = initialSummary.get("productosEnAlerta").asLong();
+        java.time.Instant initialInstant = java.time.Instant.parse(initialSummary.get("asOf").asText());
         String key="L"+UUID.randomUUID().toString().substring(0,12).toUpperCase(Locale.ROOT);
         long category=id("insert into categorias_producto(codigo,nombre) values (?,?) returning id",key,"Prueba");
         long active=id("insert into almacenes(codigo,nombre,activo) values (?,?,true) returning id",key+"A","Activo");
@@ -68,18 +79,43 @@ class AlertaStockIT extends PostgresIntegrationSupport {
         assertThat(id("select count(*) from eventos_auditoria where accion='AUTHORIZATION_DENIED' and usuario_id=?",denied.id())).isEqualTo(before+1);
         alert(reader,none,"0","10","3");alert(reader,exact,"10","10","4");alert(reader,below,"9.999","10","0");alert(reader,inactiveOnly,"0","10","7");alert(reader,fullyReserved,"0","1","5");
         noAlert(reader,above);noAlert(reader,zero);noAlert(reader,inactiveProduct);noAlert(reader,big);noAlert(reader,Long.MAX_VALUE);
+        JsonNode currentSummary = summary(reader);
+        assertThat(currentSummary.get("productosEnAlerta").asLong()).isEqualTo(initialTotal + 5);
+        String dashboard=http.perform(get("/api/v1/reports/dashboard").header("Authorization","Bearer "+reader.token())
+                .param("from","2026-11-01").param("to","2026-11-30"))
+            .andExpect(status().isOk()).andExpect(jsonPath("indicators.length()").value(1))
+            .andExpect(jsonPath("indicators[0].code").value("INVENTARIO_PRODUCTOS_ALERTA"))
+            .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(dashboard).get("indicators").get(0).get("value").asLong()).isEqualTo(initialTotal + 5);
+        assertThat(java.time.Instant.parse(currentSummary.get("asOf").asText())).isAfterOrEqualTo(initialInstant);
         db.update("update existencias set cantidad_fisica=10,version=version+1 where producto_id=? and almacen_id=?",above,active);
         alert(reader,above,"10","10","2");
+        assertThat(summary(reader).get("productosEnAlerta").asLong()).isEqualTo(initialTotal + 6);
         db.update("update existencias set cantidad_fisica=11,version=version+1 where producto_id=? and almacen_id=?",above,active);
         noAlert(reader,above);
+        assertThat(summary(reader).get("productosEnAlerta").asLong()).isEqualTo(initialTotal + 5);
         JsonNode out=fetch(reader,exact,5,1);assertThat(out.get("content").size()).isZero();assertThat(out.get("totalElements").asLong()).isEqualTo(1);assertThat(out.get("totalPages").asInt()).isEqualTo(1);
         var first=json.readTree(http.perform(get("/api/v1/inventory/low-stock-alerts").header("Authorization","Bearer "+reader.token()).param("size","1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         var second=json.readTree(http.perform(get("/api/v1/inventory/low-stock-alerts").header("Authorization","Bearer "+reader.token()).param("size","1").param("page","1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(first.get("totalElements").asLong()).isGreaterThanOrEqualTo(4);assertThat(second.get("totalElements").asLong()).isEqualTo(first.get("totalElements").asLong());
+        assertThat(summary(reader).get("productosEnAlerta").asLong()).isEqualTo(first.get("totalElements").asLong());
         assertThat(first.get("content").get(0).get("productoId").asLong()).isLessThan(second.get("content").get(0).get("productoId").asLong());
         for(var params:List.of(Map.of("page","-1"),Map.of("size","0"),Map.of("size","101"),Map.of("productoId","0"),Map.of("productoId","abc"))) {var req=get("/api/v1/inventory/low-stock-alerts").header("Authorization","Bearer "+reader.token());params.forEach(req::param);http.perform(req).andExpect(status().isBadRequest());}
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("test",null,List.of()));
-        try {assertThatThrownBy(()->service.listar(0,20,null)).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);} finally {SecurityContextHolder.clearContext();}
+        try {
+            assertThatThrownBy(()->service.listar(0,20,null)).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+            assertThatThrownBy(()->service.resumir()).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        } finally {SecurityContextHolder.clearContext();}
         assertThat(id("select count(*) from movimientos_inventario")).isEqualTo(movements);assertThat(id("select count(*) from ordenes_compra")).isEqualTo(orders);assertThat(id("select count(*) from existencias")).isEqualTo(stocks);
+        transactions.executeWithoutResult(transaction -> {
+            db.update("update productos set activo=false where activo=true");
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("test", null,
+                List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("INVENTARIO_ALERTAS_LEER"))));
+            try {
+                assertThat(service.resumir().productosEnAlerta()).isZero();
+                transaction.setRollbackOnly();
+            } finally { SecurityContextHolder.clearContext(); }
+        });
+        assertThat(summary(reader).get("productosEnAlerta").asLong()).isEqualTo(initialTotal + 5);
     }
 }

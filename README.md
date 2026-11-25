@@ -2,7 +2,7 @@
 
 ERP de TechSupply Solutions. El backend está en `erp-backend/` y utiliza Java 21, Spring Boot, PostgreSQL y migraciones Flyway. El frontend se desarrolla por separado en `frontend/`.
 
-El primer sprint de la Fase 3 entrega catálogos maestros, órdenes de compra, registro y confirmación de recepciones y consulta de existencias. Requisiciones, facturas, devoluciones y los demás módulos aún tienen trabajo pendiente; consultar la [ruta de Fase 3](docs/FASE_3_RUTA_BACKEND.md) y el [registro de ejecución](docs/fase-3/SPRINT_1_EJECUCION_POR_PARTES.md) y el [cierre técnico](docs/fase-3/SPRINT_1_CIERRE.md).
+Los sprints 1–4 entregan Gestión Maestra, Compras, Inventario, Ventas y Contabilidad dentro de sus límites documentados. El sprint 5 incorpora dashboard por permisos, reportes de facturación y analítica de inventario/ventas/finanzas con exportación CSV/PDF/XLSX auditada. Nómina queda fuera del sprint; integración frontend en navegador y pruebas de rendimiento representativo siguen pendientes. Consultar el [cierre de sprint 5](docs/fase-3/SPRINT_5_CIERRE.md), la [ruta de Fase 3](docs/FASE_3_RUTA_BACKEND.md) y la [guía de Reportería](docs/api/guia-sprint-5-reporteria.md).
 
 ## Ejecutar y verificar el backend
 

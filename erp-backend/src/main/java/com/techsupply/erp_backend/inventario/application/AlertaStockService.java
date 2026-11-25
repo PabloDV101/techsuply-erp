@@ -3,6 +3,7 @@ package com.techsupply.erp_backend.inventario.application;
 import com.techsupply.erp_backend.common.api.PageRequests;
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.inventario.application.dto.AlertaStockResponse;
+import com.techsupply.erp_backend.inventario.application.dto.ResumenAlertaStockResponse;
 import com.techsupply.erp_backend.inventario.infrastructure.persistence.AlertaStockRepository;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -24,4 +25,8 @@ public class AlertaStockService {
         var pageable = PageRequests.of(page, size, "id", "asc", Map.of("id", "id"));
         return alerts.buscar(pageable, productoId);
     }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('INVENTARIO_ALERTAS_LEER')")
+    public ResumenAlertaStockResponse resumir() { return alerts.resumir(); }
 }

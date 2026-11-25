@@ -72,6 +72,10 @@ class FlujoCompraInventarioIT extends PostgresIntegrationSupport {
             .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(count));
         if(count==1) result.andExpect(jsonPath("content[0].disponibleGlobal").value(available)).andExpect(jsonPath("content[0].puntoReorden").value(17)).andExpect(jsonPath("content[0].cantidadReorden").value(8));
     }
+    private long summaryCount(Account actor) throws Exception {
+        return body(http.perform(get("/api/v1/reports/inventory/low-stock-summary")
+            .header("Authorization", auth(actor))).andExpect(status().isOk())).get("productosEnAlerta").asLong();
+    }
     private int apply(Account actor,long adjustment) throws Exception {
         return http.perform(post("/api/v1/inventory/adjustments/{id}/apply",adjustment).header("Authorization",auth(actor))).andReturn().getResponse().getStatus();
     }
@@ -80,10 +84,11 @@ class FlujoCompraInventarioIT extends PostgresIntegrationSupport {
         Catalog f=catalog();
         Account operator=account("COMPRAS_ORDENES_ADMIN","COMPRAS_ORDENES_LEER","COMPRAS_RECEPCIONES_REGISTRAR","COMPRAS_RECEPCIONES_CONFIRMAR",
             "INVENTARIO_EXISTENCIAS_LEER","INVENTARIO_CONTEOS_ADMIN","INVENTARIO_AJUSTES_REGISTRAR","INVENTARIO_AJUSTES_APLICAR",
-            "INVENTARIO_MOVIMIENTOS_LEER","INVENTARIO_ALERTAS_LEER");
+            "INVENTARIO_MOVIMIENTOS_LEER","INVENTARIO_ALERTAS_LEER","REPORTERIA_INVENTARIO_LEER");
         Account approver=account("COMPRAS_ORDENES_APROBAR","INVENTARIO_AJUSTES_APROBAR");
         Account reader=account("INVENTARIO_AJUSTES_LEER");
         alerts(operator,f,1,0);
+        long initialAlertCount=summaryCount(operator);
 
         var orderRequest=Map.of("proveedorId",f.supplier(),"departamentoId",f.department(),"detalles",List.of(Map.of(
             "productoId",f.product(),"cantidad",20,"precioUnitario",10,"descuentoPct",0,"tasaImpuesto",16)));
@@ -103,6 +108,7 @@ class FlujoCompraInventarioIT extends PostgresIntegrationSupport {
         http.perform(get("/api/v1/purchase-orders/{id}",orderId).header("Authorization",auth(operator)))
             .andExpect(status().isOk()).andExpect(jsonPath("estado").value("PARCIALMENTE_RECIBIDA")).andExpect(jsonPath("detalles[0].cantidadPendiente").value(2));
         stock(operator,f,18); alerts(operator,f,0,0);
+        assertThat(summaryCount(operator)).isEqualTo(initialAlertCount-1);
 
         JsonNode count=body(postJson("/api/v1/inventory/counts",operator,Map.of("almacenId",f.warehouse(),"fechaProgramada","2026-11-10","clase","CICLICO")).andExpect(status().isCreated()));
         long countId=count.get("id").asLong();
@@ -140,6 +146,13 @@ class FlujoCompraInventarioIT extends PostgresIntegrationSupport {
             assertThat(List.of(a.get(30,TimeUnit.SECONDS),b.get(30,TimeUnit.SECONDS))).containsExactlyInAnyOrder(200,200);
         } finally { pool.shutdownNow(); }
         stock(operator,f,16); alerts(operator,f,1,16);
+        String day=java.time.LocalDate.now(java.time.ZoneId.of("America/Mexico_City")).toString();
+        http.perform(get("/api/v1/reports/inventory/turnover").header("Authorization",auth(operator))
+            .param("from",day).param("to",day).param("warehouseId",Long.toString(f.warehouse())))
+            .andExpect(status().isOk()).andExpect(jsonPath("content[0].availability").value("DISPONIBLE"))
+            .andExpect(jsonPath("content[0].denominator").value(16)).andExpect(jsonPath("content[0].numerator").value(0)).andExpect(jsonPath("content[0].value").value(0));
+
+        assertThat(summaryCount(operator)).isEqualTo(initialAlertCount);
         assertThat(id("select version from existencias where producto_id=? and almacen_id=?",f.product(),f.warehouse())).isEqualTo(2);
         assertThat(db.queryForObject("select costo_promedio from existencias where producto_id=? and almacen_id=?",BigDecimal.class,f.product(),f.warehouse())).isEqualByComparingTo("10");
         assertThat(id("select count(*) from eventos_auditoria where accion='INVENTORY_ADJUSTMENT_APPLIED' and entidad_id=?",adjustmentId)).isEqualTo(1);

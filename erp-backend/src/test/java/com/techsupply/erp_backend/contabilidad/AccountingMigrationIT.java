@@ -28,6 +28,19 @@ class AccountingMigrationIT extends PostgresIntegrationSupport {
 
     private long id(String sql, Object... args) { return db.queryForObject(sql, Long.class, args); }
 
+    @Test void actualizaV24AReporteriaSinInferirPoliticas() {
+        String schema="upgrade_v24_"+UUID.randomUUID().toString().replace("-", "");
+        var before=Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("24").load();
+        assertThat(before.migrate().migrationsExecuted).isEqualTo(24);
+        long supplier=id("insert into "+schema+".proveedores(codigo,nombre_razon_social) values ('PREVIO','Proveedor previo') returning id");
+        var after=Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("25").load();
+        assertThat(after.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(db.queryForObject("select nombre_razon_social from "+schema+".proveedores where id=?",String.class,supplier)).isEqualTo("Proveedor previo");
+        assertThat(db.queryForObject("select count(*) from "+schema+".minimos_producto_almacen",Integer.class)).isZero();
+        assertThat(db.queryForObject("select count(*) from "+schema+".clasificaciones_margen_cuenta",Integer.class)).isZero();
+        assertThat(after.validateWithResult().validationSuccessful).isTrue();
+    }
+
     @Test void actualizaV23AClasificacionFlujoSinAlterarProveedor() {
         String schema="upgrade_v23_"+UUID.randomUUID().toString().replace("-", "");
         var before=Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("23").load();
@@ -116,7 +129,7 @@ class AccountingMigrationIT extends PostgresIntegrationSupport {
         assertThat(db.queryForObject("select count(*) from information_schema.tables where table_schema=? and table_name='configuracion_cuentas_inventario'", Integer.class, schema)).isEqualTo(1);
         assertThat(db.queryForObject("select count(*) from " + p + "permisos where modulo='CONTABILIDAD'", Integer.class)).isEqualTo(20);
         assertThat(db.queryForObject("select count(*) from " + p + "roles_permisos rp join " + p + "roles r on r.id=rp.rol_id join " + p + "permisos perm on perm.id=rp.permiso_id where r.codigo='ADMINISTRADOR' and perm.modulo='CONTABILIDAD'", Integer.class)).isEqualTo(20);
-        assertThat(currentFlyway.info().applied()).hasSize(24);
+        assertThat(currentFlyway.info().applied()).hasSize(25);
     }
 
     @Test void restringePeriodosYPartidasYNoHabilitaContabilizacion() {

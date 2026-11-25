@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest @AutoConfigureMockMvc
 class ConfirmarRecepcionIT extends PostgresIntegrationSupport {
     @Autowired MockMvc http; @Autowired JdbcTemplate db; @Autowired ObjectMapper json; @Autowired PasswordEncoder passwords;
+    @Autowired com.techsupply.erp_backend.compras.application.FacturacionProveedorReportService reportService;
     record Fixture(String key, long order, long line, long product, long warehouse, long user) {}
     private String token(String... permissions) throws Exception {
         String key = UUID.randomUUID().toString(), password = UUID.randomUUID().toString();
@@ -51,6 +52,80 @@ class ConfirmarRecepcionIT extends PostgresIntegrationSupport {
     }
     private int confirm(String token, long id) throws Exception {
         return http.perform(post("/api/v1/purchase-receipts/{id}/confirm", id).header("Authorization", "Bearer " + token)).andReturn().getResponse().getStatus();
+    }
+    private BigDecimal report(String token, String from, String to) throws Exception {
+        String body = http.perform(get("/api/v1/reports/purchases/invoiced")
+                .header("Authorization", "Bearer " + token).param("from", from).param("to", to))
+            .andExpect(status().isOk()).andExpect(jsonPath("from").value(from)).andExpect(jsonPath("to").value(to))
+            .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("subtotal").decimalValue();
+    }
+
+    private long reportInvoice(String token, String issue, boolean validate) throws Exception {
+        Fixture f = fixture();
+        db.update("update ordenes_compra set subtotal=200,impuestos=32,total=232 where id=?", f.order());
+        assertThat(confirm(token, receipt(f, "REPORT", 20, 0))).isEqualTo(200);
+        var input = Map.of("ordenCompraId", f.order(), "numeroFacturaProveedor", f.key()+"-REPORT",
+            "fechaEmision", issue, "fechaVencimiento", issue,
+            "detalles", List.of(Map.of("detalleOrdenCompraId", f.line(), "cantidadFacturada", 20,
+                "precioUnitario", 10, "descuentoPct", 0, "tasaImpuesto", 16)));
+        String body = http.perform(post("/api/v1/supplier-invoices").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(json.writeValueAsString(input)))
+            .andExpect(status().isCreated()).andExpect(jsonPath("estado").value("REGISTRADA"))
+            .andReturn().getResponse().getContentAsString();
+        long invoice = json.readTree(body).get("id").asLong();
+        if (validate) http.perform(post("/api/v1/supplier-invoices/{id}/validate", invoice)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("estado").value("VALIDADA"));
+        return invoice;
+    }
+
+    @Test void reporteFacturasValidadasUsaFechaEmisionSubtotalYPermiso() throws Exception {
+        String actor = token("COMPRAS_RECEPCIONES_CONFIRMAR", "COMPRAS_FACTURAS_PROVEEDOR_REGISTRAR",
+            "COMPRAS_FACTURAS_PROVEEDOR_VALIDAR", "COMPRAS_FACTURAS_PROVEEDOR_LEER",
+            "CONTABILIDAD_CXP_CONFIGURAR", "CONTABILIDAD_ASIENTOS_REGISTRAR", "CONTABILIDAD_ASIENTOS_CONTABILIZAR");
+        String suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+        long vat = db.queryForObject("insert into cuentas_contables(codigo,nombre,tipo,naturaleza) values (?,?,?,?) returning id",
+            Long.class, "RIVA" + suffix, "IVA", "ACTIVO", "DEUDORA");
+        long payable = db.queryForObject("insert into cuentas_contables(codigo,nombre,tipo,naturaleza) values (?,?,?,?) returning id",
+            Long.class, "RCXP" + suffix, "CxP", "PASIVO", "ACREEDORA");
+        http.perform(put("/api/v1/accounting/supplier-invoice-accounts").header("Authorization", "Bearer " + actor)
+            .contentType("application/json").content(json.writeValueAsString(Map.of("ivaAcreditableCuentaId", vat,
+                "cuentasPorPagarCuentaId", payable)))).andExpect(status().isOk());
+        BigDecimal baseline = report(actor, "1905-01-01", "1905-01-31");
+        BigDecimal firstDayBaseline = report(actor, "1905-01-01", "1905-01-01");
+        reportInvoice(actor, "1904-12-31", true);
+        reportInvoice(actor, "1905-01-01", true);
+        reportInvoice(actor, "1905-01-31", true);
+        reportInvoice(actor, "1905-02-01", true);
+        reportInvoice(actor, "1905-01-15", false);
+        assertThat(report(actor, "1905-01-01", "1905-01-31")).isEqualByComparingTo(baseline.add(new BigDecimal("400.00")));
+        String dashboard=http.perform(get("/api/v1/reports/dashboard").header("Authorization","Bearer "+actor)
+                .param("from","1905-01-01").param("to","1905-01-31"))
+            .andExpect(status().isOk()).andExpect(jsonPath("indicators.length()").value(1))
+            .andExpect(jsonPath("indicators[0].code").value("COMPRAS_FACTURADO_SIN_IMPUESTOS"))
+            .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(dashboard).get("indicators").get(0).get("value").decimalValue())
+            .isEqualByComparingTo(baseline.add(new BigDecimal("400.00")));
+        assertThat(report(actor, "1905-01-01", "1905-01-01")).isEqualByComparingTo(firstDayBaseline.add(new BigDecimal("200.00")));
+        assertThat(report(actor, "1900-01-01", "1900-01-01")).isEqualByComparingTo("0");
+        http.perform(get("/api/v1/reports/purchases/invoiced").param("from", "1905-01-01").param("to", "1905-01-31"))
+            .andExpect(status().isUnauthorized());
+        String denied = token("COMPRAS_ORDENES_LEER");
+        http.perform(get("/api/v1/reports/purchases/invoiced").header("Authorization", "Bearer " + denied)
+            .param("from", "1905-01-01").param("to", "1905-01-31")).andExpect(status().isForbidden());
+        for (var params : List.of(Map.of("from", "1905-01-31", "to", "1905-01-01"),
+                Map.of("from", "incorrecta", "to", "1905-01-31"), Map.of("from", "1905-01-01"))) {
+            var request = get("/api/v1/reports/purchases/invoiced").header("Authorization", "Bearer " + actor);
+            params.forEach(request::param);
+            http.perform(request).andExpect(status().isBadRequest());
+        }
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test", null, List.of()));
+        try {
+            assertThatThrownBy(() -> reportService.consultar(java.time.LocalDate.of(1905,1,1), java.time.LocalDate.of(1905,1,31)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        } finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
     }
     @Test void facturaProveedorConciliaRecepcionYContabilizaCxPUnaSolaVez() throws Exception {
         Fixture f=fixture();

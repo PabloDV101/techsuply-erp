@@ -419,8 +419,24 @@ for (const [,name,body] of v24Tables) {
     if(ref) assert.ok(schema.refs.some(r=>r.endpoints.map(e=>`${e.tableName}.${e.fieldNames.join(',')}`).join('>')===`${name}.${col}>${ref[1]}.${ref[2]}`),`${name}.${col}: FK missing`);
   }
 }
+const v25 = fs.readFileSync(path.join(root, 'erp-backend/src/main/resources/db/migration/V25__reporting_policies.sql'), 'utf8');
+const v25Tables = [...v25.matchAll(/^CREATE TABLE (\w+) \(([\s\S]*?)^\);/gm)];
+assert.deepEqual(v25Tables.map(t => t[1]).sort(), ['minimos_producto_almacen','clasificaciones_margen_cuenta'].sort());
+for (const [,name,body] of v25Tables) {
+  const table=schema.tables.find(t=>t.name===name); assert.ok(table, `${name}: missing V25 table`);
+  assert.ok(table.note.includes('SQL V25'), `${name}: DBML must mark V25 implementation`);
+  for(const part of splitSqlColumns(body)) {
+    const m=part.match(/^(\w+)\s+(\w+(?:\(\d+(?:,\d+)?\))?)([\s\S]*)$/);
+    if(!m || ['PRIMARY','UNIQUE','CHECK','FOREIGN','CONSTRAINT','EXCLUDE'].includes(m[1])) continue;
+    const [,col,type,attrs]=m; const field=table.fields.find(f=>f.name===col); assert.ok(field,`${name}.${col}: missing`);
+    assert.equal(field.type.type_name.toLowerCase(),type.toLowerCase(),`${name}.${col}: type differs`);
+    assert.equal(Boolean(field.not_null),/NOT NULL|PRIMARY KEY/.test(attrs),`${name}.${col}: nullability differs`);
+    const ref=attrs.match(/REFERENCES (\w+)\((\w+)\)/);
+    if(ref) assert.ok(schema.refs.some(r=>r.endpoints.map(e=>`${e.tableName}.${e.fieldNames.join(',')}`).join('>')===`${name}.${col}>${ref[1]}.${ref[2]}`),`${name}.${col}: FK missing`);
+  }
+}
 for (const table of schema.tables) {
-  assert.ok(implemented.has(table.name) || v9Tables.some(t => t[1] === table.name) || v11Tables.some(t => t[1] === table.name) || v13Tables.some(t => t[1] === table.name) || v14Tables.some(t => t[1] === table.name) || v17Tables.some(t => t[1] === table.name) || v18Tables.some(t => t[1] === table.name) || v19Tables.some(t => t[1] === table.name) || v20Tables.some(t => t[1] === table.name) || v21Tables.some(t => t[1] === table.name) || v22Tables.some(t => t[1] === table.name) || v24Tables.some(t => t[1] === table.name) || table.name === 'historial_asientos_contables' || table.note.includes('OBJETIVO'), `${table.name}: missing target status`);
+  assert.ok(implemented.has(table.name) || v9Tables.some(t => t[1] === table.name) || v11Tables.some(t => t[1] === table.name) || v13Tables.some(t => t[1] === table.name) || v14Tables.some(t => t[1] === table.name) || v17Tables.some(t => t[1] === table.name) || v18Tables.some(t => t[1] === table.name) || v19Tables.some(t => t[1] === table.name) || v20Tables.some(t => t[1] === table.name) || v21Tables.some(t => t[1] === table.name) || v22Tables.some(t => t[1] === table.name) || v24Tables.some(t => t[1] === table.name) || v25Tables.some(t => t[1] === table.name) || table.name === 'historial_asientos_contables' || table.note.includes('OBJETIVO'), `${table.name}: missing target status`);
 }
 assert.ok(!/\buuid\b|gen_random_uuid/i.test(primary), 'Stale UUID policy');
 console.log(`DBML OK: ${schema.tables.length} tables, ${schema.refs.length} relationships; both copies identical.`);
@@ -437,4 +453,5 @@ console.log('V19 customer receipts: explicit confirmation, same-customer idempot
 console.log('V20 inventory accounting: five configurable concepts, active source-to-seat enforcement and two documented foreign keys.');
 console.log('V21 supplier invoice and payables: source, lines, mapping and auxiliary columns, types and foreign keys.');
 console.log('V24 cash flow classifications: two tables, columns, types, nullability and foreign keys; temporal exclusion and audit triggers remain defined by Flyway.');
+console.log('V25 reporting policies: two tables, columns, types, nullability and four foreign keys; range exclusion and immutable classification are defined by Flyway.');
 console.log('CHECK, triggers and partial indexes are described in notes; executable authority remains Flyway SQL.');

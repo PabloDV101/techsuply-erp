@@ -2,6 +2,7 @@ package com.techsupply.erp_backend.inventario.infrastructure.persistence;
 
 import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.inventario.application.dto.AlertaStockResponse;
+import com.techsupply.erp_backend.inventario.application.dto.ResumenAlertaStockResponse;
 import java.util.ArrayList;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -17,21 +18,8 @@ public class AlertaStockRepository {
     public PageResponse<AlertaStockResponse> buscar(Pageable page, Long productoId) {
         // One statement provides a single PostgreSQL snapshot for both the page and its total,
         // including when the requested page is empty. The optional predicate is selected from constants.
-        String productFilter = productoId == null ? "" : " and p.id = :productoId";
-        String sql = """
-            with alertas as materialized (
-                select p.id as producto_id, p.sku, p.nombre, p.punto_reorden, p.cantidad_reorden,
-                    coalesce(sum(e.cantidad_fisica - e.cantidad_reservada)
-                        filter (where a.id is not null), 0) as disponible_global
-                from productos p
-                left join existencias e on e.producto_id = p.id
-                left join almacenes a on a.id = e.almacen_id and a.activo
-                where p.activo and p.punto_reorden > 0
-            """ + productFilter + """
-                group by p.id
-                having coalesce(sum(e.cantidad_fisica - e.cantidad_reservada)
-                    filter (where a.id is not null), 0) <= p.punto_reorden
-            ), total as (select count(*) as cantidad from alertas)
+        String sql = alertas(productoId != null) + """
+            , total as (select count(*) as cantidad from alertas)
             select a.producto_id, a.sku, a.nombre, a.disponible_global, a.punto_reorden, a.cantidad_reorden, t.cantidad
             from total t left join lateral (
                 select * from alertas order by producto_id asc limit :limite offset :desplazamiento
@@ -51,5 +39,31 @@ public class AlertaStockRepository {
             long pages = total / page.getPageSize() + (total % page.getPageSize() == 0 ? 0 : 1);
             return new PageResponse<>(items, page.getPageNumber(), page.getPageSize(), total, (int) Math.min(pages, Integer.MAX_VALUE));
         });
+    }
+
+    public ResumenAlertaStockResponse resumir() {
+        return db.queryForObject(alertas(false) + """
+            SELECT count(*) AS cantidad, statement_timestamp() AS consultado_en FROM alertas
+            """, new MapSqlParameterSource(), (rs, row) -> new ResumenAlertaStockResponse(
+                rs.getTimestamp("consultado_en").toInstant(), rs.getLong("cantidad")));
+    }
+
+    private static String alertas(boolean filtrarProducto) {
+        String productFilter = filtrarProducto ? " and p.id = :productoId" : "";
+        return """
+            with alertas as materialized (
+                select p.id as producto_id, p.sku, p.nombre, p.punto_reorden, p.cantidad_reorden,
+                    coalesce(sum(e.cantidad_fisica - e.cantidad_reservada)
+                        filter (where a.id is not null), 0) as disponible_global
+                from productos p
+                left join existencias e on e.producto_id = p.id
+                left join almacenes a on a.id = e.almacen_id and a.activo
+                where p.activo and p.punto_reorden > 0
+            """ + productFilter + """
+                group by p.id
+                having coalesce(sum(e.cantidad_fisica - e.cantidad_reservada)
+                    filter (where a.id is not null), 0) <= p.punto_reorden
+            )
+            """;
     }
 }

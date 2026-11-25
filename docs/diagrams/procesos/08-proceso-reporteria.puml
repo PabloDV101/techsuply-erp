@@ -1,28 +1,37 @@
 @startuml TS08_Proceso_Reporteria
 !include ../_estilo.iuml
-title ERP TechSupply Solutions - Consulta de reportes
+title ERP TechSupply Solutions - Dashboard y CSV implementados
 
 |Usuario autenticado|
 start
-:Solicitar reporte con periodo y filtros aplicables;
+:Solicitar dashboard JSON o CSV con fechas y periodo contable opcional;
 |API Spring Boot / Seguridad|
-:Validar token y permiso del reporte;
+:Validar token y permisos de las fuentes;
 if (¿Autorizado?) then (Sí)
   |Servicio de consulta|
-  :Validar rango, filtros, página y orden;
-  :Imponer alcance de filas del actor;
-  if (¿Fuente y fórmula aprobadas?) then (Sí)
-    |Persistencia de lectura|
-    :Ejecutar consulta parametrizada y agregada;
-    :Obtener totales y página en instantánea coherente;
-    |Servicio de consulta|
-    :Proyectar DTO con periodo y fuente;
-  else (No)
-    |Servicio de consulta|
-    :Identificar métrica NO_DISPONIBLE;
+  :Validar rango y periodo;
+  :Seleccionar fuentes autorizadas;
+  |Persistencia de lectura|
+  :Establecer instantánea REPEATABLE_READ;
+  :Consultar solo indicadores autorizados;
+  |Servicio de consulta|
+  if (¿Finanzas autorizado sin periodo?) then (Sí)
+    :Incluir resultado NO_DISPONIBLE sin valor;
   endif
+  :Proyectar indicadores con fuente y periodo o instante;
   |API Spring Boot / Seguridad|
-  :Responder sin entidades JPA ni datos ajenos;
+  if (¿Exportación CSV?) then (Sí)
+    :Serializar solo indicadores autorizados;
+    :Registrar DASHBOARD_CSV_GENERATED en auditoría;
+    :Confirmar transacción y responder CSV;
+    note right
+      La transacción permite escribir auditoría.
+      Fallo de consulta o auditoría aborta la descarga.
+      Generación no acredita recepción por el cliente.
+    end note
+  else (JSON)
+    :Responder JSON sin indicadores no autorizados;
+  endif
   stop
 else (No)
   |API Spring Boot / Seguridad|

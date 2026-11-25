@@ -31,6 +31,8 @@ Los estereotipos de dominio como `<<Compras>>` o `<<Seguridad>>` identifican el 
 
 La fuente canónica del DBML es [`database/modelo.dbml`](../../database/modelo.dbml); [`modelodatos/modelo.dbml`](modelodatos/modelo.dbml) debe permanecer idéntica. El modelo combina esquema y diseño de datos, y sus notas tienen una función de trazabilidad independiente de los diagramas UML. Las migraciones Flyway son la autoridad ejecutable y el DBML completo no debe ejecutarse como sustituto de ellas.
 
+El [diagrama de clases de Reportería](clases/06-reporteria-auditoria-integracion.puml) muestra el dashboard, exportaciones auditadas y las consultas de reportes. Sprint 5 incorpora analíticas implementadas y políticas V25; las tablas genéricas opcionales de ejecuciones e indicadores siguen como diseño, no son dependencia de las consultas bajo demanda.
+
 Los SVG generados están organizados en el [índice de diagramas renderizados](../diagramas-renderizados/README.md). Después de modificar una fuente, vuelve a ejecutar el renderizador para actualizar sus imágenes.
 
 La [secuencia de integración de Inventario](arquitectura/19-secuencia-inventario-contabilidad.puml) muestra la confirmación transaccional de recepciones, despachos y ajustes, con rollback ante mapeo, periodo o precisión inválidos.
