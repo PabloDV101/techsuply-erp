@@ -1,94 +1,102 @@
-import { Controller, useForm, useWatch } from 'react-hook-form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from '@mui/material'
+import { useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from '@mui/material'
 import { http, errorMessage } from '../../../api/http'
 import { PATHS } from '../../../config/contract'
-import { idValue } from '../../../shared/api'
-import { num } from '../../../shared/format'
+import { normalizePage } from '../../../shared/api'
+import { num, productoLabel } from '../../../shared/format'
 import { useNotify } from '../../../shared/Notify'
-import { AlmacenSelect, ProductoSelect } from '../../../shared/selects'
-import { useStock } from '../../../shared/useStock'
-
-export const MOTIVOS_AJUSTE = [
-  { value: 'MERMA', label: 'Merma' },
-  { value: 'DANO', label: 'Daño o deterioro' },
-  { value: 'ROBO', label: 'Robo o extravío' },
-  { value: 'ERROR_CONTEO', label: 'Error de conteo' },
-  { value: 'OTRO', label: 'Otro' },
-]
-
-interface Values { productoId: string; almacenId: string; cantidadReal: string; motivo: string; observaciones: string }
+import { useLookup } from '../../../shared/api'
 
 export default function AjusteFormDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const notify = useNotify()
-  const { control, register, handleSubmit, formState: { errors } } = useForm<Values>({
-    defaultValues: { productoId: '', almacenId: '', cantidadReal: '', motivo: 'ERROR_CONTEO', observaciones: '' },
+  const [countId, setCountId] = useState('')
+  const [countsPage, setCountsPage] = useState(0)
+  const [motivo, setMotivo] = useState('')
+  const [costs, setCosts] = useState<Record<string, string>>({})
+  const idempotency = useRef<{ fingerprint: string; key: string } | null>(null)
+  const countsQuery = useQuery({
+    queryKey: [PATHS.conteos, 'closed-for-adjustment', countsPage],
+    queryFn: async () => normalizePage((await http.get(PATHS.conteos, { params: { page: countsPage, size: 100, estado: 'CERRADO' } })).data),
   })
-  const [productoId, almacenId, real, motivo] = useWatch({ control, name: ['productoId', 'almacenId', 'cantidadReal', 'motivo'] })
-  const stock = useStock(productoId, almacenId)
-  const sistema = stock.data?.fisica
-  const diff = sistema === undefined || real === '' ? undefined : Number(real) - sistema
+  const products = useLookup(PATHS.productos)
+  const productMap = new Map((products.data ?? []).map((p) => [String(p.id), p]))
+  const counts: any[] = countsQuery.data?.rows ?? []
+  const countPages = Math.ceil((countsQuery.data?.total ?? 0) / 100)
+  const selected = counts.find((c) => String(c.id) === countId)
+  const lines = useMemo(() => (selected?.detalles ?? []).filter((line: any) => Number(line.diferencia) !== 0), [selected])
+  const validCost = (value: string) => /^\d{1,12}(?:\.\d{1,4})?$/.test(value)
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) => http.post(PATHS.ajustes, body),
     onSuccess: () => {
-      for (const k of [[PATHS.ajustes], [PATHS.movimientos], [PATHS.existencias], [PATHS.alertas], ['stock']]) qc.invalidateQueries({ queryKey: k })
-      notify('Ajuste registrado.')
+      void qc.invalidateQueries({ queryKey: [PATHS.ajustes] })
+      notify('Solicitud registrada. El stock no cambia hasta que otra persona la apruebe y se aplique.')
       onClose()
     },
     onError: (e) => notify(errorMessage(e), 'error'),
   })
-
-  const submit = (v: Values) => {
-    if (!diff) return
-    save.mutate({
-      productoId: idValue(v.productoId),
-      almacenId: idValue(v.almacenId),
-      tipo: diff > 0 ? 'POSITIVO' : 'NEGATIVO',
-      cantidad: Math.abs(diff),
-      motivo: v.motivo,
-      observaciones: v.observaciones.trim() || null,
+  const create = () => {
+    if (!selected || !motivo.trim()) return
+    const details = lines.map((line: any) => {
+      const positive = Number(line.diferencia) > 0
+      return {
+        productoId: line.productoId,
+        tipo: positive ? 'POSITIVO' : 'NEGATIVO',
+        cantidad: Math.abs(Number(line.diferencia)),
+        ...(positive ? { costoUnitario: Number(costs[String(line.id)]) } : {}),
+        detalleConteoId: line.id,
+      }
     })
+    if (details.some((d: any, index: number) => d.tipo === 'POSITIVO' && (!Number.isFinite(d.costoUnitario) || !validCost(costs[String(lines[index].id)])))) {
+      notify('Indica el costo unitario para cada diferencia positiva.', 'error')
+      return
+    }
+    const body = { almacenId: selected.almacenId, motivo: motivo.trim(), claveIdempotencia: '', detalles: details }
+    const fingerprint = JSON.stringify({ ...body, claveIdempotencia: undefined })
+    if (!idempotency.current || idempotency.current.fingerprint !== fingerprint) {
+      idempotency.current = { fingerprint, key: crypto.randomUUID() }
+    }
+    body.claveIdempotencia = idempotency.current.key
+    save.mutate(body)
   }
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <form onSubmit={handleSubmit(submit)} noValidate>
-        <DialogTitle>Nuevo ajuste de inventario</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
-            <Controller name="productoId" control={control} rules={{ required: 'Elige un producto' }} render={({ field, fieldState }) => (
-              <ProductoSelect required value={field.value} onChange={field.onChange} error={!!fieldState.error} helperText={fieldState.error?.message} />
-            )} />
-            <Controller name="almacenId" control={control} rules={{ required: 'Elige un almacén' }} render={({ field, fieldState }) => (
-              <AlmacenSelect required value={field.value} onChange={field.onChange} error={!!fieldState.error} helperText={fieldState.error?.message} />
-            )} />
-            {sistema !== undefined && <Alert severity="info" icon={false}>Cantidad en sistema: <b>{num(sistema)}</b></Alert>}
-            <TextField label="Cantidad real (contada)" type="number" size="small" required slotProps={{ htmlInput: { min: 0, step: 'any' } }}
-              error={!!errors.cantidadReal} helperText={errors.cantidadReal?.message}
-              {...register('cantidadReal', { validate: (v) => (v !== '' && Number(v) >= 0) || 'Indica la cantidad real' })} />
-            {diff !== undefined && (
-              <Alert severity={diff === 0 ? 'warning' : diff > 0 ? 'success' : 'error'} icon={false}>
-                {diff === 0 ? 'La cantidad real coincide con el sistema: no hay nada que ajustar.'
-                  : `Se registrará un ajuste de ${diff > 0 ? '+' : '−'}${num(Math.abs(diff))}.`}
-              </Alert>
-            )}
-            <Controller name="motivo" control={control} render={({ field }) => (
-              <TextField select size="small" label="Motivo" {...field}>
-                {MOTIVOS_AJUSTE.map((m) => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
-              </TextField>
-            )} />
-            <TextField label={motivo === 'OTRO' ? 'Explica el motivo' : 'Observaciones (opcional)'} size="small" multiline minRows={2}
-              required={motivo === 'OTRO'} error={!!errors.observaciones} helperText={errors.observaciones?.message}
-              {...register('observaciones', { validate: (v) => motivo !== 'OTRO' || v.trim() !== '' || 'Explica el motivo' })} />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button type="submit" variant="contained" disabled={!diff || save.isPending}>{save.isPending ? 'Guardando…' : 'Registrar ajuste'}</Button>
-        </DialogActions>
-      </form>
+    <Dialog open onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>Solicitar ajuste desde un conteo cerrado</DialogTitle>
+      <DialogContent>
+        <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
+          <Alert severity="info">Solo se incluyen diferencias de un conteo cerrado. El ajuste requiere aprobación de otro usuario y no cambia existencias hasta aplicarse.</Alert>
+          <TextField select label="Conteo cerrado" size="small" value={countId} onChange={(e) => { setCountId(e.target.value); setCosts({}) }} disabled={countsQuery.isLoading}>
+            <MenuItem value="">Selecciona un conteo</MenuItem>
+            {counts.map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.folio} · almacén {c.almacenId} · {c.fechaProgramada}</MenuItem>)}
+          </TextField>
+          {countPages > 1 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button size="small" disabled={countsPage === 0 || !!countId} onClick={() => setCountsPage((page) => page - 1)}>Página anterior</Button>
+            <Typography variant="caption">Página {countsPage + 1} de {countPages} · 100 por página</Typography>
+            <Button size="small" disabled={countsPage + 1 >= countPages || !!countId} onClick={() => setCountsPage((page) => page + 1)}>Página siguiente</Button>
+          </Box>}
+          {countsQuery.error && <Alert severity="error">{errorMessage(countsQuery.error)}</Alert>}
+          {selected && lines.length === 0 && <Alert severity="success">El conteo no tiene diferencias para ajustar.</Alert>}
+          {lines.map((line: any) => <Box key={line.id} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr 1.4fr' }, gap: 1, alignItems: 'center' }}>
+            <Typography>{productoLabel(productMap.get(String(line.productoId)) ?? { id: line.productoId })}</Typography>
+            <Typography color={Number(line.diferencia) > 0 ? 'success.main' : 'error.main'}>
+              {Number(line.diferencia) > 0 ? '+' : '−'}{num(Math.abs(Number(line.diferencia)))}
+            </Typography>
+            {Number(line.diferencia) > 0 ? <TextField size="small" label="Costo unitario" type="number" value={costs[String(line.id)] ?? ''}
+              onChange={(e) => setCosts((v) => ({ ...v, [String(line.id)]: e.target.value }))} slotProps={{ htmlInput: { min: 0, step: '0.0001', max: 999999999999.9999 } }} />
+              : <Typography variant="body2" color="text.secondary">Costo de salida vigente al aplicar</Typography>}
+          </Box>)}
+          <TextField required label="Motivo de la solicitud" multiline minRows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} slotProps={{ htmlInput: { maxLength: 1000 } }} />
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Cancelar</Button>
+        <Button variant="contained" disabled={!selected || lines.length === 0 || !motivo.trim() || save.isPending || lines.some((l: any) => Number(l.diferencia) > 0 && !validCost(costs[String(l.id)] ?? ''))} onClick={create}>
+          {save.isPending ? 'Enviando…' : 'Enviar a aprobación'}
+        </Button>
+      </DialogActions>
     </Dialog>
   )
 }

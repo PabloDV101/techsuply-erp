@@ -4,21 +4,14 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/DeleteOutlined'
 import { PATHS } from '../config/contract'
 import { useLookup } from './api'
-import { money } from './format'
+import { money, productoLabel } from './format'
 
-export interface LineaValues { productoId: string; cantidad: string; precioUnitario: string; descuento: string }
-export interface DocValues {
-  clienteId: string
-  fecha: string
-  vence: string
-  almacenId: string
-  observaciones: string
-  detalles: LineaValues[]
-}
+export interface LineaValues { productoId: string; cantidad: string; precioUnitario: string; descuentoPct: string; tasaImpuesto: string }
+export interface DocValues { clienteId: string; vigenciaHasta: string; detalles: LineaValues[] }
 
-export const lineTotal = (l: LineaValues) =>
-  (Number(l.cantidad) || 0) * (Number(l.precioUnitario) || 0) * (1 - (Number(l.descuento) || 0) / 100)
-export const emptyLine = (): LineaValues => ({ productoId: '', cantidad: '1', precioUnitario: '', descuento: '0' })
+export const lineTotal = (line: LineaValues) =>
+  (Number(line.cantidad) || 0) * (Number(line.precioUnitario) || 0) * (1 - (Number(line.descuentoPct) || 0) / 100)
+export const emptyLine = (): LineaValues => ({ productoId: '', cantidad: '1', precioUnitario: '', descuentoPct: '0', tasaImpuesto: '0' })
 
 interface Props {
   control: Control<DocValues>
@@ -31,45 +24,45 @@ export default function LineasForm({ control, register, setValue, errors }: Prop
   const productos = useLookup(PATHS.productos).data ?? []
   const { fields, append, remove } = useFieldArray({ control, name: 'detalles' })
   const lines = useWatch({ control, name: 'detalles' }) ?? []
-  const total = lines.reduce((s, l) => s + lineTotal(l), 0)
+  const subtotal = lines.reduce((sum, line) => sum + lineTotal(line), 0)
 
   return (
     <>
-      <Typography sx={{ mt: 3, mb: 1, fontWeight: 600 }}>Productos</Typography>
-      {fields.map((f, i) => (
-        <Box key={f.id} sx={{ display: 'grid', gridTemplateColumns: { sm: '3fr 1fr 1fr 1fr auto' }, gap: 1.5, mb: 1.5, alignItems: 'start' }}>
+      <Typography sx={{ mt: 3, mb: 1, fontWeight: 600 }}>Productos cotizados</Typography>
+      {fields.map((field, index) => (
+        <Box key={field.id} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: '3fr 1fr 1fr 1fr 1fr auto' }, gap: 1.5, mb: 1.5, alignItems: 'start' }}>
           <Controller
-            name={`detalles.${i}.productoId`} control={control} rules={{ required: 'Elige un producto' }}
-            render={({ field, fieldState }) => (
+            name={`detalles.${index}.productoId`} control={control} rules={{ required: 'Elige un producto' }}
+            render={({ field: input, fieldState }) => (
               <Autocomplete
-                size="small" options={productos}
-                getOptionLabel={(o) => `${o.codigo ?? ''} — ${o.descripcion ?? ''}`}
+                size="small" options={productos} getOptionLabel={productoLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                value={productos.find((p) => String(p.id) === field.value) ?? null}
-                onChange={(_e, v) => {
-                  field.onChange(v ? String(v.id) : '')
-                  const price = v?.precioVenta ?? v?.precioReferencia
-                  if (price != null) setValue(`detalles.${i}.precioUnitario`, String(price))
+                value={productos.find((product) => String(product.id) === input.value) ?? null}
+                onChange={(_event, product) => {
+                  input.onChange(product ? String(product.id) : '')
+                  setValue(`detalles.${index}.precioUnitario`, product?.precioLista == null ? '' : String(product.precioLista))
+                  setValue(`detalles.${index}.tasaImpuesto`, product?.tasaImpuesto == null ? '0' : String(product.tasaImpuesto))
                 }}
-                renderInput={(p) => <TextField {...p} label="Producto" required error={!!fieldState.error} helperText={fieldState.error?.message} />}
+                renderInput={(params) => <TextField {...params} label="Producto" required error={!!fieldState.error} helperText={fieldState.error?.message} />}
               />
             )}
           />
-          <TextField label="Cantidad" type="number" size="small" slotProps={{ htmlInput: { min: 0, step: 'any' } }}
-            error={!!errors.detalles?.[i]?.cantidad} helperText={errors.detalles?.[i]?.cantidad?.message}
-            {...register(`detalles.${i}.cantidad`, { validate: (v) => Number(v) > 0 || 'Mayor que 0' })} />
-          <TextField label="Precio" type="number" size="small" slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
-            error={!!errors.detalles?.[i]?.precioUnitario} helperText={errors.detalles?.[i]?.precioUnitario?.message}
-            {...register(`detalles.${i}.precioUnitario`, { validate: (v) => (v !== '' && Number(v) >= 0) || 'Indica el precio' })} />
-          <TextField label="Desc. %" type="number" size="small" slotProps={{ htmlInput: { min: 0, max: 100, step: '0.1' } }}
-            error={!!errors.detalles?.[i]?.descuento} helperText={errors.detalles?.[i]?.descuento?.message}
-            {...register(`detalles.${i}.descuento`, { validate: (v) => (Number(v) >= 0 && Number(v) <= 100) || '0 a 100' })} />
-          <IconButton onClick={() => remove(i)} disabled={fields.length === 1} aria-label="Quitar línea"><DeleteIcon /></IconButton>
+          <TextField label="Cantidad" type="number" size="small" slotProps={{ htmlInput: { min: 0, step: '0.001' } }}
+            error={!!errors.detalles?.[index]?.cantidad} helperText={errors.detalles?.[index]?.cantidad?.message}
+            {...register(`detalles.${index}.cantidad`, { validate: (value) => /^\d{1,11}(?:\.\d{1,3})?$/.test(value) && Number(value) > 0 || 'Cantidad positiva, hasta 3 decimales' })} />
+          <TextField label="Precio unitario" type="number" size="small" slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
+            error={!!errors.detalles?.[index]?.precioUnitario} helperText={errors.detalles?.[index]?.precioUnitario?.message}
+            {...register(`detalles.${index}.precioUnitario`, { validate: (value) => /^\d{1,12}(?:\.\d{1,2})?$/.test(value) || 'Hasta 2 decimales' })} />
+          <TextField label="Descuento %" type="number" size="small" slotProps={{ htmlInput: { min: 0, max: 100, step: '0.01' } }}
+            error={!!errors.detalles?.[index]?.descuentoPct} helperText={errors.detalles?.[index]?.descuentoPct?.message}
+            {...register(`detalles.${index}.descuentoPct`, { validate: (value) => /^\d{1,3}(?:\.\d{1,2})?$/.test(value) && Number(value) <= 100 || '0 a 100, hasta 2 decimales' })} />
+          <TextField label="Impuesto %" size="small" disabled {...register(`detalles.${index}.tasaImpuesto`)} />
+          <IconButton onClick={() => remove(index)} disabled={fields.length === 1} aria-label="Quitar línea"><DeleteIcon /></IconButton>
         </Box>
       ))}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
         <Button startIcon={<AddIcon />} onClick={() => append(emptyLine())}>Agregar producto</Button>
-        <Typography sx={{ fontWeight: 600 }}>Subtotal: {money(total)}</Typography>
+        <Typography sx={{ fontWeight: 600 }}>Subtotal estimado sin impuestos: {money(subtotal)}</Typography>
       </Box>
     </>
   )

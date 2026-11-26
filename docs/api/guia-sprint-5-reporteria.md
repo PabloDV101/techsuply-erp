@@ -136,7 +136,7 @@ Los importes son números decimales JSON, pero el tipo `number` de JavaScript pu
 4. Comprobar importes grandes, errores de red, recarga y paginación; verificar que nunca se muestre un dato anterior tras cambiar de usuario o permisos.
 5. Validar en el navegador real autenticación, conectividad, proxy/CORS y formato visual. Comunicar a backend cualquier incompatibilidad antes de declarar integrada la pantalla.
 
-Nómina queda fuera del sprint. Los análisis y formatos CSV/PDF/XLSX se detallan arriba. La confirmación del compañero y la prueba integrada en navegador aún están pendientes.
+Nómina queda fuera del sprint. Los análisis y formatos CSV/PDF/XLSX se detallan arriba. La parte 7 de Sprint 7 conectó el dashboard, consultas analíticas y exportaciones en frontend; Chromium comprobó dashboard/CSV, facturación Compras y exportación genérica CSV. Quedan sin comprobar en navegador los demás informes, PDF/XLSX, filtros/permisos parciales, exactitud visual de importes extremos, CORS/TLS y despliegue. Consulte la [ruta y evidencia de integración](../fase-3/SPRINT_7_RUTA_INTEGRACION_FRONTEND.md).
 
 ## Parte 9 — exportación CSV aprobada
 

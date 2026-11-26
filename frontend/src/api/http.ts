@@ -15,7 +15,12 @@ export function clearSession() {
 
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY)
-  if (token && !String(config.url ?? '').endsWith('/auth/login')) config.headers.Authorization = `Bearer ${token}`
+  const base = new URL(config.baseURL || window.location.origin, window.location.origin)
+  const request = new URL(config.url || '', base)
+  const isApiRequest = request.origin === base.origin && request.pathname.startsWith('/api/')
+  if (token && isApiRequest && !request.pathname.endsWith('/auth/login')) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 
@@ -34,7 +39,7 @@ http.interceptors.response.use(
 
 /** Convierte cualquier error de la API (ApiError) en un texto para el usuario. */
 export function errorMessage(e: unknown): string {
-  if (!axios.isAxiosError(e)) return 'Ocurrió un error inesperado.'
+  if (!axios.isAxiosError(e)) return e instanceof Error && e.message ? e.message : 'Ocurrió un error inesperado.'
   if (!e.response) return 'No hay conexión con el servidor. Revisa que el backend esté activo.'
   if (e.response.status >= 500) return 'El servidor no está disponible. Intenta de nuevo en unos minutos.'
   const d = e.response.data

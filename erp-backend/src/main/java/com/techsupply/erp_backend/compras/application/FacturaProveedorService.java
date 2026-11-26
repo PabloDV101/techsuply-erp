@@ -2,6 +2,8 @@ package com.techsupply.erp_backend.compras.application;
 
 import com.techsupply.erp_backend.audit.application.AuditAction;
 import com.techsupply.erp_backend.audit.application.AuditTrail;
+import com.techsupply.erp_backend.common.api.PageRequests;
+import com.techsupply.erp_backend.common.api.PageResponse;
 import com.techsupply.erp_backend.common.domain.CalculoImportes;
 import com.techsupply.erp_backend.compras.application.dto.*;
 import com.techsupply.erp_backend.contabilidad.application.AsientoContableService;
@@ -76,6 +78,27 @@ public class FacturaProveedorService {
         } catch (DataIntegrityViolationException ex) { throw conflict("Número de factura duplicado o datos inválidos"); }
         audit.change(AuditAction.PURCHASE_SUPPLIER_INVOICE_EDITED,id);
         return getInternal(id);
+    }
+
+    @Transactional(readOnly=true) @PreAuthorize("hasAuthority('COMPRAS_FACTURAS_PROVEEDOR_LEER')")
+    public PageResponse<FacturaProveedorResumenResponse> listar(Long proveedorId,int page,int size) {
+        var pageable=PageRequests.of(page,size,"fechaEmision","desc",
+            Map.of("fechaEmision","f.fecha_emision","folioInterno","f.folio_interno"),"f.id");
+        if(proveedorId!=null && proveedorId<1) throw bad("Identificador de proveedor inválido");
+        String where=proveedorId==null?"":" where f.proveedor_id=?";
+        long total=proveedorId==null?db.queryForObject("select count(*) from facturas_proveedor",Long.class)
+            :db.queryForObject("select count(*) from facturas_proveedor where proveedor_id=?",Long.class,proveedorId);
+        var mapper=(org.springframework.jdbc.core.RowMapper<FacturaProveedorResumenResponse>)(rs,n)->
+            new FacturaProveedorResumenResponse(rs.getLong("id"),rs.getString("folio_interno"),rs.getLong("proveedor_id"),
+                rs.getLong("orden_compra_id"),rs.getString("numero_factura_proveedor"),rs.getObject("fecha_emision",LocalDate.class),
+                rs.getObject("fecha_vencimiento",LocalDate.class),rs.getBigDecimal("subtotal"),rs.getBigDecimal("impuestos"),
+                rs.getBigDecimal("total"),rs.getString("estado"),rs.getObject("asiento_contable_id",Long.class));
+        String select="select f.id,f.folio_interno,f.proveedor_id,f.orden_compra_id,f.numero_factura_proveedor,"
+            +"f.fecha_emision,f.fecha_vencimiento,f.subtotal,f.impuestos,f.total,f.estado,f.asiento_contable_id from facturas_proveedor f";
+        String order=" order by f.fecha_emision desc,f.id desc limit ? offset ?";
+        var rows=proveedorId==null?db.query(select+order,mapper,pageable.getPageSize(),pageable.getOffset())
+            :db.query(select+where+order,mapper,proveedorId,pageable.getPageSize(),pageable.getOffset());
+        return new PageResponse<>(rows,page,size,total,(int)Math.ceil((double)total/size));
     }
 
     @Transactional @PreAuthorize("hasAuthority('COMPRAS_FACTURAS_PROVEEDOR_VALIDAR')")
@@ -159,6 +182,34 @@ public class FacturaProveedorService {
                 "proveedorId",rs.getLong(3),"asientoContableId",rs.getLong(4),"montoOriginal",rs.getBigDecimal(5),
                 "saldoPendiente",rs.getBigDecimal(8),"fechaEmision",rs.getDate(6).toLocalDate(),
                 "fechaVencimiento",rs.getDate(7).toLocalDate()),id).stream().findFirst().orElseThrow(()->missing("Cuenta por pagar"));
+    }
+
+    @Transactional(readOnly=true) @PreAuthorize("hasAuthority('CONTABILIDAD_CXP_LEER')")
+    public PageResponse<Map<String,Object>> listarCuentasPorPagar(Long proveedorId, int page, int size) {
+        var pageable=PageRequests.of(page,size,"fechaVencimiento","asc",
+            Map.of("fechaVencimiento","c.fecha_vencimiento"),"c.id");
+        if(proveedorId!=null && proveedorId<1) throw bad("Identificador de proveedor inválido");
+        String where=proveedorId==null?"":" where c.proveedor_id=?";
+        Long total=proveedorId==null?db.queryForObject("select count(*) from cuentas_por_pagar",Long.class)
+            :db.queryForObject("select count(*) from cuentas_por_pagar where proveedor_id=?",Long.class,proveedorId);
+        String select="""
+            select c.id,c.factura_proveedor_id,c.proveedor_id,f.folio_interno,c.asiento_contable_id,
+              c.monto_original,c.fecha_emision,c.fecha_vencimiento,
+              c.monto_original-coalesce((select sum(a.monto_aplicado) from aplicaciones_pago_proveedor a
+                join pagos_proveedor p on p.id=a.pago_proveedor_id and p.estado='CONFIRMADO'
+                where a.cuenta_por_pagar_id=c.id),0) saldo_pendiente
+            from cuentas_por_pagar c join facturas_proveedor f on f.id=c.factura_proveedor_id
+            """;
+        var mapper=(org.springframework.jdbc.core.RowMapper<Map<String,Object>>)(rs,n)->Map.of(
+            "id",rs.getLong("id"),"facturaProveedorId",rs.getLong("factura_proveedor_id"),
+            "proveedorId",rs.getLong("proveedor_id"),"folioFactura",rs.getString("folio_interno"),
+            "asientoContableId",rs.getLong("asiento_contable_id"),"montoOriginal",rs.getBigDecimal("monto_original"),
+            "saldoPendiente",rs.getBigDecimal("saldo_pendiente"),"fechaEmision",rs.getDate("fecha_emision").toLocalDate(),
+            "fechaVencimiento",rs.getDate("fecha_vencimiento").toLocalDate());
+        var rows=proveedorId==null?db.query(select+" order by c.fecha_vencimiento,c.id limit ? offset ?",mapper,
+            pageable.getPageSize(),pageable.getOffset()):db.query(select+where+" order by c.fecha_vencimiento,c.id limit ? offset ?",mapper,
+            proveedorId,pageable.getPageSize(),pageable.getOffset());
+        return new PageResponse<>(rows,page,size,total,(int)Math.ceil((double)total/size));
     }
 
     @Transactional @PreAuthorize("hasAuthority('CONTABILIDAD_CXP_CONFIGURAR')")

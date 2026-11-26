@@ -11,6 +11,7 @@ import { ConfirmDialog } from '../../../shared/ConfirmDialog'
 import DataTable from '../../../shared/DataTable'
 import { ESTADOS_CONTEO, EstadoChip, estadoLabel } from '../../../shared/EstadoChip'
 import { fecha, txt } from '../../../shared/format'
+import { useLookup } from '../../../shared/api'
 import { useNotify } from '../../../shared/Notify'
 import { useAuth } from '../../auth/AuthContext'
 import ConteoDetalleDialog from './ConteoDetalleDialog'
@@ -26,6 +27,8 @@ export default function ConteosPage() {
   const [creating, setCreating] = useState(false)
   const [viewing, setViewing] = useState<Row['id'] | null>(null)
   const [toCancel, setToCancel] = useState<Row | null>(null)
+  const warehouses = useLookup(PATHS.almacenes)
+  const warehouseMap = new Map((warehouses.data ?? []).map((w) => [String(w.id), w]))
 
   const q = useQuery({
     queryKey: [PATHS.conteos, page, size, estado],
@@ -38,7 +41,7 @@ export default function ConteosPage() {
   })
 
   const cancel = useMutation({
-    mutationFn: (r: Row) => http.post(`${PATHS.conteos}/${r.id}/cancelar`),
+    mutationFn: (r: Row) => http.post(`${PATHS.conteos}/${r.id}/cancel`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [PATHS.conteos] }); notify('Conteo cancelado.'); setToCancel(null) },
     onError: (e) => { notify(errorMessage(e), 'error'); setToCancel(null) },
   })
@@ -62,18 +65,18 @@ export default function ConteosPage() {
         onPage={setPage} onSize={(s) => { setSize(s); setPage(0) }}
         emptyText={estado ? 'Ningún conteo con ese estado.' : 'Aún no hay conteos. Inicia uno para comparar el sistema con lo que hay en el almacén.'}
         columns={[
-          { header: 'Número', render: (r) => txt(r.numero) },
-          { header: 'Almacén', render: (r) => txt(r.almacen) },
-          { header: 'Fecha', render: (r) => fecha(r.fecha) },
+          { header: 'Folio', render: (r) => txt(r.folio) },
+          { header: 'Almacén', render: (r) => txt(warehouseMap.get(String(r.almacenId)) ?? { id: r.almacenId }) },
+          { header: 'Fecha programada', render: (r) => fecha(r.fechaProgramada) },
           { header: 'Estado', render: (r) => <EstadoChip estado={r.estado} /> },
-          { header: 'Con diferencia', align: 'right', render: (r) => txt(r.lineasConDiferencia) },
+          { header: 'Productos contados', align: 'right', render: (r) => txt(r.detalles?.length ?? 0) },
         ]}
         actions={(r) => (
           <>
-            <Tooltip title={r.estado === 'EN_CONTEO' && canCount ? 'Contar' : 'Ver detalle'}>
+            <Tooltip title={['PROGRAMADO', 'EN_CAPTURA'].includes(r.estado) && canCount ? 'Capturar conteo' : 'Ver detalle'}>
               <IconButton size="small" aria-label="Abrir conteo" onClick={() => setViewing(r.id)}><FactCheckIcon fontSize="small" /></IconButton>
             </Tooltip>
-            {canCount && r.estado === 'EN_CONTEO' && (
+            {canCount && ['PROGRAMADO', 'EN_CAPTURA'].includes(r.estado) && (
               <Tooltip title="Cancelar conteo">
                 <IconButton size="small" color="error" aria-label="Cancelar conteo" onClick={() => setToCancel(r)}><CancelIcon fontSize="small" /></IconButton>
               </Tooltip>
@@ -83,7 +86,7 @@ export default function ConteosPage() {
       />
       {creating && <ConteoNuevoDialog onClose={() => setCreating(false)} onCreated={(id) => { setCreating(false); if (id !== undefined) setViewing(id) }} />}
       {viewing !== null && <ConteoDetalleDialog id={viewing} onClose={() => setViewing(null)} />}
-      <ConfirmDialog open={!!toCancel} title={`Cancelar conteo ${txt(toCancel?.numero)}`}
+      <ConfirmDialog open={!!toCancel} title={`Cancelar conteo ${txt(toCancel?.folio)}`}
         text="Se descartarán las cantidades registradas y no se generará ningún ajuste." confirmLabel="Cancelar conteo"
         onConfirm={() => toCancel && cancel.mutate(toCancel)} onClose={() => setToCancel(null)} />
     </Box>

@@ -41,7 +41,7 @@ export default function DataTable({ columns, data, loading, error, page, size, o
               <TableRow><TableCell colSpan={span} sx={{ py: 4, textAlign: 'center' }}>{emptyText}</TableCell></TableRow>
             )}
             {data?.rows.map((r) => (
-              <TableRow key={r.id} hover>
+              <TableRow key={r.id ?? `${r.productId ?? ''}-${r.almacenId ?? r.warehouseId ?? ''}-${r.folio ?? ''}`} hover>
                 {columns.map((c) => <TableCell key={c.header} align={c.align}>{c.render(r)}</TableCell>)}
                 {actions && <TableCell align="right">{actions(r)}</TableCell>}
               </TableRow>

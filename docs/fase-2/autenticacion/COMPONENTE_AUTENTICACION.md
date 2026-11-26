@@ -162,9 +162,12 @@ No almacenar esas credenciales en Git. Requiere los catálogos de V2.
 La prueba de contexto anterior dejó de ejecutarse como unitaria para impedir conexiones
 accidentales a la base del desarrollador. Las pruebas de integración no son pruebas E2E de React.
 
-Pendientes fuera de este cambio: auditoría RF-SEG-03, FK de Gestión Maestra, CORS/frontend,
-limitación por origen, rendimiento con carga, política de limpieza de sesiones antiguas y
-adopción del esquema en instalaciones existentes. No se acredita cumplimiento integral de Fase 2.
+Fuera del alcance del componente de autenticación quedan FK de Gestión Maestra, CORS para
+orígenes separados, limitación por origen, rendimiento con carga, política de limpieza de
+sesiones antiguas y adopción del esquema en instalaciones existentes. La interfaz integrada
+consume login, permisos, administración, consulta de auditoría y notificaciones; la evidencia
+y sus límites de navegador están en `docs/fase-3/SPRINT_7_RUTA_INTEGRACION_FRONTEND.md`.
+Eso no acredita por sí solo cumplimiento integral de Fase 2 ni validación de despliegue.
 
 ## 6. Resultado de verificación — 19 de octubre de 2026
 

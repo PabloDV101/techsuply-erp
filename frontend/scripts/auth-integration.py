@@ -86,7 +86,50 @@ def main():
             with open(Path(directory) / 'backend.log', 'w') as log:
                 backend = subprocess.Popen(['java', '-XX:+UseSerialGC', '-Xms128m', '-Xmx768m', '-jar', str(JAR)], cwd=ROOT, env=app_env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
             wait_http(f'http://127.0.0.1:{api_port}/actuator/health', backend)
-            sql = "INSERT INTO usuarios(username,correo,password_hash) SELECT 'lector_prueba','lector_prueba@example.test',password_hash FROM usuarios WHERE username='auth_prueba' RETURNING id;"
+            sql = """
+                INSERT INTO usuarios(username,correo,password_hash)
+                    SELECT 'lector_prueba','lector_prueba@example.test',password_hash FROM usuarios WHERE username='auth_prueba';
+                INSERT INTO roles(codigo,nombre) VALUES ('APROBADOR_PRUEBA','Aprobador temporal de pruebas');
+                INSERT INTO roles_permisos(rol_id,permiso_id)
+                    SELECT r.id,p.id FROM roles r CROSS JOIN permisos p
+                    WHERE r.codigo='APROBADOR_PRUEBA' AND p.codigo IN (
+                        'COMPRAS_ORDENES_LEER','COMPRAS_ORDENES_APROBAR',
+                        'INVENTARIO_AJUSTES_LEER','INVENTARIO_AJUSTES_APROBAR');
+                INSERT INTO usuarios(username,correo,password_hash)
+                    SELECT 'aprobador_prueba','aprobador_prueba@example.test',password_hash FROM usuarios WHERE username='auth_prueba';
+                INSERT INTO usuarios_roles(usuario_id,rol_id)
+                    SELECT u.id,r.id FROM usuarios u CROSS JOIN roles r
+                    WHERE u.username='aprobador_prueba' AND r.codigo='APROBADOR_PRUEBA';
+                INSERT INTO roles(codigo,nombre) VALUES ('CONTABILIDAD_PRUEBA','Permisos contables temporales de integración');
+                INSERT INTO roles_permisos(rol_id,permiso_id)
+                    SELECT r.id,p.id FROM roles r CROSS JOIN permisos p
+                    WHERE r.codigo='CONTABILIDAD_PRUEBA'
+                      AND (p.codigo LIKE 'CONTABILIDAD_%' OR p.codigo IN (
+                        'COMPRAS_FACTURAS_PROVEEDOR_LEER','VENTAS_FACTURAS_LEER',
+                        'INVENTARIO_ALERTAS_LEER','REPORTERIA_INVENTARIO_LEER','CONTABILIDAD_PERIODOS_LEER',
+                        'SEGURIDAD_USUARIOS_ADMIN','SEGURIDAD_ROLES_ADMIN','SEGURIDAD_PERMISOS_ADMIN',
+                        'SEGURIDAD_AUDITORIA_LEER'));
+                INSERT INTO usuarios_roles(usuario_id,rol_id)
+                    SELECT u.id,r.id FROM usuarios u CROSS JOIN roles r
+                    WHERE u.username='auth_prueba' AND r.codigo='CONTABILIDAD_PRUEBA';
+                INSERT INTO periodos_contables(fecha_inicio,fecha_fin,estado)
+                    VALUES (date_trunc('year',CURRENT_DATE)::date,
+                            (date_trunc('year',CURRENT_DATE)+interval '1 year - 1 day')::date,'ABIERTO');
+                INSERT INTO cuentas_contables(codigo,nombre,tipo,naturaleza) VALUES
+                    ('TEST_INV','Inventario de pruebas','ACTIVO','DEUDORA'),
+                    ('TEST_GRNI','Mercancía recibida de pruebas','PASIVO','ACREEDORA'),
+                    ('TEST_COGS','Costo de venta de pruebas','COSTO','DEUDORA'),
+                    ('TEST_GAIN','Ganancia de ajuste de pruebas','INGRESO','ACREEDORA'),
+                    ('TEST_LOSS','Pérdida de ajuste de pruebas','GASTO','DEUDORA');
+                INSERT INTO configuracion_cuentas_inventario(concepto,cuenta_contable_id,actualizado_por_usuario_id,actualizado_en)
+                    SELECT cfg.concepto,c.id,u.id,now()
+                    FROM (VALUES ('INVENTARIO','TEST_INV'),('MERCANCIA_RECIBIDA_NO_FACTURADA','TEST_GRNI'),
+                                 ('COSTO_DE_VENTAS','TEST_COGS'),('AJUSTE_INVENTARIO_POSITIVO','TEST_GAIN'),
+                                 ('AJUSTE_INVENTARIO_NEGATIVO','TEST_LOSS')) AS cfg(concepto,codigo)
+                    JOIN cuentas_contables c ON c.codigo=cfg.codigo
+                    CROSS JOIN usuarios u WHERE u.username='auth_prueba';
+                SELECT id FROM usuarios WHERE username='lector_prueba';
+            """
             for _ in range(30):
                 result = run(['docker', 'exec', '-i', name, 'psql', '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-U', 'auth_test', '-d', 'auth_test'], data=sql)
                 if result:

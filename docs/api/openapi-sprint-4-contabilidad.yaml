@@ -782,6 +782,34 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
     x-implementation-status: implemented
   /supplier-invoices:
+    get:
+      operationId: listSupplierInvoices
+      summary: Consultar facturas de proveedor
+      description: Requiere COMPRAS_FACTURAS_PROVEEDOR_LEER. Listado paginado, ordenado por fecha de emisión descendente e identificador.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - name: proveedorId
+        in: query
+        required: false
+        schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Page'
+                - type: object
+                  properties:
+                    content:
+                      type: array
+                      items: { $ref: '#/components/schemas/FacturaProveedorResumen' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+      x-implementation-status: implemented
     post:
       operationId: registerSupplierInvoice
       summary: Registrar factura de proveedor
@@ -856,6 +884,35 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
     x-implementation-status: implemented
+  /accounting/payables:
+    get:
+      operationId: listAccountsPayable
+      summary: Consultar cuentas por pagar
+      description: Requiere CONTABILIDAD_CXP_LEER. Listado paginado y ordenado por vencimiento ascendente; permite filtrar por proveedor.
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - name: proveedorId
+        in: query
+        required: false
+        schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Page'
+                - type: object
+                  properties:
+                    content:
+                      type: array
+                      items: { $ref: '#/components/schemas/CuentaPorPagar' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+      x-implementation-status: implemented
   /accounting/payables/{id}:
     parameters: [ { $ref: '#/components/parameters/Id' } ]
     get:
@@ -1244,6 +1301,15 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    Page:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: { type: array, items: {} }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1 }
+        totalElements: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
     PagoProveedor:
       type: object
       required: [id, folio, proveedorId, fechaPago, monto, medio, estado, aplicaciones]
@@ -1301,6 +1367,22 @@ components:
           total: { type: number, multipleOf: 0.01 }
           estado: { type: string, enum: [REGISTRADA, VALIDADA] }
           asientoContableId: { type: integer, format: int64, nullable: true }
+    FacturaProveedorResumen:
+      type: object
+      required: [id, folioInterno, proveedorId, ordenCompraId, numeroFacturaProveedor, fechaEmision, fechaVencimiento, subtotal, impuestos, total, estado]
+      properties:
+        id: { type: integer, format: int64 }
+        folioInterno: { type: string }
+        proveedorId: { type: integer, format: int64 }
+        ordenCompraId: { type: integer, format: int64 }
+        numeroFacturaProveedor: { type: string }
+        fechaEmision: { type: string, format: date }
+        fechaVencimiento: { type: string, format: date }
+        subtotal: { type: number, multipleOf: 0.01 }
+        impuestos: { type: number, multipleOf: 0.01 }
+        total: { type: number, multipleOf: 0.01 }
+        estado: { type: string, enum: [REGISTRADA, VALIDADA] }
+        asientoContableId: { type: integer, format: int64, nullable: true }
     ConfiguracionFacturaProveedorWrite:
       type: object
       required: [ivaAcreditableCuentaId, cuentasPorPagarCuentaId]
@@ -1314,6 +1396,7 @@ components:
         id: { type: integer, format: int64 }
         facturaProveedorId: { type: integer, format: int64 }
         proveedorId: { type: integer, format: int64 }
+        folioFactura: { type: string }
         asientoContableId: { type: integer, format: int64 }
         montoOriginal: { type: number, multipleOf: 0.01 }
         saldoPendiente: { type: number, multipleOf: 0.01 }

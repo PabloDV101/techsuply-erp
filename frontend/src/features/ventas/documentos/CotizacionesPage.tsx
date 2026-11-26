@@ -1,119 +1,107 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Box, Button, IconButton, InputAdornment, MenuItem, Paper, TextField, Tooltip, Typography } from '@mui/material'
+import { Box, Button, IconButton, Paper, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
 import SendIcon from '@mui/icons-material/SendOutlined'
 import CheckIcon from '@mui/icons-material/CheckCircleOutlined'
 import CancelIcon from '@mui/icons-material/CancelOutlined'
 import SwapIcon from '@mui/icons-material/ShoppingCartCheckout'
 import VisibilityIcon from '@mui/icons-material/VisibilityOutlined'
-import SearchIcon from '@mui/icons-material/Search'
 import { http, errorMessage } from '../../../api/http'
-import { PATHS, PERM, SEARCH_PARAM } from '../../../config/contract'
-import { normalizePage, type Row } from '../../../shared/api'
+import { PATHS, PERM } from '../../../config/contract'
+import { normalizePage, type Row, useLookup } from '../../../shared/api'
 import { ConfirmDialog } from '../../../shared/ConfirmDialog'
 import DataTable from '../../../shared/DataTable'
-import { ESTADOS_COTIZACION, EstadoChip, estadoLabel } from '../../../shared/EstadoChip'
-import { fecha, money, txt } from '../../../shared/format'
+import { EstadoChip } from '../../../shared/EstadoChip'
+import { fecha, money, today } from '../../../shared/format'
 import { useNotify } from '../../../shared/Notify'
+import { ClienteSelect } from '../../../shared/selects'
 import { useAuth } from '../../auth/AuthContext'
 import DocDetalleDialog from './DocDetalleDialog'
 import DocFormDialog from './DocFormDialog'
+import PedidoConversionDialog from './PedidoConversionDialog'
 
-type Kind = 'enviar' | 'aceptar' | 'rechazar' | 'convertir'
-const TEXT: Record<Kind, { title: string; text: string; label: string }> = {
-  enviar: { title: 'Enviar cotización', text: 'Se marcará como enviada al cliente y ya no podrá editarse.', label: 'Enviar' },
-  aceptar: { title: 'Registrar aceptación', text: 'El cliente aceptó la cotización. Podrás convertirla en orden de venta.', label: 'Marcar aceptada' },
-  rechazar: { title: 'Registrar rechazo', text: 'El cliente rechazó la cotización. Esta acción no se puede deshacer.', label: 'Marcar rechazada' },
-  convertir: { title: 'Convertir en orden de venta', text: 'Se creará un pedido en borrador con los mismos productos y precios.', label: 'Crear orden de venta' },
+type Transition = 'issue' | 'accept' | 'cancel'
+const TRANSITIONS: Record<Transition, { title: string; text: string; label: string }> = {
+  issue: { title: 'Emitir cotización', text: 'Cambiará de borrador a vigente y ya no podrá editarse.', label: 'Emitir' },
+  accept: { title: 'Registrar aceptación', text: 'Se registrará internamente que el cliente aceptó la cotización.', label: 'Marcar aceptada' },
+  cancel: { title: 'Cancelar cotización', text: 'La cotización se conservará como documento cancelado.', label: 'Cancelar cotización' },
 }
 
 export default function CotizacionesPage() {
   const qc = useQueryClient()
-  const navigate = useNavigate()
   const notify = useNotify()
   const { can } = useAuth()
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(10)
-  const [search, setSearch] = useState('')
-  const [estado, setEstado] = useState('')
-  const [form, setForm] = useState<{ id?: Row['id'] } | null>(null)
+  const [clienteId, setClienteId] = useState('')
+  const [creating, setCreating] = useState(false)
   const [viewing, setViewing] = useState<Row['id'] | null>(null)
-  const [action, setAction] = useState<{ kind: Kind; row: Row } | null>(null)
+  const [transition, setTransition] = useState<{ kind: Transition; row: Row } | null>(null)
+  const [converting, setConverting] = useState<Row | null>(null)
+  const clients = useLookup(PATHS.clientes)
+  const clientMap = new Map((clients.data ?? []).map((client) => [String(client.id), client]))
 
-  const q = useQuery({
-    queryKey: [PATHS.cotizaciones, page, size, search, estado],
+  const quotes = useQuery({
+    queryKey: [PATHS.cotizaciones, page, size, clienteId],
     queryFn: async () => {
       const params: Record<string, unknown> = { page, size }
-      if (search) params[SEARCH_PARAM] = search
-      if (estado) params.estado = estado
+      if (clienteId) params.clienteId = clienteId
       return normalizePage((await http.get(PATHS.cotizaciones, { params })).data)
     },
     placeholderData: keepPreviousData,
   })
-
-  const run = useMutation({
-    mutationFn: async (a: { kind: Kind; row: Row }) => (await http.post(`${PATHS.cotizaciones}/${a.row.id}/${a.kind}`)).data,
-    onSuccess: (data, a) => {
-      for (const k of [[PATHS.cotizaciones], ['cotizacion', a.row.id], [PATHS.pedidos]]) qc.invalidateQueries({ queryKey: k })
-      setAction(null)
-      if (a.kind === 'convertir') {
-        notify(`Orden de venta ${data?.numero ?? ''} creada en borrador.`.replace('  ', ' '))
-        navigate('/ventas/pedidos')
-      } else notify('Cotización actualizada.')
+  const runTransition = useMutation({
+    mutationFn: ({ row, kind }: { row: Row; kind: Transition }) => http.post(`${PATHS.cotizaciones}/${row.id}/${kind}`),
+    onSuccess: (_response, action) => {
+      void qc.invalidateQueries({ queryKey: [PATHS.cotizaciones] })
+      void qc.invalidateQueries({ queryKey: ['cotizacion', action.row.id] })
+      setTransition(null)
+      notify(action.kind === 'issue' ? 'Cotización emitida y vigente.' : action.kind === 'accept' ? 'Aceptación registrada.' : 'Cotización cancelada.')
     },
-    onError: (e) => { notify(errorMessage(e), 'error'); setAction(null) },
+    onError: (error) => { notify(errorMessage(error), 'error'); setTransition(null) },
   })
+  const canAdmin = can(PERM.cotizacionAdmin)
 
-  const canWrite = can(PERM.cotizacionWrite)
-  const btn = (title: string, icon: React.ReactNode, onClick: () => void, color?: 'success' | 'error' | 'primary') => (
-    <Tooltip title={title}><IconButton size="small" color={color} aria-label={title} onClick={onClick}>{icon}</IconButton></Tooltip>
+  const actionButton = (label: string, icon: React.ReactNode, onClick: () => void, color?: 'success' | 'error' | 'primary') => (
+    <Tooltip title={label}><IconButton size="small" color={color} aria-label={label} onClick={onClick}>{icon}</IconButton></Tooltip>
   )
 
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <Typography variant="h5" sx={{ flexGrow: 1 }}>Cotizaciones</Typography>
-        {canWrite && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setForm({})}>Nueva cotización</Button>}
+        {can(PERM.cotizacionWrite) && <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreating(true)}>Nueva cotización</Button>}
       </Box>
-      <Paper elevation={0} sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <TextField size="small" placeholder="Buscar por número o cliente" value={search} sx={{ flex: '1 1 260px' }}
-          onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }} />
-        <TextField select size="small" label="Estado" value={estado} sx={{ width: 200 }} onChange={(e) => { setEstado(e.target.value); setPage(0) }}>
-          <MenuItem value="">Todos</MenuItem>
-          {ESTADOS_COTIZACION.map((e) => <MenuItem key={e} value={e}>{estadoLabel(e)}</MenuItem>)}
-        </TextField>
+      <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+        <ClienteSelect value={clienteId} onChange={(value) => { setClienteId(value); setPage(0) }} width={320} />
       </Paper>
-      <DataTable
-        data={q.data} loading={q.isLoading} error={q.error} page={page} size={size}
-        onPage={setPage} onSize={(s) => { setSize(s); setPage(0) }}
-        emptyText={search || estado ? 'Ningún resultado con esos filtros.' : 'Aún no hay cotizaciones. Crea la primera para un cliente.'}
+      <DataTable data={quotes.data} loading={quotes.isLoading} error={quotes.error} page={page} size={size}
+        onPage={setPage} onSize={(value) => { setSize(value); setPage(0) }}
+        emptyText={clienteId ? 'El cliente no tiene cotizaciones.' : 'Aún no hay cotizaciones.'}
         columns={[
-          { header: 'Número', render: (r) => txt(r.numero) },
-          { header: 'Cliente', render: (r) => txt(r.cliente ?? r.clienteNombre) },
-          { header: 'Fecha', render: (r) => fecha(r.fecha) },
-          { header: 'Válida hasta', render: (r) => fecha(r.validaHasta) },
-          { header: 'Estado', render: (r) => <EstadoChip estado={r.estado} /> },
-          { header: 'Total', align: 'right', render: (r) => money(r.total) },
+          { header: 'Folio', render: (row) => String(row.folio ?? '—') },
+          { header: 'Cliente', render: (row) => clientMap.get(String(row.clienteId))?.nombreRazonSocial ?? `Cliente ${row.clienteId}` },
+          { header: 'Fecha', render: (row) => fecha(row.fecha) },
+          { header: 'Vigente hasta', render: (row) => fecha(row.vigenciaHasta) },
+          { header: 'Estado', render: (row) => <EstadoChip estado={row.estado} /> },
+          { header: 'Total', align: 'right', render: (row) => money(row.total) },
         ]}
-        actions={(r) => (
-          <>
-            {btn('Ver detalle', <VisibilityIcon fontSize="small" />, () => setViewing(r.id))}
-            {canWrite && r.estado === 'BORRADOR' && btn('Editar', <EditIcon fontSize="small" />, () => setForm({ id: r.id }))}
-            {canWrite && r.estado === 'BORRADOR' && btn('Enviar', <SendIcon fontSize="small" />, () => setAction({ kind: 'enviar', row: r }), 'primary')}
-            {canWrite && r.estado === 'ENVIADA' && btn('Marcar aceptada', <CheckIcon fontSize="small" />, () => setAction({ kind: 'aceptar', row: r }), 'success')}
-            {canWrite && r.estado === 'ENVIADA' && btn('Marcar rechazada', <CancelIcon fontSize="small" />, () => setAction({ kind: 'rechazar', row: r }), 'error')}
-            {canWrite && r.estado === 'ACEPTADA' && btn('Convertir en orden de venta', <SwapIcon fontSize="small" />, () => setAction({ kind: 'convertir', row: r }), 'primary')}
-          </>
-        )}
+        actions={(row) => <>
+          <Tooltip title="Ver detalle"><IconButton size="small" aria-label={`Ver ${row.folio}`} onClick={() => setViewing(row.id)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
+          {canAdmin && row.estado === 'BORRADOR' && actionButton(`Emitir ${row.folio}`, <SendIcon fontSize="small" />, () => setTransition({ kind: 'issue', row }), 'primary')}
+          {canAdmin && row.estado === 'VIGENTE' && actionButton(`Marcar aceptada ${row.folio}`, <CheckIcon fontSize="small" />, () => setTransition({ kind: 'accept', row }), 'success')}
+          {canAdmin && ['BORRADOR', 'VIGENTE'].includes(String(row.estado)) && actionButton(`Cancelar ${row.folio}`, <CancelIcon fontSize="small" />, () => setTransition({ kind: 'cancel', row }), 'error')}
+          {can(PERM.pedidoWrite) && row.estado === 'ACEPTADA' && String(row.vigenciaHasta) >= today() && actionButton(`Convertir ${row.folio} en pedido`, <SwapIcon fontSize="small" />, () => setConverting(row), 'primary')}
+        </>}
       />
-      {form && <DocFormDialog kind="cotizacion" id={form.id} onClose={() => setForm(null)} />}
+      {creating && <DocFormDialog onClose={() => setCreating(false)} />}
       {viewing !== null && <DocDetalleDialog kind="cotizacion" id={viewing} onClose={() => setViewing(null)} />}
-      <ConfirmDialog open={!!action} title={action ? TEXT[action.kind].title : ''} text={action ? TEXT[action.kind].text : ''}
-        confirmLabel={action ? TEXT[action.kind].label : ''} onConfirm={() => action && run.mutate(action)} onClose={() => setAction(null)} />
+      {converting && <PedidoConversionDialog quote={{ id: converting.id, folio: String(converting.folio) }} onClose={() => setConverting(null)} />}
+      <ConfirmDialog open={!!transition} title={transition ? TRANSITIONS[transition.kind].title : ''}
+        text={transition ? `${TRANSITIONS[transition.kind].text} ${transition.row.folio}` : ''}
+        confirmLabel={transition ? TRANSITIONS[transition.kind].label : ''}
+        onConfirm={() => transition && runTransition.mutate(transition)} onClose={() => setTransition(null)} />
     </Box>
   )
 }

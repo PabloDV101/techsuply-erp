@@ -14,15 +14,25 @@ export const txt = (v: unknown): string => {
   if (v == null || v === '') return '—'
   if (typeof v === 'object') {
     const o = v as Record<string, unknown>
-    return String(o.razonSocial ?? o.nombre ?? o.descripcion ?? o.codigo ?? '—')
+    return String(o.nombreRazonSocial ?? o.razonSocial ?? o.nombre ?? o.descripcion ?? o.codigo ?? '—')
   }
   return String(v)
 }
 
-export const today = () => new Date().toISOString().slice(0, 10)
+const businessDateInput = (date: Date, daysOffset = 0) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((item) => item.type === type)?.value)
+  return new Date(Date.UTC(part('year'), part('month') - 1, part('day') - daysOffset)).toISOString().slice(0, 10)
+}
+
+export const today = () => businessDateInput(new Date())
 
 export const fechaHora = (s: unknown) => (s ? new Date(String(s)).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—')
 
-export const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10)
+export const daysAgo = (days: number) => {
+  return businessDateInput(new Date(), days)
+}
 
-export const productoLabel = (p: any) => (p ? `${p.codigo ?? ''} — ${p.descripcion ?? ''}` : '—')
+export const productoLabel = (p: any) => (p ? `${p.sku ?? p.codigo ?? ''} — ${p.nombre ?? p.descripcion ?? ''}` : '—')

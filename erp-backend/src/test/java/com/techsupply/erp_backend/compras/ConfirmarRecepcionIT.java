@@ -154,6 +154,10 @@ class ConfirmarRecepcionIT extends PostgresIntegrationSupport {
             .andExpect(status().isCreated()).andExpect(jsonPath("estado").value("REGISTRADA"))
             .andReturn().getResponse().getContentAsString();
         long invoice=json.readTree(result).get("id").asLong();
+        http.perform(get("/api/v1/supplier-invoices").param("page","0").param("size","10")
+            .header("Authorization","Bearer "+actor)).andExpect(status().isOk())
+            .andExpect(jsonPath("totalElements").value(1)).andExpect(jsonPath("content[0].id").value(invoice))
+            .andExpect(jsonPath("content[0].estado").value("REGISTRADA"));
         http.perform(post("/api/v1/supplier-invoices").header("Authorization","Bearer "+actor)
             .contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isConflict());
         http.perform(post("/api/v1/supplier-invoices/{id}/validate",invoice).header("Authorization","Bearer "+actor))
@@ -201,6 +205,9 @@ class ConfirmarRecepcionIT extends PostgresIntegrationSupport {
         http.perform(post("/api/v1/accounting/entries/{id}/reverse",paymentSeat).header("Authorization","Bearer "+actor).contentType("application/json").content(json.writeValueAsString(Map.of("fechaContable",java.time.LocalDate.now(java.time.ZoneId.of("America/Mexico_City")).toString(),"motivo","Prueba","claveIdempotencia",f.key()+"REV")))).andExpect(status().isConflict());
         http.perform(post("/api/v1/accounting/supplier-payments/{id}/confirm",paymentId).header("Authorization","Bearer "+actor).contentType("application/json").content(json.writeValueAsString(applications))).andExpect(status().isOk());
         http.perform(get("/api/v1/accounting/payables/{id}",cxp).header("Authorization","Bearer "+actor)).andExpect(status().isOk()).andExpect(jsonPath("saldoPendiente").value(132));
+        http.perform(get("/api/v1/accounting/payables").param("proveedorId",Long.toString(supplier)).header("Authorization","Bearer "+actor))
+            .andExpect(status().isOk()).andExpect(jsonPath("totalElements").value(1))
+            .andExpect(jsonPath("content[0].id").value(cxp)).andExpect(jsonPath("content[0].saldoPendiente").value(132));
         List<Long> competing=new ArrayList<>();
         for (int i=0;i<2;i++) {
             var next=Map.of("proveedorId",supplier,"fechaPago","2026-11-19T12:00:00Z","monto",100,"medio","TRANSFERENCIA","claveIdempotencia",f.key()+"-"+i);
